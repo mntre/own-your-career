@@ -6,9 +6,34 @@ This is the development repository for the PMGM 2026: Own Your Career system. De
 
 ## Before Starting Any Task
 
-1. Read the other steering files in `.kiro/steering/` to understand project context, coding standards, and business rules
+1. **Read ALL steering files** in `.kiro/steering/` to understand project context, coding standards, and business rules
 2. Check existing code to match patterns, naming, and style already established
 3. Identify which platform(s) the task affects (shared frontend, Converge backend, AppScript backend, or all)
+4. **Before finishing any task**, re-read this steering file as an audit check to ensure compliance
+
+## Core AI Principles (from Team Standards)
+
+**ALL AI tools and assistants MUST:**
+1. Read steering documents first before beginning any task
+2. **Stay on topic** — Focus on the specific task or question at hand; don't introduce unrelated tangents
+3. **Avoid hallucinations** — Only provide information you're confident about; if unsure, ask for clarification or admit uncertainty
+4. Follow the project structure, standards, and conventions outlined in these steering files
+5. Read steering documents again before finishing any task (audit check)
+6. Verify output aligns with team standards
+7. Flag any deviations from guidelines and explain the rationale
+
+**Point of View (POV):**
+- ALL work documents (README, code comments describing workflow, Jira descriptions, documentation) MUST use **3rd person point of view**
+- Use actual names and designations instead of "You", "I", "We"
+- Examples:
+  - ❌ WRONG: "You will submit the form"
+  - ✅ CORRECT: "The manager submits the form"
+  - ❌ WRONG: "We calculate the OKR score"
+  - ✅ CORRECT: "The system calculates the OKR score based on role-level formula"
+
+**File Handling:**
+- If Kiro cannot read a file directly (binary formats like .xlsx, .docx), use Python to extract content
+- Never ask users to convert files — handle all formats programmatically
 
 ## Rules for AI Assistants
 
@@ -66,6 +91,29 @@ When working on files in these paths, apply these additional considerations:
 | `src/frontend/js/gates.js` | Critical file — hard gate logic; changes here affect entire workflow; verify against gate matrix |
 | `src/frontend/js/calculations.js` | Critical file — OKR formulas; must match role-level specifications exactly |
 
+## Definition of Done (for Development Sub-tasks)
+
+A development sub-task is DONE when:
+- [ ] Functional requirement implemented and working
+- [ ] Code follows team standards (JSDoc, error handling, validation)
+- [ ] Works on BOTH platforms (Converge Cloud + Apps Script)
+- [ ] Hard gates enforced correctly
+- [ ] Developer Self-Integration Test (SIT) passed
+- [ ] No critical/high security vulnerabilities
+- [ ] Code peer reviewed (at least 1 reviewer)
+
+## RACI (Communication Protocol)
+
+| Task/Decision | Responsible | Accountable | Consulted | Informed |
+|---------------|-------------|-------------|-----------|----------|
+| Solution Design | Zaira Bajar (BA) | Luigi Espiritu (Dept Head) | Tech Lead | Stakeholders |
+| Development | Charvin/Jeremy (Devs) | Luigi Espiritu | BA, QA | QA Team |
+| Testing/QA | Mike Escobilla, JC Claudio | Luigi Espiritu | Developers | Stakeholders |
+| Deployment | Luigi Espiritu | Luigi Espiritu | All Devs | Stakeholders |
+
+- **Flag blockers immediately** to the Accountable party
+- Reference Jira tickets (PAC-6864, PAC-8047) in all communications
+
 ## Sprint Context
 
 - **Sprint 1 (Jul 1-3):** Build 3 portals (Manager, Data SPOC, Employee)
@@ -73,3 +121,15 @@ When working on files in these paths, apply these additional considerations:
 - **Sprint 3 (Jul 13-17):** UAT, defect fixes, go-live
 
 Daily standup at 9 AM, managed by JC Claudio.
+
+## Story Points Reference
+
+| Story Points | Time |
+|--------------|------|
+| 10 | 1 hour |
+| 20 | 2 hours |
+| 40 | 4 hours (half day) |
+| 75 | 7.5 hours (1 full day) |
+
+- Productive hours per day: **7.5 hours** (not 8)
+- Max story points per day per person: **75**

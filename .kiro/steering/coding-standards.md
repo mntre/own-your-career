@@ -94,6 +94,7 @@ function calculateOKRScore(roleLevel, corporateScore, groupScore, deptScore, tea
 - Mobile-first responsive design (min-width breakpoints)
 - BEM naming convention for class names: `.block__element--modifier`
 - No inline styles in HTML
+- **MUST follow Converge Brand Guidelines** (see Branding section below)
 
 ## Platform Abstraction
 
@@ -123,6 +124,85 @@ const API = {
 ```
 
 This pattern ensures frontend code never contains platform-specific branching inline — all platform differences live in the API layer.
+
+---
+
+## Converge Brand Guidelines
+
+**Source:** CONVERGE Brand Guidelines 2026 (condensed PDF)
+
+All projects under Converge MUST follow the official brand guidelines. This applies to all UI elements, portals, and user-facing pages.
+
+### Color Palette
+
+#### Primary Colors
+
+| Color Name | Hex Code | RGB | Usage |
+|------------|----------|-----|-------|
+| **Converge Teal** | `#038F8D` | rgb(3, 143, 141) | Primary brand color — buttons, headers, links, key UI elements |
+| **Phantom Black** | `#000000` | rgb(0, 0, 0) | Text, dark backgrounds |
+| **Pure White** | `#FFFFFF` | rgb(255, 255, 255) | Backgrounds, white space, contrast |
+
+#### Secondary Colors
+
+| Color Name | Hex Code | RGB | Usage |
+|------------|----------|-----|-------|
+| **Deepwave Teal** | `#024645` | rgb(2, 70, 69) | Dark accents, footers, depth |
+| **Midwave Teal** | `#027574` | rgb(1, 116, 115) | Secondary buttons, hover states |
+| **Visionary Aquamarine** | `#49D7D1` | — | Highlights, success states, accents |
+| **Softwave Teal** | `#9AC0C3` | rgb(154, 192, 195) | Subtle backgrounds, borders, disabled states |
+| **Pulse Violet** | `#8965F5` | — | Accent color, notifications, badges |
+
+### CSS Custom Properties (Required)
+
+All projects must define these brand variables and use them throughout:
+
+```css
+:root {
+  /* Primary */
+  --color-primary: #038F8D;          /* Converge Teal */
+  --color-black: #000000;            /* Phantom Black */
+  --color-white: #FFFFFF;            /* Pure White */
+
+  /* Secondary */
+  --color-teal-dark: #024645;        /* Deepwave Teal */
+  --color-teal-mid: #027574;         /* Midwave Teal */
+  --color-aquamarine: #49D7D1;       /* Visionary Aquamarine */
+  --color-teal-soft: #9AC0C3;        /* Softwave Teal */
+  --color-violet: #8965F5;           /* Pulse Violet */
+
+  /* Typography */
+  --font-heading: 'Funnel Display', sans-serif;
+  --font-body: 'Funnel Sans', 'DM Sans', sans-serif;
+}
+```
+
+### Typography
+
+| Type | Font | Usage |
+|------|------|-------|
+| **Primary** | Funnel Display | Titles and headings |
+| **Secondary** | Funnel Sans | Body text |
+| **Fallback** | DM Sans | Body text (alternative) |
+
+### Art Style
+
+**Geometric Isometric Minimalist**
+- Geometric shapes utilizing 3D perspective without a vanishing point (Isometric)
+- "Less is more" approach to color and detail (Minimalism)
+- Clean, modern, uncluttered interfaces
+
+### Brand Usage Rules
+
+1. **Never mix primary colors** — use proper contrast ratios
+2. **Never use dark on dark** — ensure readability
+3. **Never use light on light** — maintain contrast
+4. **Never change the logo colors** — use official versions only
+5. Use Converge Teal (`#038F8D`) as the dominant accent throughout the UI
+6. Use Phantom Black for body text on white backgrounds
+7. Use Pulse Violet sparingly for highlights and attention-drawing elements
+
+---
 
 ## Security Rules
 
