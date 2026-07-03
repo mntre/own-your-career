@@ -291,4 +291,5 @@ npm run dev
 - **Current Phase:** Development (Sprint 1)
 - **Target Launch:** July 17, 2026
 - **Workflow Design:** Confirmed (Zaira Bajar — 7-step process)
-- **Last Updated:** July 1, 2026
+- **BRD Version:** v4.0 (July 1, 2026) — aligned
+- **Last Updated:** July 3, 2026

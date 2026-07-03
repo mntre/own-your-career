@@ -364,13 +364,28 @@ All projects must define these brand variables and use them throughout:
 | Sprint 2 | Jul 6-10 | Continue dev, system integration, SIT |
 | Sprint 3 | Jul 13-17 | UAT, defect fixes, go-live |
 
+### Last to Develop: BRD v4.0 Additions
+**Source:** BRD v4.0 (July 1, 2026) — Jelyn Ira Parreño & Gladys Erika Munsalud
+**Priority:** Lowest — build only after Steps 1–7 and core portal functionality are stable
+
+| # | Item | Description |
+|---|------|-------------|
+| 1 | Team Heat Map | Manager Portal dashboard: color-coded score variances (Red/Amber/Green), real-time updates |
+| 2 | Automated Weekly Reporting | Scheduled email reports 1–2x/week + Friday automation rule to admins |
+| 3 | OKR Status Field | New field: Not Started, On Track, Completed, Postponed |
+| 4 | Mutual Acknowledgment | Single mutual ack (both parties) instead of separate Steps 5 & 7 |
+| 5 | Hard Deadline Admin Lock | Admin control to lock forms after a set deadline |
+| 6 | Self-Assessment Wording | ✅ DONE — Updated to 1H/2H phrasing in constants.js |
+| 7 | Bracket Boundary Fix | ✅ DONE — Exceeded now 101% and above (was 101.01%) |
+
 **Daily standup:** 9 AM, led by JC Claudio
 
 ## Status
 - **Current Phase:** Development (Sprint 1)
 - **Target Launch:** July 17, 2026
 - **Workflow Design:** Confirmed (Zaira Bajar — 7-step process)
-- **Last Updated:** July 1, 2026
+- **BRD Version:** v4.0 (July 1, 2026) — aligned
+- **Last Updated:** July 3, 2026
 
 ## Team Structure
 

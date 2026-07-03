@@ -17,12 +17,12 @@ const ROLE_LEVELS = {
   INDIVIDUAL: 'INDIVIDUAL'
 };
 
-/** Performance bracket thresholds */
+/** Performance bracket thresholds — Per BRD v4.0 */
 const BRACKETS = {
-  EXCEEDED_MIN: 101.01,
-  ACHIEVED_MIN: 90.1,
-  NEEDS_IMPROVEMENT_MIN: 81,
-  FAILED_MAX: 80.99
+  EXCEEDED_MIN: 101,       // Level 1: 101% and above
+  ACHIEVED_MIN: 90.1,     // Level 2: 90.1% – 100%
+  NEEDS_IMPROVEMENT_MIN: 81, // Level 3: 81% – 90%
+  FAILED_MAX: 80          // Level 4: 80% and below
 };
 
 /** OKR formula weights by role level */
@@ -43,13 +43,21 @@ const SKILL_LEVELS = {
   5: 'Expert'
 };
 
-/** Self-assessment mandatory questions (Step 3) */
+/** Self-assessment mandatory questions (Step 3) — Per BRD v4.0 */
 const SELF_ASSESSMENT_QUESTIONS = [
-  'What contributed to your performance this quarter?',
-  'What challenges or gaps impacted your performance?',
-  'What support do you need for the upcoming quarter?',
-  'What specific commitments will you make to improve/sustain performance?'
+  'What contributed to your performance during the first half of the year (1H)?',
+  'What challenges or gaps impacted your performance during 1H?',
+  'What specific support do you require for the upcoming second half of the year (2H)?',
+  'What specific commitments will you make to sustain or improve your performance moving forward?'
 ];
+
+/** OKR Status values — Per BRD v4.0 */
+const OKR_STATUS = {
+  NOT_STARTED: 'NOT_STARTED',
+  ON_TRACK: 'ON_TRACK',
+  COMPLETED: 'COMPLETED',
+  POSTPONED: 'POSTPONED'
+};
 
 /** Workflow steps metadata */
 const WORKFLOW_STEPS = {
