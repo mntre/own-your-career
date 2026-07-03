@@ -1,0 +1,23 @@
+{
+  "name": "own-your-career-backend",
+  "version": "1.0.0",
+  "description": "Converge Cloud backend for Own Your Career performance review system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "converge",
+    "performance",
+    "review",
+    "ssr"
+  ],
+  "author": "Converge ICT Solutions",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}

@@ -1,1 +1,209 @@
-hello hello hello
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Own Your Career — Login</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    .login-container {
+      max-width: 480px;
+      margin: 80px auto;
+      padding: 40px;
+    }
+
+    .login-logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-logo img {
+      max-height: 60px;
+      margin-bottom: 16px;
+    }
+
+    .login-header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin: 0;
+    }
+
+    .login-header p {
+      color: #666;
+      margin: 8px 0 32px;
+    }
+
+    .role-selector {
+      margin-bottom: 24px;
+    }
+
+    .role-selector label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .role-selector select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+      background: white;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .login-btn:hover {
+      background: #0056b3;
+    }
+
+    .login-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .login-footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .login-footer p {
+      color: #666;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .error-message {
+      background: #fff3f3;
+      border: 1px solid #ffcccc;
+      color: #cc0000;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      display: none;
+    }
+
+    .error-message.visible {
+      display: block;
+    }
+
+    .info-box {
+      background: #f0f7ff;
+      border-left: 4px solid #007bff;
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 4px;
+    }
+
+    .info-box h4 {
+      margin: 0 0 8px;
+      color: #0056b3;
+    }
+
+    .info-box p {
+      margin: 0;
+      color: #555;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-logo">
+      <h1>Own Your Career</h1>
+    </div>
+
+    <div class="login-header">
+      <h1>Sign In</h1>
+      <p>Please enter your credentials to access your portal</p>
+    </div>
+
+    <div id="error-message" class="error-message"></div>
+
+    <div class="info-box">
+      <h4>SSO Login</h4>
+      <p>This system uses corporate SSO authentication. Your email will be used to identify your role and grant appropriate access.</p>
+    </div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label for="email">Corporate Email</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email" 
+          placeholder="name@converge.com.ph" 
+          required
+          autocomplete="email"
+        >
+      </div>
+
+      <div class="role-selector">
+        <label for="role">Select Portal</label>
+        <select id="role" name="role" required>
+          <option value="">-- Choose your role --</option>
+          <option value="EMPLOYEE">Employee Portal</option>
+          <option value="MANAGER">Manager Portal</option>
+          <option value="DATA_SPOC">Data SPOC Portal</option>
+        </select>
+      </div>
+
+      <button type="submit" class="login-btn" id="login-btn">
+        Sign In
+      </button>
+    </form>
+
+    <div class="login-footer">
+      <p>&copy; 2026 Converge ICT Solutions. All rights reserved.</p>
+    </div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script src="../js/login.js"></script>
+</body>
+</html>

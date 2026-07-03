@@ -123,3 +123,53 @@ function initApp() {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', initApp);
+/* --------------------------------------------------------------------------
+   Login API (Converge Platform)
+   -------------------------------------------------------------------------- */
+
+/**
+ * User login via SSO
+ * @param {string} email - User email
+ * @param {string} role - User role (EMPLOYEE, MANAGER, DATA_SPOC)
+ * @returns {Promise<Object>} Login result with success status and message
+ */
+API.login = async function(email, role) {
+  if (PLATFORM === 'APPSCRIPT') {
+    // App Script implementation
+    try {
+      const response = await google.script.run.withSuccessHandler((result) => result).withFailureHandler((error) => {
+        throw new Error(error);
+      }).loginUser(email, role);
+      return response;
+    } catch (error) {
+      console.error('AppScript login error:', error);
+      return { success: false, message: 'Authentication failed' };
+    }
+  }
+
+  // Converge Cloud implementation
+  try {
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, role })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Login failed');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Converge login error:', error);
+    return { success: false, message: error.message || 'Authentication failed' };
+  }
+};
+
+/* --------------------------------------------------------------------------
+   Initialization
+   -------------------------------------------------------------------------- */
