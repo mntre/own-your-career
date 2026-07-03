@@ -160,29 +160,40 @@
 
     <div class="login-header">
       <h1>Sign In</h1>
-      <p>Please enter your credentials to access your portal</p>
+      <p>Welcome to Own Your Career</p>
     </div>
 
     <div id="error-message" class="error-message"></div>
 
-    <div class="info-box">
-      <h4>SSO Login</h4>
-      <p>This system uses corporate SSO authentication. Your email will be used to identify your role and grant appropriate access.</p>
+    <!-- Google Sign-In Button Container -->
+    <div id="gsi-client" class="google-signin-container">
+      <div id="g_id_onload"
+           data-client_id="YOUR_GOOGLE_CLIENT_ID"
+           data-context="signin"
+           data-ux_mode="popup"
+           data-callback="handleGoogleCredential"
+           data-auto_select="false">
+      </div>
+      <div id="g_id_signin" class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left">
+        <div class="google-btn" style="display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 12px 24px; background: #fff; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px; font-weight: 500; font-family: var(--font-body); color: #1f1f1f; cursor: pointer; transition: background 0.2s;">
+          <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink: 0;">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 12.23-2.16 16.45-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.72 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            <path fill="none" d="M0 0h48v48H0z"/>
+          </svg>
+          Sign in with Google
+        </div>
+      </div>
     </div>
 
-    <form id="login-form">
-      <div class="form-group">
-        <label for="email">Corporate Email</label>
-        <input 
-          type="email" 
-          id="email" 
-          name="email" 
-          placeholder="name@converge.com.ph" 
-          required
-          autocomplete="email"
-        >
-      </div>
+    <div class="divider">
+      <span class="divider-text">or continue with</span>
+    </div>
 
+    <!-- Email/Role Form (for testing without Google SSO) -->
+    <form id="login-form" class="manual-login-form">
       <div class="role-selector">
         <label for="role">Select Portal</label>
         <select id="role" name="role" required>
@@ -194,7 +205,7 @@
       </div>
 
       <button type="submit" class="login-btn" id="login-btn">
-        Sign In
+        Proceed to Google Sign-In
       </button>
     </form>
 
@@ -205,5 +216,185 @@
 
   <script src="../js/app.js"></script>
   <script src="../js/login.js"></script>
+
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>
+  <style>
+    .login-container {
+      max-width: 480px;
+      margin: 80px auto;
+      padding: 40px;
+    }
+
+    .login-logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-logo img {
+      max-height: 60px;
+      margin-bottom: 16px;
+    }
+
+    .login-header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--color-black);
+      margin: 0;
+    }
+
+    .login-header p {
+      color: #666;
+      margin: 8px 0 32px;
+    }
+
+    /* Google Sign-In Container */
+    .google-signin-container {
+      margin-bottom: 24px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 24px 0;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid var(--color-teal-soft);
+    }
+
+    .divider-text {
+      padding: 0 var(--spacing-sm);
+      color: #666;
+      font-size: 14px;
+    }
+
+    .role-selector {
+      margin-bottom: 24px;
+    }
+
+    .role-selector label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--color-black);
+    }
+
+    .role-selector select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      font-size: 16px;
+      font-family: var(--font-body);
+      background: white;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background-color: var(--color-primary);
+      color: var(--color-white);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      font-family: var(--font-body);
+    }
+
+    .login-btn:hover {
+      background-color: var(--color-teal-mid);
+    }
+
+    .login-btn:disabled {
+      background-color: var(--color-teal-soft);
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .error-message {
+      background: #fff3f3;
+      border: 1px solid var(--color-violet);
+      color: var(--color-violet);
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+      display: none;
+      font-weight: 500;
+    }
+
+    .error-message.visible {
+      display: block;
+    }
+
+    .info-box {
+      background: #f0f7ff;
+      border-left: 4px solid var(--color-primary);
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: var(--radius-sm);
+    }
+
+    .info-box h4 {
+      margin: 0 0 8px;
+      color: var(--color-primary);
+    }
+
+    .info-box p {
+      margin: 0;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .manual-login-form {
+      display: none;
+    }
+
+    /* Google Button Styling */
+    .google-btn {
+      background-color: #fff;
+      border: 1px solid #dadce0;
+      border-radius: var(--radius-md);
+      color: #1f1f1f;
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-weight: 500;
+      padding: 12px 24px;
+      width: 100%;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .google-btn:hover {
+      background-color: #f8f9fa;
+      border-color: #d2e3fc;
+    }
+
+    .g_id_signin {
+      margin-bottom: 24px;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .login-container {
+        margin: 40px auto;
+        padding: 24px;
+      }
+
+      .login-header h1 {
+        font-size: 24px;
+      }
+    }
+  </style>

@@ -1,7 +1,7 @@
 /**
  * Own Your Career — Login Logic
  * 
- * Handles login form submission and SSO authentication flow.
+ * Handles Google SSO login flow and role-based redirection.
  * 
  * @fileoverview Login page JavaScript logic
  */
@@ -9,27 +9,88 @@
 'use strict';
 
 /* --------------------------------------------------------------------------
-   Login Form Handling
+   Google SSO Handler
    -------------------------------------------------------------------------- */
 
 /**
- * Handles login form submission
+ * Handles Google ID token credential response
+ * @param {Object} response - Google ID token response
+ */
+async function handleGoogleCredential(response) {
+  hideError();
+
+  // Decode the JWT credential
+  const credential = response.credential;
+  const payload = JSON.parse(atob(credential.split('.')[1]));
+
+  // Extract user info from Google token
+  const email = payload.email;
+  const role = document.getElementById('role')?.value || 'EMPLOYEE';
+
+  // Validate corporate email
+  if (!isValidCorporateEmail(email)) {
+    showError('Only Converge corporate emails are allowed. Please use name@converge.com.ph');
+    return;
+  }
+
+  // Show loading state
+  const loginBtn = document.getElementById('login-btn');
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Signing In...';
+
+  try {
+    // Call login API with Google credential
+    const apiResult = await API.login(email, role, credential);
+
+    if (apiResult.success) {
+      // Store session info
+      sessionStorage.setItem('oyc_user', JSON.stringify({
+        email: email,
+        role: role,
+        loginTime: Date.now(),
+        googleId: payload.sub
+      }));
+
+      // Redirect to appropriate portal
+      redirectBasedOnRole(role);
+    } else {
+      showError(apiResult.message || 'Authentication failed. Please try again.');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    showError('Authentication failed. Please check your credentials.');
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Proceed to Google Sign-In';
+  }
+}
+
+/**
+ * Validates Converge corporate email format
+ * @param {string} email - Email to validate
+ * @returns {boolean} True if valid corporate email
+ */
+function isValidCorporateEmail(email) {
+  return email && email.toLowerCase().endsWith('@converge.com.ph');
+}
+
+/* --------------------------------------------------------------------------
+   Manual Login (for testing without Google SSO)
+   -------------------------------------------------------------------------- */
+
+/**
+ * Handles manual login form submission
  * @param {Event} e - Form submit event
  */
 async function handleLogin(e) {
   e.preventDefault();
 
-  const email = document.getElementById('email').value.trim();
+  const email = document.getElementById('email')?.value?.trim() || '';
   const role = document.getElementById('role').value;
 
   // Basic validation
-  if (!email || !role) {
-    showError('Please fill in all fields');
-    return;
-  }
-
-  if (!isValidEmail(email)) {
-    showError('Please enter a valid email address');
+  if (!role) {
+    showError('Please select a role');
     return;
   }
 
@@ -61,19 +122,13 @@ async function handleLogin(e) {
     showError('Authentication failed. Please check your credentials.');
   } finally {
     loginBtn.disabled = false;
-    loginBtn.textContent = 'Sign In';
+    loginBtn.textContent = 'Proceed to Google Sign-In';
   }
 }
 
-/**
- * Validates email format
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid
- */
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
+/* --------------------------------------------------------------------------
+   Redirect Logic
+   -------------------------------------------------------------------------- */
 
 /**
  * Redirects user to appropriate portal based on role
@@ -102,6 +157,10 @@ function redirectBasedOnRole(role) {
   }
 }
 
+/* --------------------------------------------------------------------------
+   Error Handling
+   -------------------------------------------------------------------------- */
+
 /**
  * Shows error message on login page
  * @param {string} message - Error message to display
@@ -118,6 +177,10 @@ function showError(message) {
 function hideError() {
   document.getElementById('error-message').classList.remove('visible');
 }
+
+/* --------------------------------------------------------------------------
+   Session Management
+   -------------------------------------------------------------------------- */
 
 /**
  * Checks if user has an active session

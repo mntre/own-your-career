@@ -157,6 +157,11 @@ own-your-career/
 
 ## Development Setup
 
+### Prerequisites
+- Node.js (v18+)
+- npm (v9+)
+- Google Cloud Project with Google Identity Services enabled (for SSO)
+
 ### Converge Cloud
 ```bash
 cd src/backend-converge
@@ -168,6 +173,21 @@ npm run dev
 1. Open the Apps Script project in Google Drive
 2. Copy files from `src/backend-appscript/` into the script editor
 3. Deploy as web app for testing
+
+### Google SSO Setup (Converge Cloud)
+1. Create a Google Cloud Project at [console.cloud.google.com](https://console.cloud.google.com)
+2. Enable **Identity Toolkit API** and **Identity Service API**
+3. Configure OAuth consent screen
+4. Create OAuth 2.0 Client ID (Web application type)
+5. Add authorized JavaScript origins:
+   - `http://localhost:3000` (development)
+   - Your production domain
+6. Add the Client ID to `src/frontend/html/login.html`:
+   ```html
+   <div id="g_id_onload"
+        data-client_id="YOUR_GOOGLE_CLIENT_ID"
+        ...>
+   ```
 
 ---
 

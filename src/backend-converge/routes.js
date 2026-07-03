@@ -19,24 +19,48 @@ const auth = require('./middleware/auth');
 
 /**
  * POST /api/login
- * User login via SSO
+ * User login via SSO (Google or corporate email)
  * No authentication required (public endpoint)
  */
 router.post('/login', async (req, res) => {
   try {
-    const { email, role } = req.body;
+    const { email, role, googleCredential } = req.body;
 
-    if (!email || !role) {
+    if (!role) {
       return res.status(400).json({
         success: false,
-        message: 'Email and role are required'
+        message: 'Role is required'
       });
+    }
+
+    // If Google credential is provided, verify it
+    if (googleCredential) {
+      try {
+        // Decode the JWT credential
+        const payload = JSON.parse(Buffer.from(googleCredential.split('.')[1], 'base64').toString('utf8'));
+        
+        // Verify the email matches
+        if (payload.email !== email) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email mismatch in credential'
+          });
+        }
+
+        // In production, verify the ID token with Google's servers
+        // For now, we trust the frontend-provided credential (should validate on server)
+      } catch (error) {
+        console.error('Invalid Google credential:', error);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid Google credential'
+        });
+      }
     }
 
     const result = await auth.authenticateUser(email, role);
 
     if (result.success) {
-      // In production, you'd also set a secure cookie here
       res.json({
         success: true,
         message: result.message,

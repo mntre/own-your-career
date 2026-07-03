@@ -131,15 +131,16 @@ document.addEventListener('DOMContentLoaded', initApp);
  * User login via SSO
  * @param {string} email - User email
  * @param {string} role - User role (EMPLOYEE, MANAGER, DATA_SPOC)
+ * @param {string} [googleCredential] - Google ID token (optional, for Google SSO)
  * @returns {Promise<Object>} Login result with success status and message
  */
-API.login = async function(email, role) {
+API.login = async function(email, role, googleCredential) {
   if (PLATFORM === 'APPSCRIPT') {
     // App Script implementation
     try {
       const response = await google.script.run.withSuccessHandler((result) => result).withFailureHandler((error) => {
         throw new Error(error);
-      }).loginUser(email, role);
+      }).loginUser(email, role, googleCredential);
       return response;
     } catch (error) {
       console.error('AppScript login error:', error);
@@ -154,7 +155,7 @@ API.login = async function(email, role) {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ email, role })
+      body: JSON.stringify({ email, role, googleCredential })
     });
 
     if (!response.ok) {
