@@ -9,20 +9,253 @@
   <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- Header -->
   <header class="portal-header">
-    <h1>People Manager Portal</h1>
+    <div class="portal-header__content">
+      <h1>My Team</h1>
+      <p class="portal-header__subtitle">View your direct reports and their performance review status</p>
+    </div>
   </header>
 
+  <!-- Main Content -->
   <main class="portal-main">
-    <!-- Step 1: Skills Assessment -->
-    <!-- Step 4: Feed Forward / Manager Assessment -->
-    <!-- Step 5: Acknowledgement -->
-    <!-- Performance Summary Dashboard -->
-    <!-- My Details (optional) -->
+    <!-- My Team Table (Overview) -->
+    <section class="team-section" id="teamOverviewSection">
+      <!-- Filter/Info Bar -->
+      <div class="team-header">
+        <h2>Performance Review Status</h2>
+        <p class="team-header__info">
+          <span class="info-icon" aria-label="Info: Skills assessment must be completed for all team members before Feed Forward is enabled">ℹ️</span>
+          Skills Assessment must be completed for ALL team members before Feed Forward is enabled.
+        </p>
+      </div>
+
+      <!-- Team Table -->
+      <div class="team-table-container">
+        <table class="table team-table" role="grid" aria-label="Team performance review status">
+          <thead>
+            <tr>
+              <th scope="col">Employee Name</th>
+              <th scope="col">Department</th>
+              <th scope="col">Band</th>
+              <th scope="col">Step 1: Skills</th>
+              <th scope="col">Step 4: Feed Forward</th>
+              <th scope="col">Step 5: Acknowledgement</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="teamTableBody">
+            <!-- Table rows will be populated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Step 1: Skills Assessment Section -->
+    <section class="step-section" id="skillsAssessmentSection" style="display: none;">
+      <div class="skills-assessment-card">
+        <div class="skills-header">
+          <h2 class="skills-title">
+            <span class="step-badge">STEP 1</span>
+            Skills Assessment Form
+          </h2>
+          <div class="employee-info">
+            <p class="employee-info__subtitle">Rate the employee on Core & Leadership Skills</p>
+          </div>
+        </div>
+
+        <!-- Employee Header Info -->
+        <div class="employee-header">
+          <div class="employee-field">
+            <label>Employee Name</label>
+            <div class="employee-display" id="assessmentEmployeeName">—</div>
+          </div>
+          <div class="employee-field">
+            <label>Band / Grade</label>
+            <div class="employee-display" id="assessmentEmployeeBand">—</div>
+          </div>
+        </div>
+
+        <!-- Skills Assessment Form -->
+        <form id="skillsAssessmentForm" class="skills-form">
+          <!-- Core Skills Table -->
+          <div class="skills-section">
+            <h3 class="skills-section-title">Core Skills</h3>
+            <div class="table-wrapper">
+              <table class="skills-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Core Skill</th>
+                    <th scope="col">Required Level</th>
+                    <th scope="col">Actual Level (Manager Input)</th>
+                    <th scope="col">RAG Status</th>
+                    <th scope="col">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="coreSkillsTableBody">
+                  <!-- Core skills rows populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Leadership Skills Table -->
+          <div class="skills-section">
+            <h3 class="skills-section-title">Leadership Skills</h3>
+            <div class="table-wrapper">
+              <table class="skills-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Leadership Skill</th>
+                    <th scope="col">Expected Level</th>
+                    <th scope="col">Actual Level (Manager Input)</th>
+                    <th scope="col">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="leadershipSkillsTableBody">
+                  <!-- Leadership skills rows populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="form-actions skills-actions">
+            <button type="button" class="btn btn--secondary" id="backFromSkillsBtn" aria-label="Back to team overview">Back to My Team</button>
+            <button type="button" class="btn btn--secondary" id="saveDraftBtn" aria-label="Save draft of skills assessment">Save Draft</button>
+            <button type="submit" class="btn btn--primary" aria-label="Submit skills assessment">Submit Assessment</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Step 4: Feed Forward Section -->
+    <section class="step-section" id="feedForwardSection" style="display: none;">
+      <div class="card">
+        <div class="card__header">
+          <span class="step-badge">Step 4</span>
+          Feed Forward / Manager Assessment
+        </div>
+        <form id="feedForwardForm" class="feedforward-form">
+          <div class="form-group">
+            <label for="feedForwardEmployeeSelect">Select Employee</label>
+            <select id="feedForwardEmployeeSelect" required aria-label="Select employee for feed forward">
+              <option value="">-- Choose an employee --</option>
+            </select>
+          </div>
+
+          <div class="feedforward-summary">
+            <h3>Employee Summary</h3>
+            <div class="summary-cards">
+              <div class="summary-card">
+                <p class="summary-label">OKR Achievement</p>
+                <p class="summary-value" id="okrAchievementValue">—</p>
+              </div>
+              <div class="summary-card">
+                <p class="summary-label">Skills Assessment</p>
+                <p class="summary-value" id="skillsAssessmentValue">—</p>
+              </div>
+              <div class="summary-card">
+                <p class="summary-label">Employee Self-Assessment</p>
+                <p class="summary-value" id="selfAssessmentStatus">—</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="feedForwardComments">Feed Forward Comments</label>
+            <textarea
+              id="feedForwardComments"
+              placeholder="Provide constructive feedback and development opportunities..."
+              aria-label="Feed forward comments for the employee"
+              required
+            ></textarea>
+            <p class="form-hint">Share specific observations, strengths, and development areas.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="performanceRating">Overall Performance Rating</label>
+            <select id="performanceRating" required aria-label="Select overall performance rating">
+              <option value="">-- Select rating --</option>
+              <option value="exceeded">Exceeded Expectations (>101%)</option>
+              <option value="achieved">Achieved (90.1-100%)</option>
+              <option value="needs-improvement">Needs Improvement (81-90%)</option>
+              <option value="failed">Failed (<80%)</option>
+            </select>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn--secondary" id="backFromFeedForwardBtn" aria-label="Back to team overview">Back</button>
+            <button type="submit" class="btn btn--primary" aria-label="Save feed forward assessment">Save Feed Forward</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Step 5: Acknowledgement Section -->
+    <section class="step-section" id="acknowledgementSection" style="display: none;">
+      <div class="card">
+        <div class="card__header">
+          <span class="step-badge">Step 5</span>
+          Manager Acknowledgement
+        </div>
+        <form id="acknowledgementForm" class="acknowledgement-form">
+          <div class="form-group">
+            <label for="acknowledgementEmployeeSelect">Select Employee</label>
+            <select id="acknowledgementEmployeeSelect" required aria-label="Select employee for acknowledgement">
+              <option value="">-- Choose an employee --</option>
+            </select>
+          </div>
+
+          <div class="acknowledgement-info">
+            <h3>Review Summary</h3>
+            <div class="summary-cards">
+              <div class="summary-card">
+                <p class="summary-label">Overall Performance Rating</p>
+                <p class="summary-value" id="ratingValue">—</p>
+              </div>
+              <div class="summary-card">
+                <p class="summary-label">Feed Forward Status</p>
+                <p class="summary-value" id="feedForwardStatusValue">—</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="acknowledgementComment">Acknowledgement Comments (Optional)</label>
+            <textarea
+              id="acknowledgementComment"
+              placeholder="Optional: Add any final notes..."
+              aria-label="Optional acknowledgement comments"
+            ></textarea>
+          </div>
+
+          <div class="form-group form-group--checkbox">
+            <input
+              type="checkbox"
+              id="confirmAcknowledgement"
+              required
+              aria-label="Confirm that the mid-year performance review has taken place"
+            />
+            <label for="confirmAcknowledgement" class="label--inline">
+              I confirm that the mid-year performance review discussion has taken place with the employee.
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn--secondary" id="backFromAcknowledgementBtn" aria-label="Back to team overview">Back</button>
+            <button type="submit" class="btn btn--primary" aria-label="Submit manager acknowledgement">Submit Acknowledgement</button>
+          </div>
+        </form>
+      </div>
+    </section>
   </main>
 
+  <!-- Scripts -->
+  <script src="../../shared/constants.js"></script>
   <script src="../js/app.js"></script>
   <script src="../js/gates.js"></script>
   <script src="../js/validation.js"></script>
+  <script src="../js/manager-portal.js"></script>
 </body>
 </html>
