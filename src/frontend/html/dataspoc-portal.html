@@ -642,6 +642,35 @@
     }
 
     /**
+     * Calculates the weighted OKR final score from key results
+     * Formula: Sum of (Actual Result * Weight) / Total Weight
+     * All weights should sum to 100%; actual results are treated as percentages
+     * 
+     * @param {Array<Object>} keyResults - Array of key result objects with actualResult and weight
+     * @returns {number} Weighted average score as a percentage
+     */
+    function calculateOKRFinalScore(keyResults) {
+      if (!keyResults || keyResults.length === 0) {
+        return 0;
+      }
+
+      let totalWeightedScore = 0;
+      let totalWeight = 0;
+
+      keyResults.forEach(function(kr) {
+        const actualResult = parseFloat(kr.actualResult) || 0;
+        const weight = parseFloat(kr.weight) || 0;
+        
+        totalWeightedScore += (actualResult * weight);
+        totalWeight += weight;
+      });
+
+      // Calculate weighted average
+      const finalScore = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
+      return finalScore;
+    }
+
+    /**
      * Collects OKR form data from dynamic table inputs
      * (Note: This is now replaced by direct input collection in form submit)
      */
@@ -678,7 +707,7 @@
 
     /**
      * Handles Submit OKR Data button click
-     * Validates all key result inputs, collects data, submits
+     * Validates all key result inputs, collects data, calculates OKR score and bracket, submits
      */
     document.getElementById('okr-form').addEventListener('submit', function(e) {
       e.preventDefault();
@@ -694,7 +723,7 @@
       const inputs = document.querySelectorAll('.input-actual');
       inputs.forEach(function(input, index) {
         if (window.currentKeyResults[index]) {
-          window.currentKeyResults[index].actualResult = input.value;
+          window.currentKeyResults[index].actualResult = parseFloat(input.value) || 0;
         }
       });
 
@@ -705,20 +734,35 @@
         return;
       }
       
+      // Calculate OKR final score based on weighted key results
+      const finalScore = calculateOKRFinalScore(window.currentKeyResults);
+      
+      // Assign performance bracket
+      const bracket = assignPerformanceBracket(finalScore);
+      const bracketDisplay = getBracketDisplay(bracket);
+      
+      // Store calculation results
+      window.currentKeyResults.finalScore = finalScore;
+      window.currentKeyResults.bracket = bracket;
+      window.currentKeyResults.bracketDisplay = bracketDisplay;
+      
       // Save data
       okrDraftData[dept] = window.currentKeyResults;
       
       // Update uploading status and timestamp for all members
       updateUploadingStatusForAllMembers(dept, 'Uploaded');
       
-      console.log('OKR Data submitted for department:', dept, window.currentKeyResults);
+      console.log('OKR Data submitted for department:', dept);
+      console.log('  Final Score:', finalScore.toFixed(2) + '%');
+      console.log('  Performance Bracket:', bracketDisplay.label);
+      console.log('  Key Results:', window.currentKeyResults);
       
       // Return to main view
       document.getElementById('okr-form-content').style.display = 'none';
       document.getElementById('step-2-content').style.display = 'block';
       
-      // Show success message
-      alert('OKR Data submitted successfully! Data can be resubmitted until the deadline.');
+      // Show success message with bracket
+      alert(`OKR Data submitted successfully!\n\nFinal Score: ${finalScore.toFixed(2)}%\nPerformance: ${bracketDisplay.label}\n\nData can be resubmitted until the deadline.`);
     });
 
     /**
