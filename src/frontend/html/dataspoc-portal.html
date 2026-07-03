@@ -15,14 +15,364 @@
 
   <main class="portal-main">
     <!-- Step 2: OKR Uploading Form -->
-    <!-- My Organizational Data (Corporate → Group → Department hierarchy) -->
-    <!-- Uploading Status -->
-    <!-- Performance Summary / Rankings -->
+    <section class="okr-uploading" id="step-2-content">
+      <div class="card">
+        <div class="card-header-accent">
+          <h2 class="card__header">STEP 2 — OKR Uploading (My Organizational Data)</h2>
+        </div>
+
+        <h3 class="section-subtitle">My Organizational Data</h3>
+        <p class="section-description">Select your corporate hierarchy to upload OKR data</p>
+
+        <!-- Corporate Hierarchy Selection -->
+        <div class="hierarchy-container">
+          <div class="form-group hierarchy-group">
+            <label for="corporate">Corporate</label>
+            <select id="corporate" name="corporate">
+              <option value="converge-ict">Converge ICT Solutions</option>
+            </select>
+          </div>
+
+          <div class="form-group hierarchy-group">
+            <label for="group">Group</label>
+            <select id="group" name="group">
+              <option value="">-- Select Group --</option>
+              <option value="people-culture">People and Culture</option>
+              <option value="corporate-services">Corporate Services</option>
+              <option value="operations">Operations</option>
+            </select>
+          </div>
+
+          <div class="form-group hierarchy-group">
+            <label for="department">Department</label>
+            <select id="department" name="department">
+              <option value="">-- Select Department --</option>
+              <option value="people-platforms">People Platforms & Analytics</option>
+              <option value="recruitment">Recruitment</option>
+              <option value="compensation">Compensation & Benefits</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Generate OKR Form Button -->
+        <div class="form-actions">
+          <button type="button" class="btn btn--primary" id="generate-okr-btn">Generate OKR Form</button>
+        </div>
+      </div>
+
+      <!-- Uploading Status Section -->
+      <div class="card">
+        <h3 class="card__header">Uploading Status</h3>
+        <p class="table-description">Data can be resubmitted until deadline. All employees must be uploaded before Step 3 is enabled</p>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Department</th>
+              <th>OKR Status</th>
+              <th>Last Updated</th>
+            </tr>
+          </thead>
+          <tbody id="uploading-status-body">
+            <!-- Dynamically populated based on department selection -->
+          </tbody>
+        </table>
+
+        <p class="table-note">
+          <span class="info-icon">ℹ️</span>
+          Data can be resubmitted until deadline. All employees must be uploaded before Step 3 is enabled
+        </p>
+      </div>
+    </section>
+
+    <!-- OKR Uploading Form (Hidden initially) -->
+    <section class="okr-form" id="okr-form-content" style="display: none;">
+      <div class="card">
+        <div class="card-header-accent">
+          <h2 class="card__header">STEP 2 — OKR Uploading Form</h2>
+        </div>
+
+        <h3 class="section-subtitle" id="form-department-title">OKR Upload: Department</h3>
+        <p class="section-description">Enter OKR achievement data for all employees in this department</p>
+
+        <!-- OKR Table -->
+        <form id="okr-form">
+          <div class="table-responsive">
+            <table class="okr-table">
+              <thead>
+                <tr>
+                  <th class="col-label">OKR / Key Result</th>
+                  <th class="col-target">Target</th>
+                  <th class="col-weight">Weight (%)</th>
+                  <th class="col-actual">Actual Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Corporate OKR Section -->
+                <tr class="section-header">
+                  <td colspan="4"><strong>Corporate OKR</strong> <span class="section-note">Auto-populated from corporate scorecard</span></td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Revenue Growth Target</td>
+                  <td class="target-cell">15%</td>
+                  <td class="weight-cell">40%</td>
+                  <td class="actual-cell"><input type="number" class="input-actual" name="corporate_revenue" step="0.1" placeholder="e.g., 14.2"></td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Customer Satisfaction Score</td>
+                  <td class="target-cell">90</td>
+                  <td class="weight-cell">30%</td>
+                  <td class="actual-cell"><input type="number" class="input-actual" name="corporate_satisfaction" step="0.1" placeholder="e.g., 92"></td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Employee Engagement Index</td>
+                  <td class="target-cell">85%</td>
+                  <td class="weight-cell">30%</td>
+                  <td class="actual-cell"><input type="number" class="input-actual" name="corporate_engagement" step="0.1" placeholder="e.g., 88"></td>
+                </tr>
+
+                <!-- Group OKR Section -->
+                <tr class="section-header">
+                  <td colspan="4"><strong>Group OKR</strong> <span class="section-note">Depending on uploaded OKR</span></td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Group Growth Target</td>
+                  <td class="target-cell">12%</td>
+                  <td class="weight-cell">50%</td>
+                  <td class="actual-cell"><input type="number" class="input-actual" name="group_growth" step="0.1" placeholder="Enter value"></td>
+                </tr>
+
+                <!-- Team OKR Section -->
+                <tr class="section-header">
+                  <td colspan="4"><strong>Team OKR</strong> <span class="section-note">Department-specific objectives</span></td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Reduce Attrition Rate</td>
+                  <td class="target-cell">5%</td>
+                  <td class="weight-cell">50%</td>
+                  <td class="actual-cell"><input type="number" class="input-actual" name="team_attrition" step="0.1" placeholder="e.g., 4.8"></td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Complete PMGM System Launch</td>
+                  <td class="target-cell">100%</td>
+                  <td class="weight-cell">50%</td>
+                  <td class="actual-cell"><input type="number" class="input-actual" name="team_launch" step="0.1" placeholder="e.g., 95"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="form-actions okr-form-actions">
+            <button type="submit" class="btn btn--primary" id="submit-okr-btn">Submit OKR Data</button>
+            <button type="button" class="btn btn--secondary" id="save-draft-okr-btn">Save Draft</button>
+            <button type="button" class="btn btn--secondary" id="back-to-org-data-btn">Back to Org Data</button>
+          </div>
+        </form>
+      </div>
+    </section>
   </main>
 
   <script src="../js/app.js"></script>
   <script src="../js/gates.js"></script>
   <script src="../js/calculations.js"></script>
   <script src="../js/validation.js"></script>
+
+  <script>
+    /**
+     * Employee data structure for each department
+     * Stored in alphabetical order by first name
+     */
+    const departmentMembers = {
+      'people-platforms': [
+        { name: 'Charvin Kale Penaverde', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
+        { name: 'Ernica Castronero', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
+        { name: 'Jeremy Louise Carino', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
+        { name: 'Juan Carlo Claudio', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
+        { name: 'Luigi Gabriel Espiritu', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
+        { name: 'Ma. Zaira Bajar', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
+        { name: 'Michael Ryan Escobilla', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' }
+      ],
+      'recruitment': [
+        { name: 'John Doe', department: 'Recruitment', status: 'Pending', lastUpdated: '—' },
+        { name: 'Jane Smith', department: 'Recruitment', status: 'Pending', lastUpdated: '—' }
+      ],
+      'compensation': [
+        { name: 'Alice Johnson', department: 'Compensation & Benefits', status: 'Pending', lastUpdated: '—' },
+        { name: 'Bob Wilson', department: 'Compensation & Benefits', status: 'Pending', lastUpdated: '—' }
+      ]
+    };
+
+    /**
+     * Department ID to display name mapping
+     */
+    const departmentNames = {
+      'people-platforms': 'People Platforms & Analytics',
+      'recruitment': 'Recruitment',
+      'compensation': 'Compensation & Benefits'
+    };
+
+    /**
+     * Local storage for OKR draft data
+     */
+    let okrDraftData = {};
+
+    /**
+     * Handles department selection and populates the uploading status table
+     */
+    document.getElementById('department').addEventListener('change', function() {
+      const selectedDept = this.value;
+      const tbody = document.getElementById('uploading-status-body');
+      
+      // Clear existing rows
+      tbody.innerHTML = '';
+
+      if (selectedDept && departmentMembers[selectedDept]) {
+        const members = departmentMembers[selectedDept];
+        
+        members.forEach(member => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${member.name}</td>
+            <td>${member.department}</td>
+            <td><span class="status-indicator status-indicator--pending">${member.status}</span></td>
+            <td>${member.lastUpdated}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+    });
+
+    /**
+     * Handles Generate OKR Form button click
+     * Shows OKR form and loads any saved draft data
+     */
+    document.getElementById('generate-okr-btn').addEventListener('click', function() {
+      const dept = document.getElementById('department').value;
+      
+      if (!dept) {
+        alert('Please select a department first');
+        return;
+      }
+      
+      // Update form title
+      const deptName = departmentNames[dept];
+      document.getElementById('form-department-title').textContent = `OKR Upload: ${deptName} Department`;
+      
+      // Load draft data if it exists
+      loadOKRDraft(dept);
+      
+      // Switch views
+      document.getElementById('step-2-content').style.display = 'none';
+      document.getElementById('okr-form-content').style.display = 'block';
+    });
+
+    /**
+     * Loads saved OKR draft data into form fields
+     */
+    function loadOKRDraft(dept) {
+      if (okrDraftData[dept]) {
+        const data = okrDraftData[dept];
+        Object.keys(data).forEach(key => {
+          const input = document.querySelector(`input[name="${key}"]`);
+          if (input) {
+            input.value = data[key];
+          }
+        });
+      }
+    }
+
+    /**
+     * Collects OKR form data
+     */
+    function collectOKRFormData() {
+      const formData = {};
+      document.querySelectorAll('.input-actual').forEach(input => {
+        formData[input.name] = input.value;
+      });
+      return formData;
+    }
+
+    /**
+     * Handles Save Draft button click
+     * Saves form data and returns to main view
+     */
+    document.getElementById('save-draft-okr-btn').addEventListener('click', function() {
+      const dept = document.getElementById('department').value;
+      const formData = collectOKRFormData();
+      
+      // Save to local storage/memory
+      okrDraftData[dept] = formData;
+      
+      console.log('OKR Draft saved for department:', dept, formData);
+      
+      // Return to main view
+      document.getElementById('okr-form-content').style.display = 'none';
+      document.getElementById('step-2-content').style.display = 'block';
+    });
+
+    /**
+     * Handles Submit OKR Data button click
+     * Submits form data and updates uploading status for all department members
+     */
+    document.getElementById('okr-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const dept = document.getElementById('department').value;
+      const formData = collectOKRFormData();
+      
+      // Validate that all fields are filled
+      const allFilled = Object.values(formData).every(val => val !== '');
+      if (!allFilled) {
+        alert('Please fill in all Actual Result fields');
+        return;
+      }
+      
+      // Save data
+      okrDraftData[dept] = formData;
+      
+      // Update uploading status for ALL members in this department
+      updateUploadingStatusForAllMembers(dept, 'Uploaded');
+      
+      console.log('OKR Data submitted for department:', dept, formData);
+      
+      // Return to main view
+      document.getElementById('okr-form-content').style.display = 'none';
+      document.getElementById('step-2-content').style.display = 'block';
+      
+      // Show success message
+      alert('OKR Data submitted successfully! Data can be resubmitted until the deadline.');
+    });
+
+    /**
+     * Handles Back to Org Data button click
+     * Returns to hierarchy selection view
+     */
+    document.getElementById('back-to-org-data-btn').addEventListener('click', function() {
+      document.getElementById('okr-form-content').style.display = 'none';
+      document.getElementById('step-2-content').style.display = 'block';
+    });
+
+    /**
+     * Updates the uploading status table with submission info for ALL members in department
+     */
+    function updateUploadingStatusForAllMembers(dept, status) {
+      // Update status in the table (if currently viewing this department)
+      const currentDept = document.getElementById('department').value;
+      if (currentDept === dept) {
+        const tbody = document.getElementById('uploading-status-body');
+        const rows = tbody.querySelectorAll('tr');
+        
+        // Update ALL employee rows with new status
+        rows.forEach(row => {
+          const statusCell = row.querySelector('td:nth-child(3)');
+          if (statusCell) {
+            statusCell.innerHTML = `<span class="status-indicator status-indicator--uploaded">✓ ${status}</span>`;
+          }
+        });
+      }
+    }
+  </script>
 </body>
 </html>

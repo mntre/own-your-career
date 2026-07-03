@@ -14,14 +14,168 @@
   </header>
 
   <main class="portal-main">
+    <!-- Step Workflow Timeline (Horizontal) -->
+    <section class="step-timeline">
+      <div class="step-item step-1 completed">
+        <span class="step-badge">Step 1<br>Skills ✓</span>
+      </div>
+
+      <div class="step-item step-2 completed" id="step-2-item" style="cursor: pointer;">
+        <span class="step-badge">Step 2<br>OKR ✓</span>
+      </div>
+
+      <div class="step-item step-3 in-progress" style="cursor: pointer;">
+        <span class="step-badge">Step 3<br>Self-Assessment</span>
+      </div>
+
+      <div class="step-item step-4 locked" id="step-4-item">
+        <span class="step-badge">Step 4<br>Feed Forward 🔒</span>
+      </div>
+
+      <div class="step-item step-5 locked">
+        <span class="step-badge">Step 5<br>Mgr Ack 🔒</span>
+      </div>
+
+      <div class="step-item step-6 locked">
+        <span class="step-badge">Step 6<br>View Scores 🔒</span>
+      </div>
+
+      <div class="step-item step-7 locked">
+        <span class="step-badge">Step 7<br>My Ack 🔒</span>
+      </div>
+    </section>
+
+    <!-- Step 2: OKR Read-Only Display (for Employee view) -->
+    <section class="okr-read-only" id="step-2-content" style="display: none;">
+      <div class="card">
+        <h2 class="card__header">OKR Review</h2>
+        <p class="form-guidance">Your performance scores based on OKR upload completed by your Data SPOC.</p>
+
+        <p class="okr-placeholder">OKR data will be displayed here once uploaded by your Data SPOC.</p>
+
+        <div class="form-actions okr-actions">
+          <button type="button" class="btn btn--secondary" onclick="showStep3Content()">Proceed to Self-Assessment</button>
+        </div>
+      </div>
+    </section>
+
     <!-- Step 3: Self-Assessment Form -->
-    <!-- Step 6: View All Scores & Feedback (read-only) -->
-    <!-- Step 7: Acknowledgement -->
-    <!-- Sections: OKR & Leadership Skills, OKR Achievement, Feed Forward -->
+    <section class="self-assessment" id="step-3-content">
+      <div class="card">
+        <h2 class="card__header">Self-Assessment</h2>
+        <p class="form-guidance">Answer the following 4 questions about your performance this review period. All fields are mandatory.</p>
+
+        <form id="self-assessment-form">
+          <div class="form-group">
+            <label for="q1">1. What contributed to your performance this quarter?</label>
+            <textarea id="q1" name="q1" placeholder="Describe your key contributions, achievements, and what drove your performance this period..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="q2">2. What challenges or gaps impacted your performance?</label>
+            <textarea id="q2" name="q2" placeholder="Describe any obstacles, resource gaps, or challenges that affected your output..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="q3">3. What support do you need for the upcoming quarter?</label>
+            <textarea id="q3" name="q3" placeholder="Describe what tools, training, coaching, or resources would help you improve..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="q4">4. What specific commitments will you make to improve/sustain performance?</label>
+            <textarea id="q4" name="q4" placeholder="Describe your specific commitments to improve or sustain performance..." required></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary" id="submit-btn">Submit Self-Assessment</button>
+            <button type="button" class="btn btn--secondary" id="save-draft-btn">Save Draft</button>
+          </div>
+        </form>
+
+        <p class="form-guidance form-note">Self Assessment can be edited until the deadline. Once Feed Forward (Step 4) begins, this form becomes read-only.</p>
+      </div>
+    </section>
+
+    <!-- Step 4: Feed Forward (Locked Sections Display) -->
+    <section class="feed-forward" id="step-4-content" style="display: none;">
+      <div class="locked-sections">
+        <div class="locked-header">
+          <h3 class="locked-title">LOCKED SECTIONS (Before Step 5 Complete)</h3>
+        </div>
+
+        <div class="locked-message">
+          <h3 class="locked-subtitle">Sections Currently Locked</h3>
+          <p class="locked-description">These sections will unlock after your manager completes Feed Forward and Acknowledgement</p>
+        </div>
+
+        <!-- Feed Forward Section (Locked) -->
+        <div class="locked-section-item">
+          <div class="locked-icon">🔒</div>
+          <div class="locked-content">
+            <h4 class="locked-section-title">Feed Forward / Manager Assessment</h4>
+            <p class="locked-section-desc">This section will be visible after your manager completes Steps 4 & 5</p>
+          </div>
+        </div>
+
+        <!-- Acknowledgement Section (Locked) -->
+        <div class="locked-section-item">
+          <div class="locked-icon">🔒</div>
+          <div class="locked-content">
+            <h4 class="locked-section-title">Acknowledgement</h4>
+            <p class="locked-section-desc">Available after all scores and feedback are visible</p>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script src="../js/app.js"></script>
   <script src="../js/gates.js"></script>
   <script src="../js/validation.js"></script>
+
+  <script>
+    /**
+     * Displays Step 2 (OKR Read-Only) content.
+     */
+    function showStep2Content() {
+      document.getElementById('step-2-content').style.display = 'block';
+      document.getElementById('step-3-content').style.display = 'none';
+      document.getElementById('step-4-content').style.display = 'none';
+    }
+
+    /**
+     * Displays Step 3 (Self-Assessment) content.
+     */
+    function showStep3Content() {
+      document.getElementById('step-2-content').style.display = 'none';
+      document.getElementById('step-3-content').style.display = 'block';
+      document.getElementById('step-4-content').style.display = 'none';
+    }
+
+    /**
+     * Displays Step 4 (Feed Forward) locked sections.
+     */
+    function showStep4Content() {
+      document.getElementById('step-2-content').style.display = 'none';
+      document.getElementById('step-3-content').style.display = 'none';
+      document.getElementById('step-4-content').style.display = 'block';
+    }
+
+    // Make Step 2 clickable to show OKR view
+    // Make Step 3 clickable to show Self-Assessment
+    document.addEventListener('DOMContentLoaded', function() {
+      const step2Item = document.querySelector('.step-2');
+      step2Item.style.cursor = 'pointer';
+      step2Item.onclick = function() {
+        showStep2Content();
+      };
+
+      const step3Item = document.querySelector('.step-3');
+      step3Item.style.cursor = 'pointer';
+      step3Item.onclick = function() {
+        showStep3Content();
+      };
+    });
+  </script>
 </body>
 </html>
