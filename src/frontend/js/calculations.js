@@ -9,11 +9,11 @@
  * - Department Heads:         60% Group Grid + 40% Department OKR
  * - Team Heads & Individuals: 60% Department OKR + 40% Team OKR
  * 
- * Performance Brackets:
- * - Exceeded:          > 101%
- * - Achieved:          90.1% - 100%
- * - Needs Improvement: 81% - 90%
- * - Failed:            < 80%
+ * Performance Brackets (BRD v4.0):
+ * - Exceeded (Level 1):          101% and above
+ * - Achieved (Level 2):          90.1% - 100%
+ * - Needs Improvement (Level 3): 81% - 90%
+ * - Failed (Level 4):            80% and below
  * 
  * @fileoverview OKR calculation and performance bracket assignment module
  */
@@ -91,20 +91,17 @@ function calculateOKRScore(roleLevel, scores) {
 /**
  * Assigns a performance bracket based on the final score.
  * 
- * Bracket boundaries:
- * - Exceeded:          > 101%
- * - Achieved:          90.1% - 100%  (inclusive of 100%, exclusive of 90%)
- * - Needs Improvement: 81% - 90%     (inclusive of both)
- * - Failed:            < 81%          (below 81%)
- * 
- * NOTE: The boundary at exactly 80% and 90% should be confirmed with BA (Zaira Bajar).
- * Current implementation: 80% = Failed, 81% = Needs Improvement, 90% = Needs Improvement.
+ * Bracket boundaries (per BRD v4.0):
+ * - Exceeded (Level 1):          101% and above
+ * - Achieved (Level 2):          90.1% - 100%
+ * - Needs Improvement (Level 3): 81% - 90%
+ * - Failed (Level 4):            80% and below
  * 
  * @param {number} finalScore - The computed OKR score as a percentage
  * @returns {string} One of PERFORMANCE_BRACKET enum values
  */
 function assignPerformanceBracket(finalScore) {
-  if (finalScore > 101) {
+  if (finalScore >= 101) {
     return PERFORMANCE_BRACKET.EXCEEDED;
   } else if (finalScore >= 90.1) {
     return PERFORMANCE_BRACKET.ACHIEVED;

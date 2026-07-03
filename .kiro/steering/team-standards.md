@@ -31,64 +31,42 @@ This repository contains the source code for the **2026 Performance Management &
 - **SAP SuccessFactors Integration** — SFTP one-time bulk sync (after all reviews complete)
 - **360-Degree Feedback** — Leveraging existing SF 360 module (no internal build; separate workflow to be created)
 
-## Project Structure
-
-```
-own-your-career/
-├── src/
-│   ├── frontend/                # Shared across BOTH platforms (platform-agnostic)
-│   │   ├── html/                # HTML templates
-│   │   │   ├── manager-portal.html
-│   │   │   ├── dataspoc-portal.html
-│   │   │   └── employee-portal.html
-│   │   ├── css/                 # Stylesheets
-│   │   │   └── styles.css
-│   │   └── js/                  # Client-side JavaScript
-│   │       ├── app.js           # Main app logic
-│   │       ├── gates.js         # Hard gate logic
-│   │       ├── calculations.js  # OKR score formulas
-│   │       └── validation.js    # Form validation
-│   │
-│   ├── backend-converge/        # Converge Cloud specific
-│   │   ├── server.js            # Express server
-│   │   ├── routes.js            # API routes
-│   │   ├── db.js                # Database connection
-│   │   ├── middleware/          # Auth, RBAC, logging
-│   │   └── email.js             # SMTP email service
-│   │
-│   ├── backend-appscript/       # Google Apps Script specific
-│   │   ├── Code.gs              # Main server functions
-│   │   ├── Database.gs          # Google Sheets data layer
-│   │   ├── Email.gs             # GmailApp email service
-│   │   └── WebApp.gs            # doGet/doPost handlers
-│   │
-│   └── shared/                  # Shared utilities (both platforms use)
-│       ├── constants.js         # Performance brackets, formulas, config
-│       ├── workflow.js          # Step sequencing logic
-│       └── export.js            # SFTP export formatter
-│
-├── tests/                       # Test files
-├── docs/                        # Developer documentation
-├── .kiro/                       # Kiro AI steering files
-│   └── steering/
-├── .gitignore
-└── README.md
-```
-
 ## Development Standards
 
-### Google Apps Script
-- Use JSDoc comments for all functions
-- Follow ESLint rules for JavaScript
-- Include error handling for all API calls
-- Document trigger setups in README
-- Version control configurations
+### JavaScript (Shared Frontend + Converge Backend)
 
-### Data & Analytics
-- Document data sources and transformations
-- Include sample datasets for testing
-- Document dashboard KPIs and calculations
-- Follow naming conventions for Looker/Tableau objects
+- Use **ES6+ syntax** (const/let, arrow functions, template literals, destructuring)
+- Use **JSDoc comments** for all functions — include @param, @returns, @description
+- Use **camelCase** for variables and functions
+- Use **PascalCase** for classes and constructors
+- Use **UPPER_SNAKE_CASE** for constants
+- Handle errors explicitly — no silent failures
+- Validate all user inputs before processing
+- Keep functions small and single-purpose
+
+### Google Apps Script (.gs files)
+
+- Follow the same JavaScript conventions above
+- Use `google.script.run` for client-to-server calls (with `.withSuccessHandler()` and `.withFailureHandler()`)
+- Use `PropertiesService` for configuration (never hardcode secrets)
+- Use `LockService` for concurrent write protection on Google Sheets
+- Structure Sheets data with headers in Row 1; never rely on column position alone — use column name lookup
+
+### HTML Templates
+
+- Use semantic HTML5 elements
+- Include `aria-` attributes for accessibility
+- Forms must have proper `label` elements tied to inputs
+- All interactive elements must be keyboard-accessible
+- Use `data-*` attributes for JavaScript hooks (not classes)
+
+### CSS
+
+- Use CSS custom properties (variables) for colors, spacing, and typography
+- Mobile-first responsive design (min-width breakpoints)
+- BEM naming convention for class names: `.block__element--modifier`
+- No inline styles in HTML
+- **MUST follow Converge Brand Guidelines** (see below)
 
 ### Documentation
 - All projects require a README.md
@@ -262,52 +240,17 @@ own-your-career/
 │       └── export.js            # SFTP export formatter
 ├── tests/                       # Test files
 ├── docs/                        # Developer documentation
-└── .kiro/                       # Kiro AI steering files
-    └── steering/                # Team standards and guidelines
+├── .kiro/                       # Kiro AI steering files
+│   └── steering/
+├── .gitignore
+└── README.md
 ```
 
 **Current files in this repository:**
 - README.md (project overview)
-- .kiro/steering/team-standards.md (this file - AI guidance)
+- .kiro/steering/team-standards.md (this file — AI guidance and team standards)
 - .gitignore
 - src/ directory with skeleton files for development
-
-## Development Standards
-
-### JavaScript (Shared Frontend + Converge Backend)
-
-- Use **ES6+ syntax** (const/let, arrow functions, template literals, destructuring)
-- Use **JSDoc comments** for all functions — include @param, @returns, @description
-- Use **camelCase** for variables and functions
-- Use **PascalCase** for classes and constructors
-- Use **UPPER_SNAKE_CASE** for constants
-- Handle errors explicitly — no silent failures
-- Validate all user inputs before processing
-- Keep functions small and single-purpose
-
-### Google Apps Script (.gs files)
-
-- Follow the same JavaScript conventions above
-- Use `google.script.run` for client-to-server calls (with `.withSuccessHandler()` and `.withFailureHandler()`)
-- Use `PropertiesService` for configuration (never hardcode secrets)
-- Use `LockService` for concurrent write protection on Google Sheets
-- Structure Sheets data with headers in Row 1; never rely on column position alone — use column name lookup
-
-### HTML Templates
-
-- Use semantic HTML5 elements
-- Include `aria-` attributes for accessibility
-- Forms must have proper `label` elements tied to inputs
-- All interactive elements must be keyboard-accessible
-- Use `data-*` attributes for JavaScript hooks (not classes)
-
-### CSS
-
-- Use CSS custom properties (variables) for colors, spacing, and typography
-- Mobile-first responsive design (min-width breakpoints)
-- BEM naming convention for class names: `.block__element--modifier`
-- No inline styles in HTML
-- **MUST follow Converge Brand Guidelines** (see below)
 
 ## Converge Brand Guidelines
 
@@ -389,18 +332,6 @@ All projects must define these brand variables and use them throughout:
 - Localized logos are limited to major programs/projects only
 - One-time initiatives don't require logos — branding is reserved for long-term efforts where sustained recall is necessary
 
-## Team
-
-| Role | Name | Focus |
-|------|------|-------|
-| Department Head | Luigi Espiritu | Architecture decisions, management oversight (2 hrs/day) |
-| Business Analyst | Zaira Bajar | Workflow design, requirements, UAT (2 hrs/day) |
-| Lead Developer | Charvin Penaverde | Converge backend, shared frontend, OKR engine |
-| Developer | Jeremy Carino | AppScript backend, Employee Portal, gate logic |
-| Scrum Master | JC Claudio | Daily standups, Jira management |
-| QA/Analytics Lead | Mike Escobilla | Testing, cross-browser, email validation |
-| Data Validation | Ernica Castronero | OKR formula verification, SFTP export validation |
-
 ## Key Decisions
 
 1. **Internal build over SAP SuccessFactors** — Cost and timeline reasons (91.8% savings)
@@ -433,13 +364,28 @@ All projects must define these brand variables and use them throughout:
 | Sprint 2 | Jul 6-10 | Continue dev, system integration, SIT |
 | Sprint 3 | Jul 13-17 | UAT, defect fixes, go-live |
 
+### Last to Develop: BRD v4.0 Additions
+**Source:** BRD v4.0 (July 1, 2026) — Jelyn Ira Parreño & Gladys Erika Munsalud
+**Priority:** Lowest — build only after Steps 1–7 and core portal functionality are stable
+
+| # | Item | Description |
+|---|------|-------------|
+| 1 | Team Heat Map | Manager Portal dashboard: color-coded score variances (Red/Amber/Green), real-time updates |
+| 2 | Automated Weekly Reporting | Scheduled email reports 1–2x/week + Friday automation rule to admins |
+| 3 | OKR Status Field | New field: Not Started, On Track, Completed, Postponed |
+| 4 | Mutual Acknowledgment | Single mutual ack (both parties) instead of separate Steps 5 & 7 |
+| 5 | Hard Deadline Admin Lock | Admin control to lock forms after a set deadline |
+| 6 | Self-Assessment Wording | ✅ DONE — Updated to 1H/2H phrasing in constants.js |
+| 7 | Bracket Boundary Fix | ✅ DONE — Exceeded now 101% and above (was 101.01%) |
+
 **Daily standup:** 9 AM, led by JC Claudio
 
 ## Status
 - **Current Phase:** Development (Sprint 1)
 - **Target Launch:** July 17, 2026
 - **Workflow Design:** Confirmed (Zaira Bajar — 7-step process)
-- **Last Updated:** July 1, 2026
+- **BRD Version:** v4.0 (July 1, 2026) — aligned
+- **Last Updated:** July 3, 2026
 
 ## Team Structure
 
@@ -485,7 +431,7 @@ A development sub-task is DONE when:
 - [ ] Functional requirement implemented and working
 - [ ] Code follows team standards (JSDoc, error handling, validation)
 - [ ] Works on BOTH platforms (Converge Cloud + Apps Script)
-- [ ] Hard gates enforced correctly (see workflow-and-business-rules.md)
+- [ ] Hard gates enforced correctly
 - [ ] Developer Self-Integration Test (SIT) passed
 - [ ] No critical/high security vulnerabilities
 - [ ] Code peer reviewed (at least 1 reviewer)

@@ -21,69 +21,15 @@ const ROLE_LEVELS = {
   INDIVIDUAL: 'INDIVIDUAL'
 };
 
-/* -------------------------------------------------------------------------- */
-/*                         PERFORMANCE BRACKETS                               */
-/* -------------------------------------------------------------------------- */
+/** Performance bracket thresholds */
+const BRACKETS = {
+  EXCEEDED_MIN: 101.01,
+  ACHIEVED_MIN: 90.1,
+  NEEDS_IMPROVEMENT_MIN: 81,
+  FAILED_MAX: 80.99
+};
 
-/**
- * Performance bracket thresholds and ratings.
- * OKR achievement score determines bracket assignment.
- * 
- * Format: { min: minimum %, max: maximum %, label: display text, code: bracket code }
- */
-const PERFORMANCE_BRACKETS = [
-  {
-    min: 101.01,
-    max: Infinity,
-    label: 'Exceeded Expectations',
-    code: 'EXCEEDED',
-    description: 'Achievement >101% — Employee exceeded OKR targets'
-  },
-  {
-    min: 90.1,
-    max: 101.00,
-    label: 'Achieved',
-    code: 'ACHIEVED',
-    description: 'Achievement 90.1% - 101% — Employee met OKR targets'
-  },
-  {
-    min: 81.0,
-    max: 90.0,
-    label: 'Needs Improvement',
-    code: 'NEEDS_IMPROVEMENT',
-    description: 'Achievement 81% - 90% — Employee partially met OKR targets'
-  },
-  {
-    min: 0,
-    max: 80.99,
-    label: 'Failed',
-    code: 'FAILED',
-    description: 'Achievement <80% — Employee did not meet OKR targets'
-  }
-];
-
-/**
- * Quick lookup: Get bracket by OKR score.
- * @param {number} score - OKR achievement score (0-100+)
- * @returns {Object} Bracket object or null if not found
- */
-function getBracketByScore(score) {
-  return PERFORMANCE_BRACKETS.find(b => score >= b.min && score <= b.max) || null;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                           OKR FORMULAS & WEIGHTS                           */
-/* -------------------------------------------------------------------------- */
-
-/**
- * OKR formula weights by role level.
- * Determines how corporate, group, department, and team OKRs are blended.
- * 
- * GROUP_HEAD: 10% Corporate OKR + 90% Group OKR
- * DEPT_HEAD: 60% Group OKR + 40% Department OKR
- * TEAM_HEAD: 60% Department OKR + 40% Team OKR
- * INDIVIDUAL: 60% Department OKR + 40% Team OKR
- */
+/** OKR formula weights by role level */
 const OKR_WEIGHTS = {
   GROUP_HEAD: { corporate: 0.10, group: 0.90 },
   DEPT_HEAD: { group: 0.60, department: 0.40 },
@@ -196,59 +142,21 @@ const SKILL_LEVELS = {
   5: 'Expert'
 };
 
-/**
- * RAG (Red-Amber-Green) Status Mapping
- * Used to highlight skills that need attention vs. those on track
- * Compares actual level to required level
- */
-const RAG_STATUS = {
-  GREEN: { label: 'On Track', color: '#49D7D1', code: 'GREEN' },
-  AMBER: { label: 'At Risk', color: '#8965F5', code: 'AMBER' },
-  RED: { label: 'Critical', color: '#EE1717', code: 'RED' }
-};
-
-/**
- * Determines RAG status based on skill gap.
- * gap = actual - required
- * @param {number} gap - Skill gap (actual - required)
- * @returns {Object} RAG status object
- */
-function getRAGStatus(gap) {
-  if (gap >= 0) return RAG_STATUS.GREEN;
-  if (gap >= -1) return RAG_STATUS.AMBER;
-  return RAG_STATUS.RED;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                          SELF-ASSESSMENT                                   */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Self-assessment mandatory questions (Step 3)
- * Employees must answer all 4 questions
- */
+/** Self-assessment mandatory questions (Step 3) */
 const SELF_ASSESSMENT_QUESTIONS = [
-  {
-    id: 'sa-001',
-    question: 'What contributed to your performance this quarter?',
-    helpText: 'Describe key accomplishments, projects completed, and factors that helped you succeed.'
-  },
-  {
-    id: 'sa-002',
-    question: 'What challenges or gaps impacted your performance?',
-    helpText: 'Be honest about obstacles, skill gaps, or resource limitations you faced.'
-  },
-  {
-    id: 'sa-003',
-    question: 'What support do you need for the upcoming quarter?',
-    helpText: 'Identify training, mentorship, tools, or resources that would help you succeed.'
-  },
-  {
-    id: 'sa-004',
-    question: 'What specific commitments will you make to improve/sustain performance?',
-    helpText: 'List concrete, measurable actions you will take in the next quarter.'
-  }
+  'What contributed to your performance this quarter?',
+  'What challenges or gaps impacted your performance?',
+  'What support do you need for the upcoming quarter?',
+  'What specific commitments will you make to improve/sustain performance?'
 ];
+
+/** OKR Status values — Per BRD v4.0 */
+const OKR_STATUS = {
+  NOT_STARTED: 'NOT_STARTED',
+  ON_TRACK: 'ON_TRACK',
+  COMPLETED: 'COMPLETED',
+  POSTPONED: 'POSTPONED'
+};
 
 /* -------------------------------------------------------------------------- */
 /*                            WORKFLOW STEPS                                  */
