@@ -150,10 +150,41 @@ own-your-career/
 ## Quick Start
 
 1. Clone this repository
-2. Review the `.kiro/steering/` files for project context, coding standards, and business rules
+2. Review the project steering files for context and standards (see Steering Hierarchy below)
 3. Check the project structure above for where to place code
 4. Follow Git conventions: branch from `main`, use `feature/[step]-[description]` naming
 5. Reference Jira tickets PAC-6864 and PAC-8047 in commit messages
+
+---
+
+## Steering Hierarchy
+
+The project follows a hierarchical steering model to avoid redundancy:
+
+**Level 1: Master Standards** (`.kiro/steering/mother.md` in workspace root)
+- Code conventions (JavaScript, HTML, CSS, JSDoc)
+- Git workflows (branching, commits, PRs)
+- File management rules
+- Security & data handling
+- Testing & QA standards
+- Project management (DoD, RACI, escalation)
+- **All projects inherit these**
+
+**Level 2: Development Team Standards** (`Converge-development/.kiro/steering/`)
+- Workspace-specific standards for all development projects
+- Extensions to mother.md for development context
+- **All projects in Converge-development inherit these**
+
+**Level 3: Project-Specific Steering** (`.kiro/steering/` in this project)
+- `business-rules.md` — PMGM 2026 specific business logic (performance brackets, OKR formulas, gate logic)
+- `product.md` — Product definition (3-portal system, 7-step workflow, stakeholders)
+- `structure.md` — Own Your Career codebase layout and file responsibilities
+- `tech.md` — Dual deployment architecture (Converge Cloud + Apps Script constraints)
+
+**Use this priority when you encounter standards:**
+1. Project-specific steering (if conflict, use this)
+2. Development team standards (if conflict, use this)
+3. Mother steering (base standards applied to all)
 
 ## Development Setup
 
