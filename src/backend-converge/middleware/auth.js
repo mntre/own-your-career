@@ -1,7 +1,7 @@
 /**
  * Own Your Career — Authentication Middleware (Converge Cloud)
  * 
- * Handles user authentication and session validation.
+ * Handles Google OAuth 2.0 authentication with allowlist validation.
  * Enforces 30-minute session timeout.
  * 
  * @fileoverview Authentication middleware
@@ -12,12 +12,32 @@
 const JWT_SECRET = process.env.JWT_SECRET || 'oyc-dev-secret-key-change-in-production';
 
 /**
- * Validates email format
+ * Allowed emails for authentication (from environment variable)
+ * Format: comma-separated list of emails
+ */
+function getAllowedEmails() {
+  const emails = process.env.ALLOWED_EMAILS;
+  if (!emails) return [];
+  return emails.split(',').map(e => e.trim().toLowerCase());
+}
+
+/**
+ * Validates email format (must be Converge email)
  * @param {string} email - Email to validate
  * @returns {boolean} True if valid corporate email
  */
 function isValidCorporateEmail(email) {
-  return email && email.endsWith('@converge.com.ph');
+  return email && email.toLowerCase().endsWith('@converge.com.ph');
+}
+
+/**
+ * Validates email is on allowlist
+ * @param {string} email - Email to check
+ * @returns {boolean} True if email is allowed
+ */
+function isEmailOnAllowlist(email) {
+  const allowedEmails = getAllowedEmails();
+  return allowedEmails.includes(email.toLowerCase());
 }
 
 /**
@@ -71,18 +91,72 @@ function extractUserFromHeader(authHeader) {
 }
 
 /**
- * Authenticates user via SSO
- * In production, this would validate against corporate SSO provider
- * @param {string} email - User email
- * @param {string} role - User role
+ * Verifies Google ID token
+ * @param {string} idToken - Google ID token
+ * @returns {Promise<Object>} Decoded token payload or null
+ */
+async function verifyGoogleIdToken(idToken) {
+  const { OAuth2Client } = require('google-auth-library');
+  const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+
+  if (!CLIENT_ID) {
+    throw new Error('GOOGLE_CLIENT_ID not configured');
+  }
+
+  const oauth2Client = new OAuth2Client(CLIENT_ID);
+
+  try {
+    const ticket = await oauth2Client.verifyIdToken({
+      idToken: idToken,
+      audience: CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    return payload || null;
+  } catch (error) {
+    console.error('Google ID token verification failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Authenticates user via Google OAuth 2.0 with allowlist validation
+ * @param {string} email - User email from Google token
+ * @param {string} role - User role (EMPLOYEE, MANAGER, DATA_SPOC)
+ * @param {string} idToken - Google ID token
  * @returns {Promise<Object>} Auth result with success status and token
  */
-async function authenticateUser(email, role) {
-  // Validate email format
+async function authenticateUser(email, role, idToken) {
+  // Validate email format (must be Converge email)
   if (!isValidCorporateEmail(email)) {
     return {
       success: false,
-      message: 'Invalid corporate email address'
+      message: 'Only Converge corporate emails are allowed (@converge.com.ph)'
+    };
+  }
+
+  // Verify Google ID token server-side
+  if (!idToken) {
+    return {
+      success: false,
+      message: 'Invalid authentication credentials'
+    };
+  }
+
+  const payload = await verifyGoogleIdToken(idToken);
+  
+  if (!payload) {
+    return {
+      success: false,
+      message: 'Google authentication failed. Please try again.'
+    };
+  }
+
+  // Verify email matches between token and request
+  if (payload.email.toLowerCase() !== email.toLowerCase()) {
+    return {
+      success: false,
+      message: 'Email mismatch in authentication'
     };
   }
 
@@ -92,6 +166,14 @@ async function authenticateUser(email, role) {
     return {
       success: false,
       message: 'Invalid role selected'
+    };
+  }
+
+  // Check allowlist
+  if (!isEmailOnAllowlist(email)) {
+    return {
+      success: false,
+      message: 'Access denied. Your email is not authorized to access this system.'
     };
   }
 
@@ -155,7 +237,9 @@ module.exports = {
   authenticateUser,
   authMiddleware,
   isValidCorporateEmail,
+  isEmailOnAllowlist,
   generateToken,
   validateToken,
-  extractUserFromHeader
+  extractUserFromHeader,
+  verifyGoogleIdToken
 };

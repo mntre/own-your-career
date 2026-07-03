@@ -58,7 +58,7 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    const result = await auth.authenticateUser(email, role);
+    const result = await auth.authenticateUser(email, role, googleCredential);
 
     if (result.success) {
       res.json({

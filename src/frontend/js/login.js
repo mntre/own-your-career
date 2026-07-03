@@ -1,7 +1,7 @@
 /**
  * Own Your Career — Login Logic
  * 
- * Handles Google SSO login flow and role-based redirection.
+ * Handles Google OAuth 2.0 login flow with allowlist validation.
  * 
  * @fileoverview Login page JavaScript logic
  */
@@ -9,11 +9,11 @@
 'use strict';
 
 /* --------------------------------------------------------------------------
-   Google SSO Handler
+   Google OAuth 2.0 Handler
    -------------------------------------------------------------------------- */
 
 /**
- * Handles Google ID token credential response
+ * Handles Google ID token credential response from OAuth 2.0 flow
  * @param {Object} response - Google ID token response
  */
 async function handleGoogleCredential(response) {
@@ -27,16 +27,10 @@ async function handleGoogleCredential(response) {
   const email = payload.email;
   const role = document.getElementById('role')?.value || 'EMPLOYEE';
 
-  // Validate corporate email
-  if (!isValidCorporateEmail(email)) {
-    showError('Only Converge corporate emails are allowed. Please use name@converge.com.ph');
-    return;
-  }
-
   // Show loading state
   const loginBtn = document.getElementById('login-btn');
   loginBtn.disabled = true;
-  loginBtn.textContent = 'Signing In...';
+  loginBtn.textContent = 'Authenticating...';
 
   try {
     // Call login API with Google credential
@@ -65,67 +59,6 @@ async function handleGoogleCredential(response) {
   }
 }
 
-/**
- * Validates Converge corporate email format
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid corporate email
- */
-function isValidCorporateEmail(email) {
-  return email && email.toLowerCase().endsWith('@converge.com.ph');
-}
-
-/* --------------------------------------------------------------------------
-   Manual Login (for testing without Google SSO)
-   -------------------------------------------------------------------------- */
-
-/**
- * Handles manual login form submission
- * @param {Event} e - Form submit event
- */
-async function handleLogin(e) {
-  e.preventDefault();
-
-  const email = document.getElementById('email')?.value?.trim() || '';
-  const role = document.getElementById('role').value;
-
-  // Basic validation
-  if (!role) {
-    showError('Please select a role');
-    return;
-  }
-
-  // Show loading state
-  const loginBtn = document.getElementById('login-btn');
-  loginBtn.disabled = true;
-  loginBtn.textContent = 'Signing In...';
-  hideError();
-
-  try {
-    // Call login API
-    const response = await API.login(email, role);
-
-    if (response.success) {
-      // Store session info
-      sessionStorage.setItem('oyc_user', JSON.stringify({
-        email: email,
-        role: role,
-        loginTime: Date.now()
-      }));
-
-      // Redirect to appropriate portal
-      redirectBasedOnRole(role);
-    } else {
-      showError(response.message || 'Login failed. Please try again.');
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    showError('Authentication failed. Please check your credentials.');
-  } finally {
-    loginBtn.disabled = false;
-    loginBtn.textContent = 'Proceed to Google Sign-In';
-  }
-}
-
 /* --------------------------------------------------------------------------
    Redirect Logic
    -------------------------------------------------------------------------- */
@@ -135,10 +68,6 @@ async function handleLogin(e) {
  * @param {string} role - User role
  */
 function redirectBasedOnRole(role) {
-  const now = new Date();
-  const hour = now.getHours();
-
-  // Get base URL (handles both local and deployed environments)
   const baseUrl = window.location.origin + window.location.pathname;
   const basePath = baseUrl.replace(/\/[^\/]*$/, ''); // Remove filename
 
@@ -213,28 +142,6 @@ function getCurrentUser() {
 function logout() {
   sessionStorage.removeItem('oyc_user');
   window.location.href = 'login.html';
-}
-
-/* --------------------------------------------------------------------------
-   Initialization
-   -------------------------------------------------------------------------- */
-
-/**
- * Initializes login page
- */
-function initLogin() {
-  const loginForm = document.getElementById('login-form');
-  if (loginForm) {
-    loginForm.addEventListener('submit', handleLogin);
-  }
-
-  // Check for existing session
-  if (hasActiveSession()) {
-    const user = getCurrentUser();
-    if (user) {
-      redirectBasedOnRole(user.role);
-    }
-  }
 }
 
 // Initialize when DOM is ready

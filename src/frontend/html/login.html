@@ -214,30 +214,9 @@
       </div>
     </div>
 
-    <div class="divider">
-      <span class="divider-text">or continue with</span>
-    </div>
-
-    <!-- Email/Role Form (for testing without Google SSO) -->
-    <form id="login-form" class="manual-login-form">
-      <div class="role-selector">
-        <label for="role">Select Portal</label>
-        <select id="role" name="role" required>
-          <option value="">-- Choose your role --</option>
-          <option value="EMPLOYEE">Employee Portal</option>
-          <option value="MANAGER">Manager Portal</option>
-          <option value="DATA_SPOC">Data SPOC Portal</option>
-        </select>
-      </div>
-
-      <button type="submit" class="login-btn" id="login-btn">
-        Proceed to Google Sign-In
-      </button>
-    </form>
-
     <div class="info-box">
       <h4>SSO Login</h4>
-      <p>This system uses Google SSO authentication. Your corporate email will be used to identify your role and grant appropriate access.</p>
+      <p>This system uses Google OAuth 2.0 authentication. Your email will be verified against an allowlist before granting access.</p>
     </div>
   </div>
 
