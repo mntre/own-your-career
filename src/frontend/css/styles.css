@@ -190,6 +190,21 @@ p {
   resize: vertical;
 }
 
+/* Disabled field styling */
+.form-group select:disabled,
+.form-group input:disabled,
+.form-group textarea:disabled {
+  background-color: #f0f0f0;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.6;
+  border-color: #ddd;
+}
+
+.form-group select:disabled:hover {
+  border-color: #ddd;
+}
+
 /* --------------------------------------------------------------------------
    Tables
    -------------------------------------------------------------------------- */
@@ -676,6 +691,13 @@ p {
   background-color: rgba(3, 143, 141, 0.05);
 }
 
+.okr-table td[rowspan] {
+  vertical-align: middle;
+  font-weight: 600;
+  border-right: 2px solid var(--color-primary);
+  padding-left: var(--spacing-lg);
+}
+
 .col-label {
   width: 40%;
   text-align: left;
@@ -758,4 +780,72 @@ p {
 .status-indicator--uploaded {
   background-color: #d4f1d4;
   color: #0a7c42;
+}
+
+
+/* --------------------------------------------------------------------------
+   File Upload Styles
+   -------------------------------------------------------------------------- */
+.file-upload-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border: 2px dashed var(--color-teal-soft);
+  border-radius: var(--radius-md);
+  background-color: #f9fbfb;
+  transition: all 0.2s ease;
+}
+
+.file-upload-container:hover {
+  border-color: var(--color-primary);
+  background-color: #f0f8f8;
+}
+
+#okr-csv-upload {
+  flex: 1;
+  cursor: pointer;
+  padding: var(--spacing-sm);
+}
+
+/* Hide the default file input appearance */
+#okr-csv-upload {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.upload-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-teal-dark);
+}
+
+.file-upload-hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+  text-align: center;
+}
+
+.upload-feedback {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-md);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.upload-feedback--success {
+  background-color: #d4f1d4;
+  color: #0a7c42;
+  border-left: 4px solid #0a7c42;
+}
+
+.upload-feedback--error {
+  background-color: #fde8e8;
+  color: #c62828;
+  border-left: 4px solid #c62828;
 }
