@@ -55,6 +55,35 @@ This repository contains the source code for the **2026 Performance Management &
 - **Step 7:** Acknowledgement (Employee confirms mid-performance review)
 - **Sections visible:** OKR & Leadership Skills, OKR Achievement, Feed Forward/Manager Assessment
 
+### Portal 4: Admin Portal (PMGM Team)
+**Users:** PMGM Team Members (System Administrators)
+**Functions:**
+- **System Configuration:** Set review period dates, hard lock date, performance thresholds
+- **Access Control:** Manage role assignments (Manager, Data SPOC, Employee)
+- **Hard Lock Date Management:** Configure and enforce system-wide edit lock (no forms editable after date)
+- **Monitor Progress:** Real-time dashboard of completion status across all portals
+- **Data Management:** View all employee data, audit trails, correction capabilities (pre-lock)
+- **SFTP Export Trigger:** Initiate bulk export to SuccessFactors after all reviews complete
+- **Email Management:** Re-send notifications, configure email reminders
+- **Holiday/Timeline Adjustments:** Extend hard lock date, reconfigure timeline (if business requires)
+
+---
+
+## Self-Assessment Questions (Step 3)
+
+Employees answer **4 mandatory questions** during Step 3. Questions must reference the specific time period:
+
+| # | Question | Reference |
+|----|----------|-----------|
+| 1 | [Question A referencing 1H period] | First Half of the Year (1H) |
+| 2 | [Question B referencing 1H period] | First Half of the Year (1H) |
+| 3 | [Question C referencing 2H period] | Second Half of the Year (2H) |
+| 4 | [Question D referencing 2H period] | Second Half of the Year (2H) |
+
+**Important:** Do NOT use generic wording like "this quarter" — use explicit period references (1H/2H).  
+**Location:** `src/shared/constants.js` defines exact question wording  
+**Consistency:** Questions are identical across all portal deployments (Converge Cloud & Google Apps Script)
+
 ---
 
 ## Data Flow: 7-Step Sequential Process
@@ -64,7 +93,7 @@ Step 1: Manager Portal → Skills Assessment (Core & Leadership Skills)
   ↓ Enabled when form period opens
 
 Step 2: Data SPOC Portal → OKR Upload (Corporate, Group, Team OKR + Targets + Weight)
-  ↓ Can resubmit until deadline
+  ↓ Can resubmit until hard lock date
 
 Step 3: Employee Portal → Self-Assessment (4 mandatory questions)
   ↓ Enabled when Steps 1 & 2 complete for that employee
@@ -93,12 +122,15 @@ FINAL: SFTP Bulk Export to SuccessFactors (one-time, after ALL reviews complete)
 | **Hard Gates** | Step 3 locked until Steps 1 & 2 complete; Step 4 locked until Step 3 complete; Step 6 locked until Step 5 complete |
 | **Performance Brackets** | Exceeded (>101%) / Achieved (90.1-100%) / Needs Improvement (81-90%) / Failed (<80%) |
 | **OKR Formulas** | Group Heads: 10% Corp + 90% Group; Dept Heads: 60% Group + 40% Dept; Team/Individual: 60% Dept + 40% Team |
-| **Soft Deadlines** | Steps can be resubmitted/edited until deadline |
+| **Soft Deadlines** | Steps can be resubmitted/edited until hard lock date (same thing as "deadline") |
+| **Hard Lock Date** | Admin-configured system-wide lock; after this date, ALL forms non-editable (no exceptions) |
 | **360 Module** | Separate process — leveraging existing SuccessFactors 360 (no internal build) |
 | **SFTP Integration** | One-time bulk export after ALL reviews complete |
-| **Email Automation** | Auto-notify at each step transition |
-| **Role-Based Access** | Data SPOC, Manager, Employee roles with specific permissions |
-| **Read-Only Locking** | After Step 5, all previous data becomes read-only for Employee |
+| **Email Automation** | Auto-trigger notifications at each step transition (see Email Automation Triggers section) |
+| **Role-Based Access** | Data SPOC, Manager, Employee, Admin roles with specific permissions |
+| **Admin Controls** | System config, hard lock date management, progress monitoring, SFTP trigger |
+| **Data Locking** | Edits allowed until hard lock date; after lock date, ALL forms non-editable |
+| **Read-Only Locking** | After Step 5, all previous data becomes read-only for Employee; after Step 7, all data locked |
 
 ---
 
@@ -109,13 +141,15 @@ own-your-career/
 ├── src/
 │   ├── frontend/                # Shared across BOTH platforms (platform-agnostic)
 │   │   ├── html/                # HTML templates (portal pages)
+│   │   │   ├── login.html       # Google SSO login page
 │   │   │   ├── manager-portal.html
 │   │   │   ├── dataspoc-portal.html
 │   │   │   └── employee-portal.html
 │   │   ├── css/                 # Stylesheets
 │   │   │   └── styles.css
 │   │   └── js/                  # Client-side JavaScript
-│   │       ├── app.js           # Main app logic
+│   │       ├── app.js           # Main app logic & routing
+│   │       ├── login.js         # Google SSO authentication
 │   │       ├── gates.js         # Hard gate logic
 │   │       ├── calculations.js  # OKR score formulas
 │   │       └── validation.js    # Form validation
@@ -124,7 +158,10 @@ own-your-career/
 │   │   ├── server.js            # Express/Node server
 │   │   ├── routes.js            # API routes
 │   │   ├── db.js                # Database connection
-│   │   └── email.js             # SMTP email service
+│   │   ├── email.js             # SMTP email service
+│   │   └── middleware/          # Auth & access control
+│   │       ├── auth.js          # JWT + Google OAuth verification
+│   │       └── rbac.js          # Role-Based Access Control
 │   │
 │   ├── backend-appscript/       # Google Apps Script specific
 │   │   ├── Code.gs              # Main server functions
@@ -144,6 +181,24 @@ own-your-career/
 ├── .gitignore
 └── README.md
 ```
+
+---
+
+## Project Governance
+
+### File Structure Alignment
+**All code and documentation files MUST be aligned with the README project structure and steering files.** 
+
+Do not create:
+- ❌ Code files outside the defined `src/` structure (e.g., `src/utils/`, `src/lib/`, `src/components/`)
+- ❌ Markdown documentation files (use README.md or `.kiro/steering/` instead)
+- ❌ Temporary or ad-hoc files (use Git branches instead)
+
+**Before creating any file**, verify it appears in:
+1. The "Project Structure" section above
+2. The File Responsibilities table in `.kiro/steering/structure.md`
+
+See `.kiro/steering/structure.md` for full governance rules.
 
 ---
 
@@ -187,6 +242,63 @@ The project follows a hierarchical steering model to avoid redundancy:
 1. Project-specific steering (if conflict, use this)
 2. Workspace steering (if conflict, use this)
 3. Mother steering (base standards applied to all)
+
+---
+
+## Email Automation Triggers
+
+Auto-triggered at each step transition:
+
+| Step Completion | Notification Sent To | Purpose |
+|-----------------|-------------------|---------|
+| Step 1 (Skills Assessment) complete | Data SPOC | Reminder: OKR uploading (Step 2) can now begin |
+| Steps 1 + 2 both complete | Employee | Notification: Self-Assessment (Step 3) is now enabled |
+| Step 3 (Self-Assessment) complete | Manager | Notification: Feed Forward form (Step 4) is now enabled |
+| Step 4 (Feed Forward) complete | Manager | Reminder: Acknowledgement (Step 5) is ready for completion |
+| Step 5 (Manager Acknowledgement) complete | Employee | Notification: View all scores & feedback (Step 6) is now available (read-only) |
+| Step 7 (Employee Acknowledgement) complete | System Admin | Final: All review data locked for that employee; ready for SFTP export |
+
+**Email Service:** SMTP (Converge Cloud) / GmailApp (Google Apps Script)  
+**Implementation Files:** `src/backend-converge/email.js` and `src/backend-appscript/Email.gs`
+
+---
+
+## Data Locking & Workflow Timing
+
+### Soft Deadlines (Editable Until Lock Date)
+- **Steps 1, 2, 3, 4, 5:** Can be resubmitted and edited by their respective users **until the hard lock date**
+- Users retain full edit access until that date; system allows resubmission
+- **Purpose:** Accommodates last-minute changes, corrections, and business adjustments
+
+### Hard Lock Date (System-Wide Non-Editable)
+- **Definition:** Admin-configured date after which NO forms accept further edits (regardless of workflow step)
+- **Scope:** ALL portals (Manager, Data SPOC, Employee) affected simultaneously
+- **Enforcement:** 
+  - After Step 5 complete: Employee-facing data becomes read-only (can still view scores)
+  - After hard lock date: ALL data becomes non-editable across all roles (even admins)
+  - After Step 7 complete: Specific employee's data locked permanently
+  - No forms can be edited after hard lock date, period
+
+### Data Locking Sequence
+```
+Steps 1-5: Users edit freely until hard lock date → Email notifications trigger at each step
+  ↓
+After Step 5 complete: Employee sees Step 6 (read-only scores & feedback)
+  ↓
+Hard Lock Date Reaches: ALL forms locked instantly (no edits allowed)
+  ↓
+After Step 7 Complete: Specific employee's workflow data archived & locked
+  ↓
+All Employees Complete: SFTP bulk export to SAP SuccessFactors (one-time)
+```
+
+### SFTP Export Timing
+- **Triggered:** Only after ALL employees have completed Steps 1-7
+- **Scope:** All finalized review data exported to SuccessFactors
+- **Frequency:** One-time bulk export (not ongoing syncs)
+- **Implementation:** `src/shared/export.js`
+
+---
 
 ## Development Setup
 
@@ -308,7 +420,7 @@ npm run dev
 
 ## Success Criteria for July 17 Launch
 
-- All 3 portals deployed and accessible
+- All 4 portals deployed and accessible (Manager, Data SPOC, Employee, Admin)
 - All 7 steps functional end-to-end
 - Hard gates enforce step sequencing (zero bypasses)
 - OKR calculations 100% accurate per role-level formula

@@ -28,7 +28,7 @@
 | Step | Enabled When |
 |------|-------------|
 | Step 1 (Skills Assessment) | Form period opens |
-| Step 2 (OKR Upload) | Form period opens; can resubmit until deadline |
+| Step 2 (OKR Upload) | Form period opens; can resubmit until hard lock date |
 | Step 3 (Self-Assessment) | Steps 1 AND 2 complete for that specific employee |
 | Step 4 (Feed Forward) | Step 3 complete for that specific employee |
 | Step 5 (Manager Ack) | Step 4 complete |
@@ -53,27 +53,35 @@ Defined in `src/shared/constants.js`.
 | Manager | Manager Portal | Steps 1, 4, 5; view team summary |
 | Data SPOC | Data SPOC Portal | Step 2; view org data, upload status, rankings |
 | Employee | Employee Portal | Steps 3, 6, 7; view own scores |
-| Admin (PMGM Team) | All portals | System config, deadline management |
+| Admin (PMGM Team) | All portals | System config, hard lock date management |
 
 ---
 
 ## Email Notifications
 
 Auto-trigger at each step transition:
-- Step 1 complete → notify Data SPOC (Step 2 reminder)
-- Steps 1+2 complete → notify Employee (Step 3 enabled)
-- Step 3 complete → notify Manager (Step 4 enabled)
-- Step 4 complete → notify Manager (Step 5 ready)
-- Step 5 complete → notify Employee (Step 6 scores available)
+
+| Step Completion | Notification Sent To | Purpose |
+|-----------------|-------------------|---------|
+| Step 1 (Skills Assessment) complete | Data SPOC | Reminder: OKR uploading (Step 2) can now begin |
+| Steps 1 + 2 both complete | Employee | Notification: Self-Assessment (Step 3) is now enabled |
+| Step 3 (Self-Assessment) complete | Manager | Notification: Feed Forward form (Step 4) is now enabled |
+| Step 4 (Feed Forward) complete | Manager | Reminder: Acknowledgement (Step 5) is ready for completion |
+| Step 5 (Manager Acknowledgement) complete | Employee | Notification: View all scores & feedback (Step 6) is now available (read-only) |
+| Step 7 (Employee Acknowledgement) complete | System Admin | Final: All review data locked for that employee; ready for SFTP export |
 
 ---
 
 ## Data Locking Rules
 
-- Steps can be **resubmitted/edited until deadline** (soft deadlines)
-- After Step 5 complete: all previous step data becomes **read-only** for Employee
-- After Step 7 complete: ALL data locked for that employee (no further edits)
-- SFTP export happens only after ALL employees complete full workflow
+- **Editable Until Hard Lock Date:** Steps 1-5 can be **resubmitted/edited until hard lock date** (business flexibility)
+- **Hard Lock Date:** Admin-configured system-wide lock date when:
+  - NO forms accept further edits (across all portals)
+  - ALL data becomes read-only (even for admins)
+  - Users receive final notification before lock
+- **Step 5 → Read-Only:** After Manager Acknowledgement (Step 5), employee-visible data becomes read-only
+- **Step 7 → Permanent Lock:** After Employee Acknowledgement (Step 7), that employee's workflow fully locked
+- **SFTP Export:** Only after ALL employees complete Steps 1-7 AND hard lock date passes
 
 ---
 

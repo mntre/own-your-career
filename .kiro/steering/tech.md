@@ -62,5 +62,6 @@ npm run dev
 - Both platforms must produce identical user experience
 - Frontend code must work in both deployment contexts
 - Google Apps Script: 6-min execution limit (30-min for Workspace)
-- Forms can be resubmitted/edited until deadline (soft deadlines)
+- Forms can be resubmitted/edited until hard lock date (admin-configured system-wide deadline)
+- After hard lock date: ALL forms non-editable across all portals (no exceptions)
 - After Step 5 complete: all data becomes read-only for employee

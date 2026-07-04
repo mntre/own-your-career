@@ -15,6 +15,7 @@ The **2026 Performance Management & Goals Management (PMGM)** "Own Your Career" 
 | Manager Portal | People Managers | Step 1 (Skills Assessment), Step 4 (Feed Forward), Step 5 (Acknowledgement) |
 | Data SPOC Portal | Group/Pillar data owners (1-2 per group) | Step 2 (OKR Upload), Performance Summary, Rankings |
 | Employee Portal | All Employees | Step 3 (Self-Assessment), Step 6 (View Scores), Step 7 (Acknowledgement) |
+| Admin Portal | PMGM Team Members | System configuration, hard lock date management, progress monitoring, SFTP export trigger |
 
 ## 7-Step Sequential Process
 

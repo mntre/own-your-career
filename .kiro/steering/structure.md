@@ -64,3 +64,44 @@ own-your-career/
 | `constants.js` | Brackets, formulas, config values, question text |
 | `workflow.js` | Step sequencing, state transitions, status tracking |
 | `export.js` | SFTP bulk export data formatting |
+
+---
+
+## Governance: Alignment & File Creation Rules
+
+### Core Rule
+**Do NOT create files or folders that are not explicitly listed in the File Layout or File Responsibilities sections above.**
+
+This ensures code organization remains aligned with the documented architecture and prevents:
+- Orphaned or undocumented code
+- Inconsistent project structure
+- Difficult codebase navigation and maintenance
+
+### Examples of Non-Compliant Files (DO NOT CREATE)
+1. **Code files outside the defined structure**
+   - ❌ `src/utils/helpers.js` (not in structure)
+   - ❌ `src/components/Button.js` (not in structure)
+   - ❌ `src/lib/customLogic.js` (not in structure)
+
+2. **Markdown files (updates, docs, notes)**
+   - ❌ `UPDATE.md` (use this README instead)
+   - ❌ `CHANGELOG.md` (not aligned with project docs)
+   - ❌ `NOTES.md` (use steering files or Jira tickets)
+   - ❌ `INSTRUCTIONS.md` (belongs in `.kiro/steering/`)
+   - ❌ `docs/anything.md` (use `.kiro/steering/` instead)
+
+3. **Temporary or ad-hoc files**
+   - ❌ `temp.js`, `test-copy.js`, `archive/` folders
+   - ❌ Local config overrides or environment-specific files not in structure
+
+### What to Do Instead
+- **Code logic:** Add it to an existing responsible file listed above or request a new structured file in this document
+- **Documentation:** Update README.md or create a steering file (e.g., `.kiro/steering/[topic].md`)
+- **Temporary changes:** Use Git branches and feature flags, not temporary files
+- **Need a new file type?** Update this structure.md AND README.md in sync, then proceed
+
+### Before Creating Any File
+1. Check if it appears in the "File Layout" section above
+2. Check if it's listed in "File Responsibilities"
+3. If not → DO NOT create it; escalate or follow "What to Do Instead"
+4. If yes → Proceed with confidence
