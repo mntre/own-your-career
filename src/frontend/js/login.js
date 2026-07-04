@@ -2,6 +2,8 @@
  * Own Your Career — Login Logic
  * 
  * Handles Google OAuth 2.0 login flow with allowlist validation.
+ * Phase 1: Uses mock API for local testing
+ * Phase 2: Will connect to real backend (Converge Cloud or Apps Script)
  * 
  * @fileoverview Login page JavaScript logic
  */
@@ -9,11 +11,138 @@
 'use strict';
 
 /* --------------------------------------------------------------------------
-   Google OAuth 2.0 Handler
+   Login Initialization
+   -------------------------------------------------------------------------- */
+
+/**
+ * Initialize login page
+ */
+function initLogin() {
+  console.log('[Login] Initializing login page');
+  
+  // Check if user already has active session
+  if (hasActiveSession()) {
+    console.log('[Login] User has active session, redirecting to portal');
+    const user = getCurrentUser();
+    App.redirectToPortal(user.role);
+    return;
+  }
+  
+  // Set up role selector
+  const roleSelector = document.getElementById('role');
+  if (roleSelector) {
+    roleSelector.addEventListener('change', (e) => {
+      console.log('[Login] Role selected:', e.target.value);
+    });
+  }
+  
+  // Set up manual test login for Phase 1
+  setupPhase1Testing();
+}
+
+/* --------------------------------------------------------------------------
+   Phase 1: Mock Testing (Local)
+   -------------------------------------------------------------------------- */
+
+/**
+ * Set up Phase 1 mock testing UI
+ * Shows available test users and allows quick login
+ */
+function setupPhase1Testing() {
+  const testingSection = document.querySelector('.info-box');
+  
+  if (!testingSection) return;
+  
+  // Add test user shortcuts
+  const testUsers = [
+    { email: 'manager@example.com', role: 'MANAGER', label: 'Manager' },
+    { email: 'employee@example.com', role: 'EMPLOYEE', label: 'Employee' },
+    { email: 'dataspoc@example.com', role: 'DATA_SPOC', label: 'Data SPOC' },
+    { email: 'admin@example.com', role: 'ADMIN', label: 'Admin' }
+  ];
+  
+  const testUIHTML = `
+    <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e0e0e0;">
+      <h4 style="margin: 0 0 12px; color: var(--color-primary); font-size: 14px; font-weight: 600;">
+        🧪 Phase 1 Test Users (Local Only)
+      </h4>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+        ${testUsers.map(user => `
+          <button 
+            class="btn btn--secondary" 
+            style="width: 100%; padding: 10px; font-size: 13px;"
+            onclick="simulateLogin('${user.email}', '${user.role}')"
+          >
+            ${user.label}
+          </button>
+        `).join('')}
+      </div>
+      <p style="margin: 12px 0 0; font-size: 12px; color: #999;">
+        Click any test user to simulate login (no Google account needed)
+      </p>
+    </div>
+  `;
+  
+  testingSection.innerHTML += testUIHTML;
+}
+
+/**
+ * Simulate login for Phase 1 testing (no Google OAuth needed)
+ * @param {string} email - Test user email
+ * @param {string} role - Test user role
+ */
+async function simulateLogin(email, role) {
+  hideError();
+  console.log('[Login] Simulating login for:', email, 'role:', role);
+  
+  const loginBtn = event?.target;
+  if (loginBtn) {
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Authenticating...';
+  }
+  
+  try {
+    // Call mock API (no Google credential needed in Phase 1)
+    const apiResult = await API.login(email, role, 'mock_google_credential');
+    
+    if (apiResult.success) {
+      // Store session info
+      sessionStorage.setItem('oyc_user', JSON.stringify({
+        email: email,
+        role: role,
+        name: apiResult.user.name,
+        department: apiResult.user.department,
+        loginTime: Date.now()
+      }));
+      
+      // Store token
+      sessionStorage.setItem('oyc_token', apiResult.token);
+      
+      console.log('[Login] Authentication successful, redirecting to portal');
+      
+      // Redirect to appropriate portal
+      App.redirectToPortal(role);
+    } else {
+      showError(apiResult.message || 'Authentication failed. Please try again.');
+    }
+  } catch (error) {
+    console.error('[Login] Error during login:', error);
+    showError('Authentication failed. Please check your credentials.');
+  } finally {
+    if (loginBtn) {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Test Login';
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Google OAuth 2.0 Handler (For Phase 2+)
    -------------------------------------------------------------------------- */
 
 /**
  * Handles Google ID token credential response from OAuth 2.0 flow
+ * This will be used in Phase 2 when real Google OAuth is set up
  * @param {Object} response - Google ID token response
  */
 async function handleGoogleCredential(response) {
@@ -28,12 +157,15 @@ async function handleGoogleCredential(response) {
   const role = document.getElementById('role')?.value || 'EMPLOYEE';
 
   // Show loading state
-  const loginBtn = document.getElementById('login-btn');
-  loginBtn.disabled = true;
-  loginBtn.textContent = 'Authenticating...';
+  const loginBtn = document.querySelector('[data-action="google-signin"]');
+  if (loginBtn) {
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Authenticating...';
+  }
 
   try {
     // Call login API with Google credential
+    // In Phase 2, this will call the real backend endpoint
     const apiResult = await API.login(email, role, credential);
 
     if (apiResult.success) {
@@ -41,48 +173,28 @@ async function handleGoogleCredential(response) {
       sessionStorage.setItem('oyc_user', JSON.stringify({
         email: email,
         role: role,
+        name: apiResult.user.name,
+        department: apiResult.user.department,
         loginTime: Date.now(),
         googleId: payload.sub
       }));
+      
+      // Store token
+      sessionStorage.setItem('oyc_token', apiResult.token);
 
       // Redirect to appropriate portal
-      redirectBasedOnRole(role);
+      App.redirectToPortal(role);
     } else {
       showError(apiResult.message || 'Authentication failed. Please try again.');
     }
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('[Login] Error during Google login:', error);
     showError('Authentication failed. Please check your credentials.');
   } finally {
-    loginBtn.disabled = false;
-    loginBtn.textContent = 'Proceed to Google Sign-In';
-  }
-}
-
-/* --------------------------------------------------------------------------
-   Redirect Logic
-   -------------------------------------------------------------------------- */
-
-/**
- * Redirects user to appropriate portal based on role
- * @param {string} role - User role
- */
-function redirectBasedOnRole(role) {
-  const baseUrl = window.location.origin + window.location.pathname;
-  const basePath = baseUrl.replace(/\/[^\/]*$/, ''); // Remove filename
-
-  switch (role) {
-    case 'EMPLOYEE':
-      window.location.href = basePath + '/html/employee-portal.html';
-      break;
-    case 'MANAGER':
-      window.location.href = basePath + '/html/manager-portal.html';
-      break;
-    case 'DATA_SPOC':
-      window.location.href = basePath + '/html/dataspoc-portal.html';
-      break;
-    default:
-      window.location.href = basePath + '/html/login.html';
+    if (loginBtn) {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Proceed to Google Sign-In';
+    }
   }
 }
 
