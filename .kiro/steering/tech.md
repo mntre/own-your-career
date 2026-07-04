@@ -117,7 +117,23 @@ When iterating over collections in JavaScript:
 
 ---
 
-## Documentation Standards
+## Security & DDoS Prevention
+
+**CRITICAL:** Security is not optional for a system handling sensitive employee performance data.
+
+See `.kiro/steering/security.md` for comprehensive best practices covering:
+- Authentication & authorization (OAuth, JWT, RBAC)
+- Input validation & SQL injection prevention
+- XSS/CSRF prevention
+- HTTPS enforcement
+- Secrets management
+- Rate limiting & DDoS defense
+- Audit logging & monitoring
+- Deployment security checklist
+
+All development MUST follow security.md guidelines before launch.
+
+---
 
 ### Markdown File Policy
 
