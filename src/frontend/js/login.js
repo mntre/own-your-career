@@ -61,6 +61,12 @@ function setupPhase1Testing() {
     { email: 'admin@example.com', role: 'ADMIN', label: 'Admin' }
   ];
   
+  // Defensive check: ensure testUsers is array before mapping
+  if (!Array.isArray(testUsers)) {
+    console.error('[Login] testUsers is not an array, skipping Phase 1 UI setup');
+    return;
+  }
+  
   const testUIHTML = `
     <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e0e0e0;">
       <h4 style="margin: 0 0 12px; color: var(--color-primary); font-size: 14px; font-weight: 600;">

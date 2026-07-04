@@ -126,14 +126,18 @@ const App = {
    * Set up global navigation listeners (logout buttons, etc.)
    */
   setupNavigation: function() {
-    // Look for logout buttons
+    // Look for logout buttons - defensive check
     const logoutBtns = document.querySelectorAll('[data-action="logout"]');
-    logoutBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.logout();
+    if (logoutBtns && typeof logoutBtns[Symbol.iterator] === 'function') {
+      logoutBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.logout();
+        });
       });
-    });
+    } else {
+      console.warn('[App] logoutBtns is not iterable');
+    }
     
     // Update user display if element exists
     const userDisplay = document.getElementById('current-user');

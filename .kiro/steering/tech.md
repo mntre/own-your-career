@@ -125,35 +125,37 @@ When iterating over collections in JavaScript:
 
 **Allowed Markdown Files:**
 - `README.md` — Project overview (at root)
-- `.kiro/steering/*.md` — Guidance files (structured, numbered list)
-- `PHASE1_TESTING.md` — Phase-specific testing guides (only if explicitly created)
+- `.kiro/steering/*.md` — Guidance files (business-rules, product, structure, tech, branding)
+- `src/consolidated-updates.md` — Phase updates, testing guides, implementation notes
 
 **FORBIDDEN Markdown Files:**
 - ❌ `UPDATE.md` — Use README.md instead
 - ❌ `CHANGELOG.md` — Use git log or Jira tickets
-- ❌ `NOTES.md` — Use steering files or comments in code
-- ❌ `INSTRUCTIONS.md` — Put in steering files
+- ❌ `NOTES.md` — Use consolidated-updates.md
+- ❌ `INSTRUCTIONS.md` — Put in steering files or consolidated-updates.md
 - ❌ `docs/*.md` — Must use `.kiro/steering/` instead
 - ❌ `SETUP.md` — Must update README.md
+- ❌ `PHASE*.md` (PHASE1_TESTING.md, PHASE2_TESTING.md, etc.) — Add to consolidated-updates.md
+- ❌ `API.md` — Add to `.kiro/steering/tech.md` or consolidated-updates.md
 - ❌ Any other `*.md` file not explicitly listed above
 
-**Why:** Prevents documentation sprawl and maintains single source of truth (README + steering).
+**Why:** Prevents documentation sprawl and maintains single source of truth (README + steering + consolidated-updates).
 
 **For Kiro AI:** If you need to create any new markdown:
 1. Check this list FIRST
 2. If not in allowed list → DO NOT CREATE
-3. Instead: Update existing file or ask to add to steering
+3. Instead: Update existing file or add to `src/consolidated-updates.md`
 4. Violation: Creating unauthorized markdown = violates governance rules
 5. Consequence: File must be deleted and content merged into allowed files
 
 **Example: Correct vs Incorrect**
 
 ❌ Incorrect:
+- Create `PHASE1_TESTING.md` for testing guide
 - Create `DEPLOYMENT.md` for deployment steps
-- Create `API.md` for API documentation
 - Create `docs/design.md` for architecture notes
 
 ✅ Correct:
+- Add Phase 1 testing to `src/consolidated-updates.md`
 - Add deployment steps to README.md → "Development Setup" section
-- Add API documentation to `.kiro/steering/tech.md`
-- Add architecture notes to `.kiro/steering/[new-file].md` with proper approval
+- Add architecture notes to `src/consolidated-updates.md`

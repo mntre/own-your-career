@@ -74,6 +74,15 @@ const API = {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
+    // Defensive check: ensure MOCK_ALLOWLIST is an array before using find
+    if (!Array.isArray(MOCK_ALLOWLIST)) {
+      console.error('[API] MOCK_ALLOWLIST is not an array');
+      return {
+        success: false,
+        message: 'Server error: Invalid allowlist format'
+      };
+    }
+
     // Check if email is in allowlist
     const user = MOCK_ALLOWLIST.find(u => u.email === email);
     
