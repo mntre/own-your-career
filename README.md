@@ -161,18 +161,20 @@ own-your-career/
 
 The project follows a hierarchical steering model to avoid redundancy:
 
-**Level 1: Master Standards** (`.kiro/steering/mother.md` in workspace root)
+**Level 1: Master Standards** (`.kiro/steering/mother.md` in KiroGee workspace root)
 - Code conventions (JavaScript, HTML, CSS, JSDoc)
 - Git workflows (branching, commits, PRs)
 - File management rules
 - Security & data handling
 - Testing & QA standards
 - Project management (DoD, RACI, escalation)
+- **Converge-development project steering standard (4 files required)**
 - **All projects inherit these**
 
-**Level 2: Development Team Standards** (`Converge-development/.kiro/steering/`)
-- Workspace-specific standards for all development projects
-- Extensions to mother.md for development context
+**Level 2: Workspace-Specific** (`Converge-development/.kiro/steering/`)
+- `product.md` — Workspace overview (development team, resources, objectives)
+- `structure.md` — Workspace folder structure conventions
+- `code-conventions.md` — Development-specific code standards
 - **All projects in Converge-development inherit these**
 
 **Level 3: Project-Specific Steering** (`.kiro/steering/` in this project)
@@ -183,7 +185,7 @@ The project follows a hierarchical steering model to avoid redundancy:
 
 **Use this priority when you encounter standards:**
 1. Project-specific steering (if conflict, use this)
-2. Development team standards (if conflict, use this)
+2. Workspace steering (if conflict, use this)
 3. Mother steering (base standards applied to all)
 
 ## Development Setup
