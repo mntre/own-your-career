@@ -191,14 +191,14 @@ own-your-career/
 
 Do not create:
 - ❌ Code files outside the defined `src/` structure (e.g., `src/utils/`, `src/lib/`, `src/components/`)
-- ❌ Markdown documentation files (use README.md or `.kiro/steering/` instead)
+- ❌ Extra markdown documentation files (ALL extra content goes in `src/consolidated-updates.md`)
 - ❌ Temporary or ad-hoc files (use Git branches instead)
 
 **Before creating any file**, verify it appears in:
 1. The "Project Structure" section above
 2. The File Responsibilities table in `.kiro/steering/structure.md`
 
-See `.kiro/steering/structure.md` for full governance rules.
+See `.kiro/steering/structure.md` for full governance rules, including the mandatory `src/consolidated-updates.md` policy for all updates and notes.
 
 ---
 

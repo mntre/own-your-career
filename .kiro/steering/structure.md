@@ -105,3 +105,130 @@ This ensures code organization remains aligned with the documented architecture 
 2. Check if it's listed in "File Responsibilities"
 3. If not → DO NOT create it; escalate or follow "What to Do Instead"
 4. If yes → Proceed with confidence
+
+---
+
+## Markdown File Governance (CRITICAL)
+
+### Allowed Markdown Files ONLY
+
+| File | Location | Purpose | Can Be Modified |
+|------|----------|---------|-----------------|
+| `README.md` | Root `/` | Project overview, setup, roadmap | ✅ Yes (primary doc) |
+| `business-rules.md` | `.kiro/steering/` | Business logic, gates, brackets | ✅ Yes (steering) |
+| `product.md` | `.kiro/steering/` | Product definition, stakeholders | ✅ Yes (steering) |
+| `structure.md` | `.kiro/steering/` | File layout, responsibilities | ✅ Yes (steering) |
+| `tech.md` | `.kiro/steering/` | Tech stack, deployment, constraints | ✅ Yes (steering) |
+| `branding.md` | `.kiro/steering/` | Colors, typography, UI standards | ✅ Yes (steering) |
+| `consolidated-updates.md` | `src/` | Phase updates, testing guides, extra documentation | ✅ Yes (development notes) |
+
+### FORBIDDEN Markdown Files (VIOLATION if Created)
+
+| File | Reason | Alternative |
+|------|--------|-------------|
+| `UPDATE.md` | Redundant with README.md | Update README.md instead |
+| `CHANGELOG.md` | Use git log or Jira tickets | Reference PAC-6864, PAC-8047 |
+| `NOTES.md` | Documentation should be centralized | Use steering files |
+| `INSTRUCTIONS.md` | Setup/dev instructions belong in README | Update README.md or add steering file |
+| `docs/*.md` | Discouraged structure | Use `.kiro/steering/` instead |
+| `SETUP.md` | Redundant with README | Update README.md Development Setup section |
+| `API.md` | API docs belong in steering | Add to `.kiro/steering/tech.md` or new file |
+| `DEPLOYMENT.md` | Deployment belongs in README or steering | Update README.md or create `.kiro/steering/deployment.md` (request first) |
+| Any other `*.md` | Not pre-approved | Request addition to approved list in this document |
+
+### Enforcement Rules for Kiro AI
+
+**BEFORE creating ANY markdown file:**
+1. Check the "Allowed" list above
+2. If file is NOT in allowed list → **STOP, DO NOT CREATE**
+3. If file IS in allowed list → Proceed
+4. If you want to create a new markdown → **Ask user first** before creating
+
+**If violation occurs (unauthorized markdown created):**
+- File must be deleted immediately
+- Content must be merged into appropriate allowed file (README or steering)
+- Document the decision in git commit
+
+**Examples:**
+
+❌ **VIOLATION:**
+```
+User: "Create a DEPLOYMENT.md with setup steps"
+Kiro: (creates DEPLOYMENT.md)
+→ This violates governance. Should have added to README.md or `.kiro/steering/deployment.md`
+```
+
+✅ **CORRECT:**
+```
+User: "Create a DEPLOYMENT.md with setup steps"
+Kiro: "I can't create new markdown files outside the approved list. I can either:
+  1. Add these steps to README.md under Development Setup
+  2. Create .kiro/steering/deployment.md if you approve
+  Which would you prefer?"
+```
+
+✅ **ALSO CORRECT:**
+```
+Kiro: "This needs Phase-specific testing guide. Can I add this to src/consolidated-updates.md?"
+User: "Yes"
+Kiro: (appends to consolidated-updates.md)
+```
+
+---
+
+## Approved Approach for Extra Documentation
+
+**`src/consolidated-updates.md` Usage (MANDATORY):**
+
+This file is the **ONLY** place for all extra markdown documentation:
+- Phase-specific testing guides (Phase 1, 2, 3, etc.)
+- Implementation details and development notes
+- Testing scenarios and troubleshooting
+- Work-in-progress documentation
+- Updates, notes, or any extra content
+
+**CRITICAL RULE FOR KIRO AI:**
+
+1. **ALL extra content → `src/consolidated-updates.md` ONLY**
+2. **NEVER create separate files** like:
+   - ❌ `PHASE1_TESTING.md` → Add to consolidated-updates.md
+   - ❌ `PHASE2_TESTING.md` → Add to consolidated-updates.md
+   - ❌ `SETUP.md` → Add to consolidated-updates.md or README.md
+   - ❌ `NOTES.md` → Add to consolidated-updates.md
+   - ❌ `DEPLOYMENT.md` → Add to consolidated-updates.md
+   - ❌ `INSTRUCTIONS.md` → Add to consolidated-updates.md
+   - ❌ `docs/anything.md` → Add to consolidated-updates.md
+   - ❌ Any other `*.md` → Add to consolidated-updates.md
+
+3. **Structure principle:** One file = one location = clean structure
+4. **If unclear:** Ask user before creating anything
+5. **Violation = enforcement:** File must be deleted and content moved to consolidated-updates.md
+
+**Example Conversations:**
+
+❌ **VIOLATION:**
+```
+User: "Add Phase 2 backend guide"
+Kiro: (creates PHASE2_BACKEND.md)
+→ WRONG: Should have added to consolidated-updates.md
+```
+
+✅ **CORRECT:**
+```
+User: "Add Phase 2 backend guide"
+Kiro: "I'll add this to src/consolidated-updates.md under Phase 2 section"
+Kiro: (appends organized section to consolidated-updates.md)
+```
+
+✅ **ALSO CORRECT:**
+```
+User: "Where should I put Phase 3 documentation?"
+Kiro: "All phase documentation and extra notes go in src/consolidated-updates.md to keep the structure clean and organized"
+```
+
+**For Project Health:**
+- No scattered markdown files
+- No `docs/` folder with competing documentation
+- No `UPDATES.md`, `NOTES.md`, `README-*.md` variants
+- Single, organized, consolidated file
+- Easy to find, easy to maintain
