@@ -237,6 +237,8 @@ The project follows a hierarchical steering model to avoid redundancy:
 - `product.md` — Product definition (3-portal system, 7-step workflow, stakeholders)
 - `structure.md` — Own Your Career codebase layout and file responsibilities
 - `tech.md` — Dual deployment architecture (Converge Cloud + Apps Script constraints)
+- `branding.md` — UI/UX standards (colors, typography, components, accessibility)
+- `security.md` — Security best practices (authentication, DDoS prevention, data protection)
 
 **Use this priority when you encounter standards:**
 1. Project-specific steering (if conflict, use this)
