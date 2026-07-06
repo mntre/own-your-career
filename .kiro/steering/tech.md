@@ -17,6 +17,19 @@ Same codebase deployed to BOTH platforms simultaneously:
 - Shared across both platforms
 - No frontend frameworks (React, Vue, etc.)
 - Google Sign-In (Google Identity Services) for SSO
+- **Platform Abstraction Layer** — Single codebase routes to platform-specific backends
+
+### Platform Abstraction Architecture
+
+The frontend uses a runtime detection + adapter pattern to support both platforms from a single codebase:
+
+1. **platform.js** — Detects if running on Converge Cloud (standard web) or Google Apps Script
+2. **api-adapter.js** — Routes API calls to the correct implementation
+3. **api-converge.js** — HTTP-based API (uses fetch) for Converge Cloud
+4. **api-appscript.js** — google.script.run API for Google Apps Script
+5. **login.js, app.js, etc.** — Identical on both platforms (call the API object)
+
+**Result:** One codebase, two deployments. No code duplication. Platform detection is automatic.
 
 ## Converge Cloud Backend
 

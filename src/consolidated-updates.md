@@ -233,3 +233,70 @@ No frontend changes needed—API interface stays the same.
 ---
 
 **Last Updated:** July 4, 2026
+
+
+---
+
+## Phase 1A: Platform Abstraction Foundation ✅ COMPLETE
+
+**Status:** ✅ COMPLETE (Added to main)  
+**Date:** July 6, 2026  
+**Files Created:**
+- `src/frontend/js/platform.js` — Platform detection (Converge vs AppScript)
+- `src/frontend/js/api-adapter.js` — Routes API calls to platform-specific implementation
+- `src/frontend/js/api-converge.js` — HTTP-based API for Converge Cloud
+- `src/frontend/js/api-appscript.js` — google.script.run API for Google Apps Script
+- Updated `src/frontend/html/login.html` — New script include order for abstraction
+
+**How It Works:**
+1. Page loads → `platform.js` detects if on Converge or AppScript
+2. `api-adapter.js` loads the correct API implementation
+3. `login.js` and `app.js` call `API.login()` (same code on both platforms)
+4. Behind the scenes, calls route to HTTP (`api-converge.js`) or google.script.run (`api-appscript.js`)
+
+**Deliverable:** Architecture in place; abstraction layer ready for backend integration
+
+---
+
+## Phase 1B: Converge Cloud Implementation ✅ COMPLETE
+
+**Status:** ✅ COMPLETE (On login branch, ready to merge)  
+**Objective:** Implement HTTP-based API for Converge  
+**Files Updated:**
+- `src/frontend/js/api-converge.js` — HTTP API implementation (already created in Phase 1A)
+- `src/backend-converge/middleware/auth.js` — Updated for Phase 1B testing
+- `src/backend-converge/routes.js` — Implemented `/api/login` and `/api/logout` endpoints
+
+**Phase 1B Implementation Details:**
+
+1. **Frontend (api-converge.js)** — Already implemented in Phase 1A
+   - `login(email, role, googleCredential)` — Sends POST to `/api/login`
+   - `logout()` — Sends POST to `/api/logout`
+   - `verifyToken()` and `decodeToken()` — Client-side JWT validation
+
+2. **Backend (routes.js)** — Updated endpoints
+   - `POST /api/login` — Public endpoint, calls `auth.authenticateUser()`
+   - `POST /api/logout` — Protected endpoint, requires auth
+
+3. **Authentication (auth.js)** — Phase 1B Testing Mode
+   - **Development mode:** Skips Google verification, accepts test users
+   - **Test allowlist:**
+     - manager@example.com (MANAGER)
+     - employee@example.com (EMPLOYEE)
+     - dataspoc@example.com (DATA_SPOC)
+     - admin@example.com (ADMIN)
+   - **Email validation:** Any @-based email (development), @converge.com.ph only (production)
+   - **Token generation:** Base64-encoded JWT with 30-min expiry
+   - **Token validation:** Checked on all protected routes via auth middleware
+
+**Deliverable:** Login works on Converge Cloud via HTTP
+
+---
+
+## Next Phase: Phase 1C — Google Apps Script Backend
+
+- Create `authenticateUser()` function in `src/backend-appscript/Code.gs`
+- Create `logoutUser()` function in `src/backend-appscript/Code.gs`
+- Implement allowlist lookup (Google Sheets)
+- Test on Google Apps Script web app deployment
+- **Result:** BOTH platforms working from same codebase ✅

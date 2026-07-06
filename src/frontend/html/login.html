@@ -221,9 +221,30 @@
   </div>
 
   <!-- Scripts (in order) -->
-  <script src="../js/api.js"></script>
+  <!-- 1. Platform detection (must be first) -->
+  <script src="../js/platform.js"></script>
+  
+  <!-- 2. Platform-specific API implementations -->
+  <script src="../js/api-converge.js"></script>
+  <script src="../js/api-appscript.js"></script>
+  
+  <!-- 3. API adapter (routes to platform-specific impl) -->
+  <script src="../js/api-adapter.js"></script>
+  
+  <!-- 4. Core app logic (uses API object) -->
   <script src="../js/app.js"></script>
   <script src="../js/login.js"></script>
+  
+  <!-- Legacy api.js (used as fallback for Phase 1 local testing) -->
+  <!-- Only loaded if API object not created by adapter -->
+  <script>
+    if (typeof API === 'undefined') {
+      console.log('[Login] API not created by adapter, loading legacy api.js for Phase 1 local testing');
+      const script = document.createElement('script');
+      script.src = '../js/api.js';
+      document.head.appendChild(script);
+    }
+  </script>
 
   <!-- Google Identity Services (for Phase 2+) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
