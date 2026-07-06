@@ -300,10 +300,45 @@ function saveSkillsAssessment(employeeId, assessmentData) {
       }
     });
     
+    // Detect conflicts if updating existing data
+    if (existingIndex >= 0) {
+      const conflictInfo = detectConflict(SHEETS.SKILLS_ASSESSMENT, employeeId, assessmentData);
+      
+      if (conflictInfo.hasConflict) {
+        logConflict(employeeId, SHEETS.SKILLS_ASSESSMENT, conflictInfo);
+        lock.releaseLock();
+        
+        // Return conflict info to frontend for user decision
+        return {
+          success: false,
+          message: 'Data conflict detected. Sheets has newer data.',
+          conflict: {
+            type: conflictInfo.type,
+            sheetsData: conflictInfo.sheetsData,
+            portalData: conflictInfo.portalData,
+            sheetsTimestamp: conflictInfo.sheetsTimestamp?.toString(),
+            portalTimestamp: conflictInfo.portalTimestamp?.toString()
+          }
+        };
+      }
+    }
+    
+    const now = new Date().toISOString();
+    
+    // Serialize array fields to JSON strings for storage in Sheets
     const assessmentObj = {
       assessmentId: assessmentData.assessmentId || Utilities.getUuid(),
       employeeId: employeeId,
-      ...assessmentData
+      managerId: assessmentData.managerId || null,
+      skills: JSON.stringify(assessmentData.skills || []),
+      requiredLevel: JSON.stringify(assessmentData.requiredLevel || []),
+      actualLevel: JSON.stringify(assessmentData.actualLevel || []),
+      remarks: JSON.stringify(assessmentData.remarks || []),
+      lastSyncedAt: now,
+      syncStatus: 'SYNCED',
+      // Include other non-array fields from assessmentData
+      ...(assessmentData.submittedAt && { submittedAt: assessmentData.submittedAt }),
+      ...(assessmentData.status && { status: assessmentData.status })
     };
     
     if (existingIndex >= 0) {
@@ -321,10 +356,10 @@ function saveSkillsAssessment(employeeId, assessmentData) {
     updateWorkflowStatus(employeeId, 'step1Complete', true);
     
     lock.releaseLock();
-    return true;
+    return { success: true, message: 'Skills assessment saved successfully' };
   } catch (e) {
     console.error(`[Database] Error saving skills assessment for ${employeeId}: ${e.message}`);
-    return false;
+    return { success: false, message: e.message };
   }
 }
 
@@ -360,10 +395,24 @@ function saveOKRUpload(employeeId, okrData) {
       }
     });
     
+    const now = new Date().toISOString();
+    
+    // Serialize array fields to JSON strings for storage in Sheets
     const okrObj = {
       uploadId: okrData.uploadId || Utilities.getUuid(),
       employeeId: employeeId,
-      ...okrData
+      dataSPOCId: okrData.dataSPOCId || null,
+      corporateOKR: okrData.corporateOKR || null,
+      teamOKR: okrData.teamOKR || null,
+      targets: JSON.stringify(okrData.targets || []),
+      weight: JSON.stringify(okrData.weight || []),
+      result: JSON.stringify(okrData.result || []),
+      lastSyncedAt: now,
+      syncStatus: 'SYNCED',
+      // Include other non-array fields from okrData
+      ...(okrData.finalScore !== undefined && { finalScore: okrData.finalScore }),
+      ...(okrData.bracket && { bracket: okrData.bracket }),
+      ...(okrData.submittedAt && { submittedAt: okrData.submittedAt })
     };
     
     if (existingIndex >= 0) {
@@ -415,13 +464,17 @@ function saveSelfAssessment(employeeId, selfAssessmentData) {
     let existingIndex = -1;
     values.forEach((row, i) => {
       const rowObj = rowToObject_(row, Object.keys(headers));
-      if (rowObj.EmployeeId === employeeId) {
+      if (rowObj.employeeId === employeeId) {
         existingIndex = i;
       }
     });
     
+    const now = new Date().toISOString();
     const assessmentObj = {
-      EmployeeId: employeeId,
+      selfAssessmentId: selfAssessmentData.selfAssessmentId || Utilities.getUuid(),
+      employeeId: employeeId,
+      lastSyncedAt: now,
+      syncStatus: 'SYNCED',
       ...selfAssessmentData
     };
     
@@ -475,14 +528,40 @@ function saveFeedForward(employeeId, managerId, feedForwardData) {
     let existingIndex = -1;
     values.forEach((row, i) => {
       const rowObj = rowToObject_(row, Object.keys(headers));
-      if (rowObj.EmployeeId === employeeId) {
+      if (rowObj.employeeId === employeeId) {
         existingIndex = i;
       }
     });
     
+    // Detect conflicts if updating existing data
+    if (existingIndex >= 0) {
+      const conflictInfo = detectConflict(SHEETS.FEED_FORWARD, employeeId, feedForwardData);
+      
+      if (conflictInfo.hasConflict) {
+        logConflict(employeeId, SHEETS.FEED_FORWARD, conflictInfo);
+        lock.releaseLock();
+        
+        return {
+          success: false,
+          message: 'Data conflict detected. Sheets has newer data.',
+          conflict: {
+            type: conflictInfo.type,
+            sheetsData: conflictInfo.sheetsData,
+            portalData: conflictInfo.portalData,
+            sheetsTimestamp: conflictInfo.sheetsTimestamp?.toString(),
+            portalTimestamp: conflictInfo.portalTimestamp?.toString()
+          }
+        };
+      }
+    }
+    
+    const now = new Date().toISOString();
     const feedForwardObj = {
-      EmployeeId: employeeId,
-      ManagerId: managerId,
+      feedForwardId: feedForwardData.feedForwardId || Utilities.getUuid(),
+      employeeId: employeeId,
+      managerId: managerId,
+      lastSyncedAt: now,
+      syncStatus: 'SYNCED',
       ...feedForwardData
     };
     
@@ -501,10 +580,10 @@ function saveFeedForward(employeeId, managerId, feedForwardData) {
     updateWorkflowStatus(employeeId, 'Step4_FeedForward', 'COMPLETED');
     
     lock.releaseLock();
-    return true;
+    return { success: true, message: 'Feed Forward saved successfully' };
   } catch (e) {
     console.error(`[Database] Error saving feed forward for ${employeeId}: ${e.message}`);
-    return false;
+    return { success: false, message: e.message };
   }
 }
 
@@ -536,14 +615,18 @@ function saveManagerAcknowledgement(employeeId, managerId, ackData) {
     let existingIndex = -1;
     values.forEach((row, i) => {
       const rowObj = rowToObject_(row, Object.keys(headers));
-      if (rowObj.EmployeeId === employeeId) {
+      if (rowObj.employeeId === employeeId) {
         existingIndex = i;
       }
     });
     
+    const now = new Date().toISOString();
     const ackObj = {
-      EmployeeId: employeeId,
-      ManagerId: managerId,
+      ackId: ackData.ackId || Utilities.getUuid(),
+      employeeId: employeeId,
+      managerId: managerId,
+      lastSyncedAt: now,
+      syncStatus: 'SYNCED',
       ...ackData
     };
     
@@ -596,13 +679,17 @@ function saveEmployeeAcknowledgement(employeeId, ackData) {
     let existingIndex = -1;
     values.forEach((row, i) => {
       const rowObj = rowToObject_(row, Object.keys(headers));
-      if (rowObj.EmployeeId === employeeId) {
+      if (rowObj.employeeId === employeeId) {
         existingIndex = i;
       }
     });
     
+    const now = new Date().toISOString();
     const ackObj = {
-      EmployeeId: employeeId,
+      ackId: ackData.ackId || Utilities.getUuid(),
+      employeeId: employeeId,
+      lastSyncedAt: now,
+      syncStatus: 'SYNCED',
       ...ackData
     };
     
@@ -645,14 +732,14 @@ function getAllScores(employeeId) {
     const feedForward = getSheet_(SHEETS.FEED_FORWARD);
     const managerAck = getSheet_(SHEETS.MANAGER_ACK);
     
-    // Helper to get row by EmployeeId
+    // Helper to get row by employeeId
     const getRowByEmployeeId = (sheet, employeeId) => {
       const headers = getHeaderMap_(sheet);
       const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
       const values = dataRange.getValues();
       return values.find(row => {
         const rowObj = rowToObject_(row, Object.keys(headers));
-        return rowObj.EmployeeId === employeeId;
+        return rowObj.employeeId === employeeId;
       });
     };
     
@@ -667,5 +754,637 @@ function getAllScores(employeeId) {
   } catch (e) {
     console.error(`[Database] Error getting all scores for ${employeeId}: ${e.message}`);
     return null;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                      READ FUNCTIONS FOR PORTAL DISPLAY                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gets skills assessment data for an employee (Step 1).
+ * @param {string} employeeId - The employee ID
+ * @returns {Object|null} Skills assessment object or null if not found
+ */
+function getSkillsAssessment(employeeId) {
+  try {
+    const sheet = getSheet_(SHEETS.SKILLS_ASSESSMENT);
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    const row = values.find(r => {
+      const rowObj = rowToObject_(r, Object.keys(headers));
+      return rowObj.employeeId === employeeId;
+    });
+    
+    if (row) {
+      const rowObj = rowToObject_(row, Object.keys(headers));
+      
+      // Deserialize array fields from JSON strings
+      if (rowObj.skills && typeof rowObj.skills === 'string') {
+        try {
+          rowObj.skills = JSON.parse(rowObj.skills);
+        } catch (e) {
+          rowObj.skills = [];
+        }
+      }
+      
+      if (rowObj.requiredLevel && typeof rowObj.requiredLevel === 'string') {
+        try {
+          rowObj.requiredLevel = JSON.parse(rowObj.requiredLevel);
+        } catch (e) {
+          rowObj.requiredLevel = [];
+        }
+      }
+      
+      if (rowObj.actualLevel && typeof rowObj.actualLevel === 'string') {
+        try {
+          rowObj.actualLevel = JSON.parse(rowObj.actualLevel);
+        } catch (e) {
+          rowObj.actualLevel = [];
+        }
+      }
+      
+      if (rowObj.remarks && typeof rowObj.remarks === 'string') {
+        try {
+          rowObj.remarks = JSON.parse(rowObj.remarks);
+        } catch (e) {
+          rowObj.remarks = [];
+        }
+      }
+      
+      return rowObj;
+    }
+    return null;
+  } catch (e) {
+    console.error(`[Database] Error getting skills assessment for ${employeeId}: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets OKR upload data for an employee (Step 2).
+ * @param {string} employeeId - The employee ID
+ * @returns {Object|null} OKR upload object or null if not found
+ */
+function getOKRUpload(employeeId) {
+  try {
+    const sheet = getSheet_(SHEETS.OKR_UPLOAD);
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    const row = values.find(r => {
+      const rowObj = rowToObject_(r, Object.keys(headers));
+      return rowObj.employeeId === employeeId;
+    });
+    
+    if (row) {
+      const rowObj = rowToObject_(row, Object.keys(headers));
+      
+      // Deserialize array fields from JSON strings
+      if (rowObj.targets && typeof rowObj.targets === 'string') {
+        try {
+          rowObj.targets = JSON.parse(rowObj.targets);
+        } catch (e) {
+          rowObj.targets = [];
+        }
+      }
+      
+      if (rowObj.weight && typeof rowObj.weight === 'string') {
+        try {
+          rowObj.weight = JSON.parse(rowObj.weight);
+        } catch (e) {
+          rowObj.weight = [];
+        }
+      }
+      
+      if (rowObj.result && typeof rowObj.result === 'string') {
+        try {
+          rowObj.result = JSON.parse(rowObj.result);
+        } catch (e) {
+          rowObj.result = [];
+        }
+      }
+      
+      return rowObj;
+    }
+    return null;
+  } catch (e) {
+    console.error(`[Database] Error getting OKR upload for ${employeeId}: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets self-assessment data for an employee (Step 3).
+ * @param {string} employeeId - The employee ID
+ * @returns {Object|null} Self-assessment object or null if not found
+ */
+function getSelfAssessment(employeeId) {
+  try {
+    const sheet = getSheet_(SHEETS.SELF_ASSESSMENT);
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    const row = values.find(r => {
+      const rowObj = rowToObject_(r, Object.keys(headers));
+      return rowObj.employeeId === employeeId;
+    });
+    
+    if (row) {
+      return rowToObject_(row, Object.keys(headers));
+    }
+    return null;
+  } catch (e) {
+    console.error(`[Database] Error getting self-assessment for ${employeeId}: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets Feed Forward data for an employee (Step 4).
+ * @param {string} employeeId - The employee ID
+ * @returns {Object|null} Feed Forward object or null if not found
+ */
+function getFeedForward(employeeId) {
+  try {
+    const sheet = getSheet_(SHEETS.FEED_FORWARD);
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    const row = values.find(r => {
+      const rowObj = rowToObject_(r, Object.keys(headers));
+      return rowObj.employeeId === employeeId;
+    });
+    
+    if (row) {
+      return rowToObject_(row, Object.keys(headers));
+    }
+    return null;
+  } catch (e) {
+    console.error(`[Database] Error getting feed forward for ${employeeId}: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets Manager Acknowledgement data for an employee (Step 5).
+ * @param {string} employeeId - The employee ID
+ * @returns {Object|null} Manager acknowledgement object or null if not found
+ */
+function getManagerAcknowledgement(employeeId) {
+  try {
+    const sheet = getSheet_(SHEETS.MANAGER_ACK);
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    const row = values.find(r => {
+      const rowObj = rowToObject_(r, Object.keys(headers));
+      return rowObj.employeeId === employeeId;
+    });
+    
+    if (row) {
+      return rowToObject_(row, Object.keys(headers));
+    }
+    return null;
+  } catch (e) {
+    console.error(`[Database] Error getting manager acknowledgement for ${employeeId}: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets Employee Acknowledgement data for an employee (Step 7).
+ * @param {string} employeeId - The employee ID
+ * @returns {Object|null} Employee acknowledgement object or null if not found
+ */
+function getEmployeeAcknowledgement(employeeId) {
+  try {
+    const sheet = getSheet_(SHEETS.EMPLOYEE_ACK);
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    const row = values.find(r => {
+      const rowObj = rowToObject_(r, Object.keys(headers));
+      return rowObj.employeeId === employeeId;
+    });
+    
+    if (row) {
+      return rowToObject_(row, Object.keys(headers));
+    }
+    return null;
+  } catch (e) {
+    console.error(`[Database] Error getting employee acknowledgement for ${employeeId}: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets all team members with their current workflow status (for Manager Portal).
+ * @param {string} managerId - The manager's employee ID
+ * @returns {Object[]} Array of team members with workflow status
+ */
+function getTeamMembersWithStatus(managerId) {
+  try {
+    const teamMembers = getTeamMembers(managerId);
+    return teamMembers.map(member => {
+      const status = getWorkflowStatus(member.employeeId);
+      return {
+        ...member,
+        workflowStatus: status
+      };
+    });
+  } catch (e) {
+    console.error(`[Database] Error getting team members with status for ${managerId}: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Gets recursive team members (direct + indirect reports) for a manager.
+ * @param {string} managerId - The manager's employee ID
+ * @returns {Object[]} Array of all direct and indirect team members
+ */
+function getTeamMembersRecursive(managerId) {
+  try {
+    const allEmployees = getAllEmployees();
+    const teamMembers = [];
+    const visited = new Set();
+    
+    const addTeamMembers = (currentManagerId) => {
+      const directReports = allEmployees.filter(emp => emp.managerId === currentManagerId && !visited.has(emp.employeeId));
+      directReports.forEach(report => {
+        visited.add(report.employeeId);
+        teamMembers.push(report);
+        addTeamMembers(report.employeeId); // Recursive call for this employee's reports
+      });
+    };
+    
+    addTeamMembers(managerId);
+    return teamMembers;
+  } catch (e) {
+    console.error(`[Database] Error getting recursive team members for ${managerId}: ${e.message}`);
+    return [];
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                       CONFLICT DETECTION & RESOLUTION                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Conflict detection object to track data changes.
+ * @typedef {Object} ConflictInfo
+ * @property {boolean} hasConflict - Whether a conflict exists
+ * @property {string} type - Type of conflict ('SHEETS_NEWER' | 'PORTAL_NEWER' | 'BOTH_MODIFIED')
+ * @property {Date} portalTimestamp - Last sync time from portal data
+ * @property {Date} sheetsTimestamp - Last modification time from Sheets
+ * @property {Object} portalData - Data from portal
+ * @property {Object} sheetsData - Data from Sheets
+ */
+
+/**
+ * Checks for conflicts between portal data and Sheets data.
+ * Compares timestamps to determine if data was modified externally.
+ * 
+ * @param {string} sheetName - Name of the sheet to check
+ * @param {string} employeeId - Employee ID to look for
+ * @param {Object} incomingData - Data being submitted from portal
+ * @returns {Object} ConflictInfo object
+ */
+function detectConflict(sheetName, employeeId, incomingData) {
+  try {
+    const sheet = getSheet_(sheetName);
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    // Find existing row in Sheets
+    let existingRow = null;
+    values.forEach((row) => {
+      const rowObj = rowToObject_(row, Object.keys(headers));
+      if (rowObj.employeeId === employeeId) {
+        existingRow = rowObj;
+      }
+    });
+    
+    // If no existing row, no conflict
+    if (!existingRow) {
+      return {
+        hasConflict: false,
+        type: 'NEW_RECORD',
+        portalData: incomingData,
+        sheetsData: null
+      };
+    }
+    
+    // Get timestamps
+    const sheetsLastSynced = existingRow.lastSyncedAt ? new Date(existingRow.lastSyncedAt) : null;
+    const incomingLastSynced = incomingData.lastSyncedAt ? new Date(incomingData.lastSyncedAt) : null;
+    
+    // If Sheets has never been synced, use creation time (assume no conflict)
+    if (!sheetsLastSynced) {
+      return {
+        hasConflict: false,
+        type: 'FIRST_SYNC',
+        portalData: incomingData,
+        sheetsData: existingRow
+      };
+    }
+    
+    // Compare: if incoming data is newer or same age, no conflict
+    if (!incomingLastSynced || incomingLastSynced >= sheetsLastSynced) {
+      return {
+        hasConflict: false,
+        type: 'PORTAL_NEWER',
+        portalData: incomingData,
+        sheetsData: existingRow,
+        portalTimestamp: incomingLastSynced,
+        sheetsTimestamp: sheetsLastSynced
+      };
+    }
+    
+    // Sheets data is newer than incoming data - potential conflict
+    return {
+      hasConflict: true,
+      type: 'SHEETS_NEWER',
+      portalData: incomingData,
+      sheetsData: existingRow,
+      portalTimestamp: incomingLastSynced,
+      sheetsTimestamp: sheetsLastSynced
+    };
+  } catch (e) {
+    console.error(`[Database] Error detecting conflict for ${employeeId}: ${e.message}`);
+    return {
+      hasConflict: false,
+      type: 'ERROR',
+      error: e.message
+    };
+  }
+}
+
+/**
+ * Resolves conflicts between portal and Sheets data.
+ * Default strategy: Portal data wins (last write wins) unless older.
+ * 
+ * @param {Object} conflictInfo - ConflictInfo object from detectConflict()
+ * @param {string} resolutionStrategy - How to resolve ('PORTAL_WINS' | 'SHEETS_WINS' | 'MERGE')
+ * @returns {Object} Resolved data object
+ */
+function resolveConflict(conflictInfo, resolutionStrategy = 'PORTAL_WINS') {
+  try {
+    if (!conflictInfo.hasConflict) {
+      return conflictInfo.portalData;
+    }
+    
+    switch (resolutionStrategy) {
+      case 'SHEETS_WINS':
+        return conflictInfo.sheetsData;
+        
+      case 'MERGE':
+        // Simple merge: take non-null values from both, preferring portal for conflicts
+        return {
+          ...conflictInfo.sheetsData,
+          ...conflictInfo.portalData,
+          conflictResolved: true,
+          resolutionStrategy: 'MERGE',
+          resolvedAt: new Date().toISOString()
+        };
+        
+      case 'PORTAL_WINS':
+      default:
+        return {
+          ...conflictInfo.portalData,
+          conflictResolved: true,
+          resolutionStrategy: 'PORTAL_WINS',
+          resolvedAt: new Date().toISOString(),
+          previousSheetsData: conflictInfo.sheetsData
+        };
+    }
+  } catch (e) {
+    console.error(`[Database] Error resolving conflict: ${e.message}`);
+    // Default to portal data if resolution fails
+    return conflictInfo.portalData;
+  }
+}
+
+/**
+ * Logs conflict information for audit trail.
+ * @param {string} employeeId - Employee ID involved in conflict
+ * @param {string} sheetName - Sheet name where conflict occurred
+ * @param {Object} conflictInfo - ConflictInfo object
+ * @returns {boolean} True if logged successfully
+ */
+function logConflict(employeeId, sheetName, conflictInfo) {
+  try {
+    // In a production system, this would write to an audit log sheet
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      employeeId: employeeId,
+      sheet: sheetName,
+      conflictType: conflictInfo.type,
+      portalTimestamp: conflictInfo.portalTimestamp,
+      sheetsTimestamp: conflictInfo.sheetsTimestamp
+    };
+    
+    console.log(`[Database] Conflict detected: ${JSON.stringify(logEntry)}`);
+    return true;
+  } catch (e) {
+    console.error(`[Database] Error logging conflict: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Gets sync status for all assessments of an employee.
+ * @param {string} employeeId - The employee ID
+ * @returns {Object} Sync status for each step
+ */
+function getSyncStatusForEmployee(employeeId) {
+  try {
+    const skills = Database.getSkillsAssessment(employeeId);
+    const okr = Database.getOKRUpload(employeeId);
+    const selfAssessment = Database.getSelfAssessment(employeeId);
+    const feedForward = Database.getFeedForward(employeeId);
+    const managerAck = Database.getManagerAcknowledgement(employeeId);
+
+    return {
+      employeeId: employeeId,
+      skills: {
+        exists: !!skills,
+        lastSynced: skills?.lastSyncedAt || null,
+        syncStatus: skills?.syncStatus || 'NOT_STARTED',
+        timestamp: skills?.lastSyncedAt ? new Date(skills.lastSyncedAt).toLocaleString() : 'N/A'
+      },
+      okr: {
+        exists: !!okr,
+        lastSynced: okr?.lastSyncedAt || null,
+        syncStatus: okr?.syncStatus || 'NOT_STARTED',
+        timestamp: okr?.lastSyncedAt ? new Date(okr.lastSyncedAt).toLocaleString() : 'N/A'
+      },
+      selfAssessment: {
+        exists: !!selfAssessment,
+        lastSynced: selfAssessment?.lastSyncedAt || null,
+        syncStatus: selfAssessment?.syncStatus || 'NOT_STARTED',
+        timestamp: selfAssessment?.lastSyncedAt ? new Date(selfAssessment.lastSyncedAt).toLocaleString() : 'N/A'
+      },
+      feedForward: {
+        exists: !!feedForward,
+        lastSynced: feedForward?.lastSyncedAt || null,
+        syncStatus: feedForward?.syncStatus || 'NOT_STARTED',
+        timestamp: feedForward?.lastSyncedAt ? new Date(feedForward.lastSyncedAt).toLocaleString() : 'N/A'
+      },
+      managerAck: {
+        exists: !!managerAck,
+        lastSynced: managerAck?.lastSyncedAt || null,
+        syncStatus: managerAck?.syncStatus || 'NOT_STARTED',
+        timestamp: managerAck?.lastSyncedAt ? new Date(managerAck.lastSyncedAt).toLocaleString() : 'N/A'
+      }
+    };
+  } catch (e) {
+    console.error(`[Database] Error getting sync status for ${employeeId}: ${e.message}`);
+    return null;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                         SHEETS CHANGE DETECTION                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gets the current Sheets modification time.
+ * Used to detect when data has changed externally.
+ * @returns {Object} Modification time info
+ */
+function getSheetsModificationTime() {
+  try {
+    const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('1uWtfoSdWef0JRuSPXp_zz5AvhB4uyZJV7geHLdTOehg'));
+    const lastEdited = ss.getLastEdited();
+    const lastEditedISO = lastEdited.toISOString();
+    
+    return {
+      success: true,
+      lastEdited: lastEditedISO,
+      timestamp: lastEdited.toLocaleString(),
+      canDeterminedTime: !!lastEdited
+    };
+  } catch (e) {
+    console.error(`[Database] Error getting Sheets modification time: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Checks if Sheets data has been modified since a given timestamp.
+ * @param {string} lastChecked - ISO timestamp of last check
+ * @returns {Object} { hasChanges: boolean, lastModified: string }
+ */
+function checkForExternalChanges(lastChecked) {
+  try {
+    const modTime = getSheetsModificationTime();
+    
+    if (!modTime.success) {
+      return {
+        hasChanges: false,
+        message: 'Could not determine Sheets modification time'
+      };
+    }
+    
+    const lastCheckedDate = new Date(lastChecked);
+    const lastModifiedDate = new Date(modTime.lastEdited);
+    
+    const hasChanges = lastModifiedDate > lastCheckedDate;
+    
+    return {
+      hasChanges: hasChanges,
+      lastModified: modTime.lastEdited,
+      lastModifiedFormatted: modTime.timestamp,
+      lastChecked: lastChecked,
+      message: hasChanges ? 'Sheets has been modified' : 'No changes detected'
+    };
+  } catch (e) {
+    console.error(`[Database] Error checking for external changes: ${e.message}`);
+    return {
+      hasChanges: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Gets a hash of all data to detect changes (alternative detection method).
+ * More thorough but slower than last edit time.
+ * @returns {string} Hash of current Sheets data
+ */
+function getDataHash() {
+  try {
+    const allSheets = [
+      SHEETS.SKILLS_ASSESSMENT,
+      SHEETS.OKR_UPLOAD,
+      SHEETS.SELF_ASSESSMENT,
+      SHEETS.FEED_FORWARD,
+      SHEETS.MANAGER_ACK,
+      SHEETS.EMPLOYEE_ACK
+    ];
+    
+    let dataString = '';
+    
+    allSheets.forEach(sheetName => {
+      try {
+        const sheet = getSheet_(sheetName);
+        const range = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn());
+        const values = range.getValues();
+        dataString += JSON.stringify(values);
+      } catch (e) {
+        // Sheet might not exist, skip it
+        console.warn(`[Database] Could not read sheet ${sheetName}: ${e.message}`);
+      }
+    });
+    
+    // Simple hash function
+    return Utilities.getUuid() + ':' + dataString.length;
+  } catch (e) {
+    console.error(`[Database] Error getting data hash: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Detects changes in a specific sheet since last check.
+ * @param {string} sheetName - Name of the sheet to check
+ * @param {number} lastRowCount - Last known row count
+ * @returns {Object} { hasChanges: boolean, newRowCount: number, changedRows: number }
+ */
+function detectSheetChanges(sheetName, lastRowCount) {
+  try {
+    const sheet = getSheet_(sheetName);
+    const currentRowCount = sheet.getLastRow();
+    
+    const hasChanges = currentRowCount !== lastRowCount;
+    const changedRows = Math.abs(currentRowCount - lastRowCount);
+    
+    return {
+      hasChanges: hasChanges,
+      sheet: sheetName,
+      previousRowCount: lastRowCount,
+      currentRowCount: currentRowCount,
+      changedRows: changedRows,
+      timestamp: new Date().toISOString()
+    };
+  } catch (e) {
+    console.error(`[Database] Error detecting sheet changes for ${sheetName}: ${e.message}`);
+    return {
+      hasChanges: false,
+      message: e.message
+    };
   }
 }

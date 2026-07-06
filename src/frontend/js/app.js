@@ -1,125 +1,201 @@
 /**
  * Own Your Career — Main Application Logic
  * 
- * Entry point for the frontend application.
- * Handles portal initialization, navigation, and shared UI logic.
+ * Handles portal routing, session management, and navigation.
+ * Platform-agnostic — works on both Converge Cloud and Google Apps Script.
  * 
- * @fileoverview Platform-agnostic main application module
+ * @fileoverview Main app orchestrator
  */
 
 'use strict';
 
-/* --------------------------------------------------------------------------
-   Platform Detection
-   -------------------------------------------------------------------------- */
-
 /**
- * Detects the current deployment platform.
- * @returns {'CONVERGE' | 'APPSCRIPT'} The current platform identifier
+ * Global App object for application state and routing
  */
-function detectPlatform() {
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    return 'APPSCRIPT';
-  }
-  return 'CONVERGE';
-}
-
-/** @type {'CONVERGE' | 'APPSCRIPT'} */
-const PLATFORM = detectPlatform();
-
-/* --------------------------------------------------------------------------
-   API Layer (Platform Abstraction)
-   -------------------------------------------------------------------------- */
-
-/**
- * Platform-agnostic API layer.
- * All backend calls go through this interface to maintain dual-platform compatibility.
- */
-const API = {
+const App = {
+  // Current user session
+  currentUser: null,
+  
+  // Session storage key
+  SESSION_KEY: 'oyc_user',
+  TOKEN_KEY: 'oyc_token',
+  
   /**
-   * Saves skills assessment data for an employee (Step 1).
-   * @param {string} employeeId - The employee being assessed
-   * @param {Object} assessmentData - Skills assessment form data
-   * @returns {Promise<Object>} Response from the backend
+   * Initialize application on page load
    */
-  saveSkillsAssessment: function(employeeId, assessmentData) {
-    // TODO: Implement per-platform backend call
+  init: function() {
+    console.log('[App] Initializing...');
+    
+    // Check for active session
+    this.checkSession();
+    
+    // Set up navigation listeners
+    this.setupNavigation();
   },
 
   /**
-   * Saves OKR upload data (Step 2).
-   * @param {string} employeeId - The employee whose OKR is being uploaded
-   * @param {Object} okrData - OKR form data (corporateOKR, teamOKR, targets, weight)
-   * @returns {Promise<Object>} Response from the backend
+   * Check if user has an active session
+   * Redirect to login if not
    */
-  saveOKRUpload: function(employeeId, okrData) {
-    // TODO: Implement per-platform backend call
+  checkSession: function() {
+    const user = sessionStorage.getItem(this.SESSION_KEY);
+    const token = sessionStorage.getItem(this.TOKEN_KEY);
+    
+    // Get current page
+    const currentPage = this.getCurrentPage();
+    
+    // If on login page, don't redirect
+    if (currentPage === 'login') {
+      console.log('[App] On login page, skipping session check');
+      return;
+    }
+    
+    // If no session, redirect to login
+    if (!user || !token || !API.verifyToken(token)) {
+      console.log('[App] No active session, redirecting to login');
+      this.redirectToLogin();
+      return;
+    }
+    
+    // Parse and store user
+    this.currentUser = JSON.parse(user);
+    console.log('[App] Session active for:', this.currentUser.email, 'role:', this.currentUser.role);
   },
 
   /**
-   * Saves self-assessment responses (Step 3).
-   * @param {string} employeeId - The employee submitting self-assessment
-   * @param {Object} selfAssessmentData - 4 mandatory question responses
-   * @returns {Promise<Object>} Response from the backend
+   * Get current page name from URL
+   * @returns {string} Page name (login, manager, employee, dataspoc, admin)
    */
-  saveSelfAssessment: function(employeeId, selfAssessmentData) {
-    // TODO: Implement per-platform backend call
+  getCurrentPage: function() {
+    const pathname = window.location.pathname;
+    
+    if (pathname.includes('login.html')) return 'login';
+    if (pathname.includes('manager-portal.html')) return 'manager';
+    if (pathname.includes('employee-portal.html')) return 'employee';
+    if (pathname.includes('dataspoc-portal.html')) return 'dataspoc';
+    if (pathname.includes('admin-portal.html')) return 'admin';
+    
+    return 'unknown';
   },
 
   /**
-   * Saves Feed Forward / Manager Assessment (Step 4).
-   * @param {string} employeeId - The employee being assessed
-   * @param {string} managerId - The manager providing assessment
-   * @param {Object} feedForwardData - Feed Forward form data
-   * @returns {Promise<Object>} Response from the backend
+   * Redirect user to appropriate portal based on role
+   * @param {string} role - User role
    */
-  saveFeedForward: function(employeeId, managerId, feedForwardData) {
-    // TODO: Implement per-platform backend call
+  redirectToPortal: function(role) {
+    const baseUrl = this.getBaseUrl();
+    
+    switch (role) {
+      case 'EMPLOYEE':
+        window.location.href = baseUrl + 'employee-portal.html';
+        break;
+      case 'MANAGER':
+        window.location.href = baseUrl + 'manager-portal.html';
+        break;
+      case 'DATA_SPOC':
+        window.location.href = baseUrl + 'dataspoc-portal.html';
+        break;
+      case 'ADMIN':
+        window.location.href = baseUrl + 'admin-portal.html';
+        break;
+      default:
+        console.warn('[App] Unknown role:', role);
+        this.redirectToLogin();
+    }
   },
 
   /**
-   * Saves acknowledgement (Steps 5 & 7).
-   * @param {string} employeeId - The employee whose review is being acknowledged
-   * @param {string} userId - The user submitting (manager for Step 5, employee for Step 7)
-   * @param {Object} ackData - { confirmed: boolean, comment: string }
-   * @param {'MANAGER' | 'EMPLOYEE'} type - Type of acknowledgement
-   * @returns {Promise<Object>} Response from the backend
+   * Redirect to login page
    */
-  saveAcknowledgement: function(employeeId, userId, ackData, type) {
-    // TODO: Implement per-platform backend call
+  redirectToLogin: function() {
+    const baseUrl = this.getBaseUrl();
+    window.location.href = baseUrl + 'login.html';
   },
 
   /**
-   * Retrieves the workflow status for an employee.
-   * @param {string} employeeId - The employee to check
-   * @returns {Promise<Object>} WorkflowStatus object
+   * Get base URL for HTML files
+   * @returns {string} Base URL path
    */
-  getWorkflowStatus: function(employeeId) {
-    // TODO: Implement per-platform backend call
+  getBaseUrl: function() {
+    const pathname = window.location.pathname;
+    const basePath = pathname.substring(0, pathname.lastIndexOf('/') + 1);
+    return basePath;
   },
 
   /**
-   * Retrieves all scores and feedback for an employee (Step 6 - read-only view).
-   * @param {string} employeeId - The employee to retrieve scores for
-   * @returns {Promise<Object>} All accumulated scores and feedback
+   * Set up global navigation listeners (logout buttons, etc.)
    */
-  getAllScores: function(employeeId) {
-    // TODO: Implement per-platform backend call
+  setupNavigation: function() {
+    // Look for logout buttons - defensive check
+    const logoutBtns = document.querySelectorAll('[data-action="logout"]');
+    if (logoutBtns && typeof logoutBtns[Symbol.iterator] === 'function') {
+      logoutBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.logout();
+        });
+      });
+    } else {
+      console.warn('[App] logoutBtns is not iterable');
+    }
+    
+    // Update user display if element exists
+    const userDisplay = document.getElementById('current-user');
+    if (userDisplay && this.currentUser) {
+      userDisplay.textContent = this.currentUser.email;
+    }
+  },
+
+  /**
+   * Logout current user
+   */
+  logout: function() {
+    console.log('[App] Logging out user:', this.currentUser?.email);
+    
+    // Clear session
+    sessionStorage.removeItem(this.SESSION_KEY);
+    sessionStorage.removeItem(this.TOKEN_KEY);
+    
+    // Redirect to login
+    this.redirectToLogin();
+  },
+
+  /**
+   * Get current user object
+   * @returns {Object|null} User object or null if not logged in
+   */
+  getCurrentUser: function() {
+    return this.currentUser;
+  },
+
+  /**
+   * Check if current user has a specific role
+   * @param {string} role - Role to check
+   * @returns {boolean} True if user has role
+   */
+  hasRole: function(role) {
+    return this.currentUser && this.currentUser.role === role;
+  },
+
+  /**
+   * Check if current user has ANY of the specified roles
+   * @param {Array<string>} roles - Array of roles to check
+   * @returns {boolean} True if user has any of the roles
+   */
+  hasAnyRole: function(roles) {
+    return this.currentUser && roles.includes(this.currentUser.role);
   }
 };
 
-/* --------------------------------------------------------------------------
-   Initialization
-   -------------------------------------------------------------------------- */
+// Initialize app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  App.init();
+});
 
-/**
- * Initializes the application on page load.
- * Detects the current portal and sets up appropriate event listeners.
- */
-function initApp() {
-  console.log(`[OYC] Platform detected: ${PLATFORM}`);
-  // TODO: Initialize portal-specific logic based on current page
+// Also initialize immediately if DOM is already ready
+if (document.readyState === 'loading') {
+  // Still loading
+} else {
+  // Already ready
+  App.init();
 }
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', initApp);

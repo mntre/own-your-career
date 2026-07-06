@@ -31,112 +31,131 @@ The dropdowns were grayed out and appeared unresponsive even when options were a
 
 **After:**
 ```javascript
-// Enable corporate dropdown if it has options (after CSV is loaded)
-if (hierarchy.corporates && hierarchy.corporates.length > 0) {
-  corporateSelect.disabled = false;
-  corporateSelect.classList.remove('disabled-field');
-}
+// In browser console:
+sessionStorage.removeItem('oyc_user');
+sessionStorage.removeItem('oyc_token');
+// Then refresh or navigate to login.html
 ```
 
-### 2. **Added CSS Styling for Disabled Fields** (styles.css)
-Added explicit styling for disabled form elements to improve UX:
+### Testing Scenarios
 
-```css
-/* Disabled field styling */
-.form-group input:disabled,
-.form-group select:disabled,
-.form-group textarea:disabled {
-  background-color: #f0f4f5;
-  color: #999;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
+#### Scenario 1: Valid Login
+1. Click "Manager" test button
+2. ✅ Should redirect to manager-portal.html
+3. ✅ Session should be stored
 
-.disabled-field {
-  background-color: #f0f4f5 !important;
-  color: #999 !important;
-  cursor: not-allowed !important;
-  opacity: 0.7 !important;
-}
+#### Scenario 2: Invalid Email (Future Testing)
+1. In browser console, manually call:
+   ```javascript
+   simulateLogin('invalid@example.com', 'EMPLOYEE')
+   ```
+2. ✅ Should show error: "Email not authorized"
+
+#### Scenario 3: Role Mismatch (Future Testing)
+1. In browser console, call:
+   ```javascript
+   simulateLogin('manager@example.com', 'EMPLOYEE')
+   ```
+2. ✅ Should show error: "Invalid role"
+
+#### Scenario 4: Session Persistence
+1. Log in as manager
+2. Go to manager-portal.html
+3. Refresh page (F5)
+4. ✅ Should NOT redirect to login (session still active)
+5. Close browser tab and reopen
+6. ❌ Session lost (sessionStorage cleared on browser close)
+
+### Console Logging
+
+The app logs activity to the browser console for debugging.
+
+Example log output:
+```
+[App] Initializing...
+[Login] Initializing login page
+[Login] Simulating login for: manager@example.com role: MANAGER
+[Login] Authentication successful, redirecting to portal
+[App] Session active for: manager@example.com role: MANAGER
 ```
 
-This provides clear visual feedback that disabled fields cannot be interacted with.
+**View logs:** Open DevTools (F12) → Console tab
 
-### 3. **Added Hierarchy Container Styles** (styles.css)
-Added responsive grid layout for the Corporate/Group/Department/Team selector:
+### Known Limitations (Phase 1)
 
-```css
-.hierarchy-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
-}
+1. **Google Sign-In not functional** — Use test buttons instead
+2. **No actual backend** — Mock data only in browser memory
+3. **Session lost on browser close** — Uses sessionStorage (not persistent)
+4. **No real JWT verification** — Uses mock JWT structure
+5. **No database** — All test data hardcoded
+6. **Portals not built yet** — Redirects work, but portal pages are empty
 
-.hierarchy-group {
-  margin-bottom: 0;
-}
-```
+These are addressed in Phase 2 (mock Express backend) and Phase 3 (real Converge backend).
 
-## How It Works Now
+### Implementation Details
 
-1. User uploads CSV file
-2. CSV is parsed successfully
-3. Corporate dropdown is **enabled** (no longer disabled)
-4. User selects a Corporate value → Group dropdown becomes enabled
-5. User selects Group → Department dropdown becomes enabled
-6. User selects Department → Team dropdown becomes enabled
-7. User selects Team (optional) → "Generate OKR Form" button works
+**Files Created:**
+- `src/frontend/js/api.js` — Mock API with test users (4 roles)
+- `src/frontend/js/app.js` — App routing and session management
+- Updated `src/frontend/js/login.js` — Integrated mock API + test UI
 
-## Testing
+**Mock API Features:**
+- 4 test users with role-based routing
+- Mock JWT generation (base64 encoded, 30-min expiry)
+- Token validation functions
+- Error handling for invalid emails/roles
+- 500ms network delay simulation (realistic UX)
 
-**Test Case 1: CSV Upload → Dropdown Population**
-1. Upload `docs/SAMPLE_OKR_DATA.csv`
-2. Verify CSV success message appears
-3. **Verify Corporate dropdown now has options visible and clickable**
-4. Select "Converge ICT Solutions"
-5. **Verify Group dropdown becomes enabled and shows "People & Culture"**
-6. Select "People & Culture"
-7. **Verify Department dropdown shows "People Platforms and Analytics"**
-8. Select department
-9. **Verify Team dropdown shows "Platforms" and "Analytics"**
-10. Click "Generate OKR Form" → OKR table should populate
+**Session Storage:**
+- `oyc_user` — User object (email, role, name, department)
+- `oyc_token` — JWT token for auth checks
 
-**Test Case 2: Cascading Disable/Enable**
-- Change Corporate selection → Group resets, stays disabled until new selection
-- Change Group selection → Department resets, stays disabled until new selection
-- Verify disabled fields have gray background and "not-allowed" cursor
+---
 
-## Files Modified
+## Moving to Phase 2
 
-1. **`src/frontend/html/dataspoc-portal.html`**
-   - Updated `populateHierarchyDropdowns()` to enable Corporate dropdown after CSV load
-   - Lines ~337-368
+When ready to add a backend:
 
-2. **`src/frontend/css/styles.css`**
-   - Added disabled field styling
-   - Added hierarchy container grid layout
-   - Lines ~149-166, ~216-230
+1. Create `src/backend-converge/server.js` (Express app)
+2. Create `/auth/login` endpoint
+3. Update `api.js` to call real backend instead of mock
+4. Add actual allowlist database query
+5. Generate real JWT tokens
 
-## Browser Compatibility
+No frontend changes needed—API interface stays the same.
 
-This fix improves compatibility with:
-- Chrome/Edge/Brave (all versions)
-- Firefox (all versions)
-- Safari (all versions)
+---
 
-The fix works because:
-- We properly manage the `disabled` attribute (remove when needed)
-- We use standard CSS for disabled state styling
-- We provide visual feedback for disabled/enabled states
+## Troubleshooting
 
-## Next Steps
+### Portal doesn't load after login
+- Check browser console for errors
+- Verify HTML files exist at expected paths
+- Try starting HTTP server again
 
-If dropdown options still don't appear after these changes:
-1. Check browser console for JavaScript errors (F12 → Console tab)
-2. Verify CSV file has correct headers: `Corporate,Group,Department,Team,Objective,Key result,Objective Weight`
-3. Open browser DevTools → Elements tab → inspect the `<select>` element
-4. Verify options are present in the DOM even if not visible
+### Session lost immediately
+- This is expected (sessionStorage is per-tab)
+- Check DevTools → Application → Session Storage
+- If empty, session wasn't stored
+
+### Test buttons don't appear
+- Check browser console for errors
+- Verify `api.js` and `app.js` loaded
+- Clear browser cache (Ctrl+Shift+Delete)
+
+### "Cannot find module" errors
+- Using `file://` protocol without HTTP server
+- Use HTTP server: `python -m http.server 3000`
+
+---
+
+## Future Phases
+
+1. ✅ Phase 1: Frontend login working locally
+2. 🔄 Phase 2: Mock Express backend with real routes
+3. 📋 Phase 3: Build portal pages (Manager, Employee, Data SPOC, Admin)
+4. 🔗 Phase 4: Connect to real Converge backend
+5. 📱 Phase 5: Google Apps Script deployment
 
 ---
 
