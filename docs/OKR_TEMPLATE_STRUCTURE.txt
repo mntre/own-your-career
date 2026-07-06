@@ -1,0 +1,201 @@
+================================================================================
+ENHANCED OKR TEMPLATE — 4-Level Hierarchy with DOWNWARD Cascade
+================================================================================
+
+OVERVIEW:
+New CSV format supports complete OKR hierarchy:
+  Corporate → Group → Department → Team
+  
+With DOWNWARD cascading fallback logic:
+  - If Department is blank → Use Group OKR
+  - If Team is blank → Use Department OKR (or Group if Department is blank)
+
+
+================================================================================
+CSV STRUCTURE
+================================================================================
+
+11 Required Columns (in exact order):
+
+1.  Corporate              - Company/Converge entity
+2.  Group                  - Business group (e.g., People Platforms)
+3.  Group_Objective        - Group-level objective (REQUIRED - always provided)
+4.  Group_KeyResult        - Group-level key result (REQUIRED - always provided)
+5.  Department             - Functional department (e.g., Data Analytics)
+6.  Department_Objective   - Department-specific objective (OPTIONAL - can be blank)
+7.  Department_KeyResult   - Department-specific key result (OPTIONAL - can be blank)
+8.  Team                   - Team within department (e.g., Data Analytics, Platforms)
+9.  Team_Objective         - Team-specific objective (OPTIONAL - can be blank)
+10. Team_KeyResult         - Team-specific key result (OPTIONAL - can be blank)
+11. Weight                 - Percentage weight (0-100)
+
+
+================================================================================
+FALLBACK LOGIC (DOWNWARD CASCADE)
+================================================================================
+
+Cascade Direction: Group → Department → Team (DOWNWARD)
+
+Priority Hierarchy:
+  1. Group (BASE LEVEL - always provided - highest priority)
+  2. Department (can be blank, inherits from Group)
+  3. Team (can be blank, inherits from Department or Group)
+
+Rule 1: Group_Objective / Group_KeyResult
+├─ ALWAYS must be provided
+└─ This is the BASE level
+
+Rule 2: Department_Objective / Department_KeyResult blank?
+├─ IF blank → Use Group_Objective / Group_KeyResult (INHERIT FROM GROUP)
+├─ IF provided → Use Department values
+└─ Department CAN override Group
+
+Rule 3: Team_Objective / Team_KeyResult blank?
+├─ IF blank → Use Department's (INHERIT FROM DEPARTMENT)
+├─ IF Department is also blank → Use Group's (CASCADE THROUGH Department)
+├─ IF provided → Use Team values
+└─ Team CAN override Department or Group
+
+Examples:
+
+SCENARIO A: Group Only (Dept & Team blank)
+  Group:      "Streamline hiring" / "Reduce time-to-hire"
+  Department: "Streamline hiring" / "Reduce time-to-hire"  (inherited from Group)
+  Team:       "Streamline hiring" / "Reduce time-to-hire"  (inherited from Group via Dept)
+
+SCENARIO B: Group + Department (Team blank)
+  Group:      "Build scalable systems" / "Deploy portal"
+  Department: "Improve reporting" / "Deliver 12+ reports"  (provided, overrides Group)
+  Team:       "Improve reporting" / "Deliver 12+ reports"  (inherited from Department)
+
+SCENARIO C: All Levels (No inheritance needed)
+  Group:      "Group objective" / "Group KR"
+  Department: "Dept objective" / "Dept KR"
+  Team:       "Team objective" / "Team KR"
+
+
+================================================================================
+CSV ROW EXAMPLES
+================================================================================
+
+Example 1: Group Only (Department & Team blank)
+──────────────────────────────────────────────
+Converge,People Platforms,"Streamline hiring process","Reduce time-to-hire by 20%",Recruitment,,,Recruitment Operations,,"",35
+
+RESULT:
+  Group:      "Streamline hiring process" / "Reduce time-to-hire by 20%"  (provided)
+  Department: "Streamline hiring process" / "Reduce time-to-hire by 20%"  (inherited from Group)
+  Team:       "Streamline hiring process" / "Reduce time-to-hire by 20%"  (inherited from Group via Dept)
+
+
+Example 2: Group + Department (Team blank)
+───────────────────────────────────────────
+Converge,People Platforms,"Improve reporting efficiency","Reduce report time by 50%",People Platforms & Analytics,"Improve reporting quality","Deliver 12+ ad-hoc reports",Data Analytics,,"",25
+
+RESULT:
+  Group:      "Improve reporting efficiency" / "Reduce report time by 50%"  (provided)
+  Department: "Improve reporting quality" / "Deliver 12+ ad-hoc reports"  (provided, overrides Group)
+  Team:       "Improve reporting quality" / "Deliver 12+ ad-hoc reports"  (inherited from Department)
+
+
+Example 3: Group + Team (Department blank)
+───────────────────────────────────────────
+Converge,People Platforms,"Build scalable systems","Deploy new portal infrastructure by Q2",People Platforms & Analytics,,,Platforms,"Enhance user experience","Implement accessibility standards",30
+
+RESULT:
+  Group:      "Build scalable systems" / "Deploy new portal infrastructure by Q2"  (provided)
+  Department: "Build scalable systems" / "Deploy new portal infrastructure by Q2"  (inherited from Group, Dept blank)
+  Team:       "Enhance user experience" / "Implement accessibility standards"  (provided, overrides Group/Dept)
+
+
+Example 4: All Levels Provided (No Inheritance)
+────────────────────────────────────────────────
+Converge,People Platforms,"Build scalable systems","Deploy portal by Q2",People Platforms & Analytics,"Improve reporting quality","Deliver 12+ reports","Data Analytics","Optimize team performance","Complete 100% projects",20
+
+RESULT:
+  Group:      "Build scalable systems" / "Deploy portal by Q2"  (provided)
+  Department: "Improve reporting quality" / "Deliver 12+ reports"  (provided, overrides Group)
+  Team:       "Optimize team performance" / "Complete 100% projects"  (provided, overrides all)
+
+
+================================================================================
+TESTING DATA (From SAMPLE_OKR_TEMPLATE.csv)
+================================================================================
+
+The template includes mixed scenarios for testing:
+
+✓ ROWS 1-2: Data Analytics - Group Only, No Dept/Team
+  └─ All levels use Group: "Drive data-driven decision making"
+
+✓ ROW 3: Data Analytics - Group + Department, No Team
+  └─ Dept overrides Group: "Improve reporting quality"
+  └─ Team inherits Department: "Improve reporting quality"
+
+✓ ROWS 5-6: Platforms - Group + Team, No Dept
+  └─ Department inherits Group: "Build scalable systems"
+  └─ Rows 5: Team uses Group (inherited via Dept)
+  └─ Row 6: Team overrides with "Enhance user experience"
+
+✓ ROW 7: Platforms - Group + Team, No Dept
+  └─ All levels but Team uses own
+
+✓ ROWS 9-11: Recruitment - Group Only, No Dept/Team
+  └─ Rows 9-10: All levels use Group
+  └─ Row 11: Team provides own value: "Build feedback system"
+
+✓ ROWS 12-14: Compensation - Group Only, No Dept/Team
+  └─ Rows 12-13: All levels use Group
+  └─ Row 14: Team provides own value
+
+
+================================================================================
+WEIGHT DISTRIBUTION
+================================================================================
+
+Per Team/Department:
+  - Weights should sum to ~100% (allow 1% tolerance)
+  - Can be spread across multiple rows
+  - Weight applies to OKR score calculation
+
+Formula:
+  OKR Score = Sum(Actual Result % × Weight) / 100
+
+
+================================================================================
+CONSOLE DEBUG OUTPUT
+================================================================================
+
+When CSV is parsed, console shows:
+
+  Group OKR (provided): "Build scalable systems" / "Deploy portal"
+  Department OKR (provided): "" / ""
+  Team OKR (provided): "Enhance user experience" / "Implement accessibility"
+  ➜ Final Group: "Build scalable systems" / "Deploy portal"
+  ➜ Final Department: "Build scalable systems" / "Deploy portal"  (inherited from Group)
+  ➜ Final Team: "Enhance user experience" / "Implement accessibility"
+
+This shows cascade path and which values were inherited vs. provided.
+
+
+================================================================================
+VALIDATION RULES
+================================================================================
+
+✓ ALLOWED BLANKS:
+  - Department_Objective (will inherit from Group)
+  - Department_KeyResult (will inherit from Group)
+  - Team_Objective (will inherit from Department or Group)
+  - Team_KeyResult (will inherit from Department or Group)
+
+✗ NOT ALLOWED (Will cause error):
+  - Corporate (must have value)
+  - Group (must have value)
+  - Group_Objective (REQUIRED - must have value)
+  - Group_KeyResult (REQUIRED - must have value)
+  - Department (must have value)
+  - Team (must have value)
+  - Weight (must be valid number)
+
+
+================================================================================
+Last Updated: July 6, 2026

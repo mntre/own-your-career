@@ -151,9 +151,12 @@ function validateSelfAssessment(formData) {
 /**
  * Parses a CSV file and extracts OKR hierarchy and key results data.
  * Handles multi-line fields (text with line breaks within quoted cells).
+ * Supports 4-level hierarchy with fallback logic:
+ * - If Department_Objective/KeyResult blank → use Group_Objective/KeyResult
+ * - If Team_Objective/KeyResult blank → use Department's (or Group's if Dept blank)
  * 
  * Expected CSV structure (with headers):
- * Corporate,Group,Department,Team,Objective,Key Result,Objective Weight
+ * Corporate,Group,Group_Objective,Group_KeyResult,Department,Department_Objective,Department_KeyResult,Team,Team_Objective,Team_KeyResult,Weight
  * 
  * @param {File} file - The CSV file to parse
  * @returns {Promise<Object>} Parsed OKR structure with hierarchy and key results
@@ -205,11 +208,23 @@ function parseCSVFile(file) {
         const expectedHeaders = [
           'Corporate',
           'Group',
+          'Group_Objective',
+          'Group_KeyResult',
+          'Group_Category',
+          'Group_TargetResult',
+          'Group_Weight',
           'Department',
+          'Department_Objective',
+          'Department_KeyResult',
+          'Department_Category',
+          'Department_TargetResult',
+          'Department_Weight',
           'Team',
-          'Objective',
-          'Key Result',
-          'Objective Weight'
+          'Team_Objective',
+          'Team_KeyResult',
+          'Team_Category',
+          'Team_TargetResult',
+          'Team_Weight'
         ];
 
         // Validate headers
@@ -258,11 +273,23 @@ function parseCSVFile(file) {
 
           const corporate = row[0];
           const group = row[1];
-          const department = row[2];
-          const team = row[3];
-          const objective = row[4];
-          const keyResult = row[5];
-          const weight = parseFloat(row[6]);
+          const groupObjective = row[2];
+          const groupKeyResult = row[3];
+          const groupCategory = row[4];
+          const groupTargetResult = row[5];
+          const groupWeight = parseFloat(row[6]);
+          const department = row[7];
+          const departmentObjective = row[8];
+          const departmentKeyResult = row[9];
+          const departmentCategory = row[10];
+          const departmentTargetResult = row[11];
+          const departmentWeight = parseFloat(row[12]);
+          const team = row[13];
+          const teamObjective = row[14];
+          const teamKeyResult = row[15];
+          const teamCategory = row[16];
+          const teamTargetResult = row[17];
+          const teamWeight = parseFloat(row[18]);
 
           // Skip row if corporate is empty
           if (!corporate || corporate.length === 0) {
@@ -272,17 +299,49 @@ function parseCSVFile(file) {
           }
 
           // Validate weight is numeric
-          if (isNaN(weight)) {
-            throw new Error(`Row ${i + 1}: Objective Weight "${row[6]}" is not a valid number.`);
+          if (isNaN(teamWeight)) {
+            throw new Error(`Row ${i + 1}: Team Weight "${row[18]}" is not a valid number.`);
           }
 
+          // ===== FALLBACK LOGIC: Fill in missing objectives/key results =====
+          // Cascade DOWNWARD: Group → Department → Team
+          
+          // Final Group: Use Group if provided
+          const finalGroupObjective = groupObjective && groupObjective.length > 0 
+            ? groupObjective 
+            : null;
+          const finalGroupKeyResult = groupKeyResult && groupKeyResult.length > 0 
+            ? groupKeyResult 
+            : null;
+          
+          // Final Department: If Department is blank → use Group's
+          const finalDeptObjective = departmentObjective && departmentObjective.length > 0 
+            ? departmentObjective 
+            : finalGroupObjective;
+          const finalDeptKeyResult = departmentKeyResult && departmentKeyResult.length > 0 
+            ? departmentKeyResult 
+            : finalGroupKeyResult;
+          
+          // Final Team: If Team is blank → use Department's (which may be inherited from Group)
+          const finalTeamObjective = teamObjective && teamObjective.length > 0 
+            ? teamObjective 
+            : finalDeptObjective;
+          const finalTeamKeyResult = teamKeyResult && teamKeyResult.length > 0 
+            ? teamKeyResult 
+            : finalDeptKeyResult;
+
           validRowCount++;
-          console.log(`Row ${i}: ✓ Valid - Corporate: "${corporate}", Group: "${group}", Dept: "${department}", Team: "${team}"`);
+          console.log(`Row ${i}: ✓ Valid - Corp: "${corporate}", Group: "${group}", Dept: "${department}", Team: "${team}"`);
+          console.log(`  Group OKR (provided): "${groupObjective}" / "${groupKeyResult}"`);
+          console.log(`  Department OKR (provided): "${departmentObjective}" / "${departmentKeyResult}"`);
+          console.log(`  Team OKR (provided): "${teamObjective}" / "${teamKeyResult}"`);
+          console.log(`  ➜ Final Group: "${finalGroupObjective}" / "${finalGroupKeyResult}"`);
+          console.log(`  ➜ Final Department: "${finalDeptObjective}" / "${finalDeptKeyResult}"`);
+          console.log(`  ➜ Final Team: "${finalTeamObjective}" / "${finalTeamKeyResult}"`);
 
           // Add unique values to hierarchy
           if (hierarchy.corporates.indexOf(corporate) === -1) {
             hierarchy.corporates.push(corporate);
-            console.log('  → Added corporate:', corporate);
           }
           if (hierarchy.groups.indexOf(group) === -1) {
             hierarchy.groups.push(group);
@@ -294,15 +353,31 @@ function parseCSVFile(file) {
             hierarchy.teams.push(team);
           }
 
-          // Add key result
+          // Add key result with BOTH original and final values
           const keyResultObj = {
             corporate: corporate,
             group: group,
+            groupObjective: groupObjective,
+            groupKeyResult: groupKeyResult,
+            groupCategory: groupCategory,
+            groupTargetResult: groupTargetResult,
+            groupWeight: groupWeight,
             department: department,
+            departmentObjective: departmentObjective,
+            departmentKeyResult: departmentKeyResult,
+            departmentCategory: departmentCategory,
+            departmentTargetResult: departmentTargetResult,
+            departmentWeight: departmentWeight,
             team: team,
-            objective: objective,
-            keyResult: keyResult,
-            weight: weight,
+            teamObjective: teamObjective,
+            teamKeyResult: teamKeyResult,
+            teamCategory: teamCategory,
+            teamTargetResult: teamTargetResult,
+            teamWeight: teamWeight,
+            // Final computed values after fallback
+            objective: finalTeamObjective,
+            keyResult: finalTeamKeyResult,
+            weight: teamWeight,
             actualResult: ''
           };
 

@@ -600,6 +600,110 @@ p {
   color: #ccc;
 }
 
+.input-actual-group,
+.input-actual-dept,
+.input-actual-team {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s ease;
+}
+
+.input-actual-group:focus,
+.input-actual-dept:focus,
+.input-actual-team:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+}
+
+.input-actual-group::placeholder,
+.input-actual-dept::placeholder,
+.input-actual-team::placeholder {
+  color: #ccc;
+}
+
+/* Category column */
+.category-cell {
+  min-width: 140px;
+}
+
+.input-category {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s ease;
+  background-color: var(--color-white);
+  cursor: pointer;
+}
+
+.input-category:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+}
+
+/* Read-only category (for Group OKR) */
+.category-readonly {
+  display: block;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  background-color: #f0f4f5;
+  color: #666;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-teal-soft);
+}
+
+/* Target Result column (read-only) */
+.target-cell {
+  min-width: 150px;
+}
+
+.input-target {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-sm);
+  background-color: #f0f4f5;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.input-target::placeholder {
+  color: #bbb;
+}
+
+/* Score column (read-only) */
+.score-cell {
+  min-width: 120px;
+}
+
+.input-score {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-sm);
+  background-color: #f0f4f5;
+  color: var(--color-primary);
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+.input-score::placeholder {
+  color: #bbb;
+}
+
 /* Table responsive wrapper */
 .table-responsive {
   overflow-x: auto;
@@ -636,6 +740,28 @@ p {
 }
 
 .okr-form-actions .btn {
+  flex-shrink: 0;
+}
+
+/* OKR Form Sections */
+.okr-section {
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-2xl);
+  border-bottom: 1px solid var(--color-teal-soft);
+}
+
+.okr-section:last-of-type {
+  border-bottom: none;
+}
+
+.okr-section-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  justify-content: flex-end;
+}
+
+.okr-section-actions .btn {
   flex-shrink: 0;
 }
 
@@ -677,6 +803,34 @@ p {
   .input-actual {
     padding: var(--spacing-xs) var(--spacing-sm);
     font-size: 0.95rem;
+  }
+
+  .input-actual-group,
+  .input-actual-dept,
+  .input-actual-team {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.95rem;
+  }
+
+  .input-actual-dept,
+  .input-actual-team {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.95rem;
+  }
+
+  .input-category,
+  .input-target,
+  .input-score {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.95rem;
+  }
+
+  .okr-section-actions {
+    flex-direction: column;
+  }
+
+  .okr-section-actions .btn {
+    width: 100%;
   }
 
   .okr-form-actions {
