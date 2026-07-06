@@ -74,6 +74,8 @@ own-your-career/
 | `constants.js` | Brackets, formulas, config values, question text |
 | `workflow.js` | Step sequencing, state transitions, status tracking |
 | `export.js` | SFTP bulk export data formatting |
+| `Code.gs` | Google Apps Script main functions: authenticateUser, logoutUser, workflow handlers |
+| `Database.gs` | Google Sheets data layer CRUD operations, conflict detection |
 
 ---
 

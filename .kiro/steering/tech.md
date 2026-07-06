@@ -48,6 +48,32 @@ The frontend uses a runtime detection + adapter pattern to support both platform
 - `GmailApp` for email
 - Google Sheets as data layer (headers in Row 1, column name lookup)
 
+### Phase 1C: Google Apps Script Authentication
+
+**Implemented in `src/backend-appscript/Code.gs`:**
+
+1. **authenticateUser(email, role, googleCredential)**
+   - Phase 1C Testing Mode: Accepts 4 test users (manager@, employee@, dataspoc@, admin@example.com)
+   - Validates email + role combination
+   - Generates base64-encoded JWT token (AppScript-compatible)
+   - Returns user object with email, role, name, department
+   - 30-minute token expiry
+
+2. **logoutUser()**
+   - Simple confirmation endpoint
+   - Returns success response
+   - Frontend clears session storage
+
+3. **Helper Functions:**
+   - `generateMockJWT(user)` — Creates base64-encoded JWT with 30-min expiry
+   - `verifyTokenServerSide(token)` — Validates token expiry on server
+   - `logAccessAttempt(email, role, result, reason)` — Audit logging
+
+**Frontend Integration:**
+- `api-appscript.js` calls `google.script.run.authenticateUser(email, role, googleCredential)`
+- `api-adapter.js` routes API calls based on detected platform
+- Same login UI works on both Converge (HTTP) and AppScript (google.script.run) backends
+
 ## Integrations
 
 | System | Method | Timing |
