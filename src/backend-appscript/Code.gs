@@ -9,6 +9,7 @@
  */
 
 /* -------------------------------------------------------------------------- */
+<<<<<<< Updated upstream
 /*                         PHASE 1C: AUTHENTICATION                           */
 /* -------------------------------------------------------------------------- */
 
@@ -89,10 +90,60 @@ function authenticateUser(email, role, googleCredential) {
       success: false,
       message: `Authentication error: ${error.message}`
     };
+=======
+/*                         SHARED LOGGING FUNCTION                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Logs access attempts for audit trail.
+ * @param {string} user - User identifier (email or ID)
+ * @param {string} role - User role
+ * @param {string} result - GRANTED or DENIED
+ * @param {string} details - Additional details
+ */
+function logAccessAttempt(user, role, result, details) {
+  try {
+    const timestamp = new Date().toISOString();
+    console.log(`[Access] ${timestamp} | User: ${user} | Role: ${role} | Result: ${result} | Details: ${details}`);
+    // TODO: Store in audit log sheet for persistent logging
+  } catch (e) {
+    console.error(`[Code] Error logging access attempt: ${e.message}`);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                     SHARED HELPER FUNCTIONS (for all files)                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gets a sheet by name from Google Sheets.
+ * @param {string} sheetName - Name of the sheet
+ * @returns {Sheet} Google Sheets sheet object
+ */
+function getSheet_(sheetName) {
+  try {
+    const spreadsheetId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+    if (!spreadsheetId) {
+      throw new Error('SPREADSHEET_ID not configured in Script Properties');
+    }
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    if (!ss) {
+      throw new Error('Spreadsheet not found. Check SPREADSHEET_ID in Script Properties.');
+    }
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      throw new Error(`Sheet not found: ${sheetName}`);
+    }
+    return sheet;
+  } catch (e) {
+    console.error(`[Code] Error getting sheet "${sheetName}": ${e.message}`);
+    throw e;
+>>>>>>> Stashed changes
   }
 }
 
 /**
+<<<<<<< Updated upstream
  * Logs out a user (clears session on server side).
  * Phase 1C Implementation for Google Apps Script
  * 
@@ -118,10 +169,28 @@ function logoutUser() {
       success: false,
       message: `Logout error: ${error.message}`
     };
+=======
+ * Gets the header row and creates a column name → index map.
+ * @param {Sheet} sheet - Google Sheets sheet object
+ * @returns {Object} Map of column names to indices (0-indexed)
+ */
+function getHeaderMap_(sheet) {
+  try {
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const map = {};
+    headers.forEach((header, i) => {
+      map[header.trim()] = i;
+    });
+    return map;
+  } catch (e) {
+    console.error(`[Code] Error getting header map: ${e.message}`);
+    throw e;
+>>>>>>> Stashed changes
   }
 }
 
 /**
+<<<<<<< Updated upstream
  * Generates a mock JWT token for AppScript (Phase 1C).
  * Format: base64-encoded JSON with payload + expiry
  * Real JWT library not available in AppScript, so using simplified format.
@@ -176,11 +245,51 @@ function verifyTokenServerSide(token) {
     return decoded;
   } catch (error) {
     console.error('[Code.verifyTokenServerSide] Invalid token:', error.message);
+=======
+ * Gets an employee by ID from the Employees sheet.
+ * @param {string} employeeId - Employee ID
+ * @returns {Object} Employee object or null if not found
+ */
+function getEmployeeById_(employeeId) {
+  try {
+    const SHEETS = {
+      EMPLOYEES: 'Employee Database'
+    };
+    
+    const sheet = getSheet_(SHEETS.EMPLOYEES);
+    const headerMap = getHeaderMap_(sheet);
+    const employeeIdCol = headerMap['EmployeeID'];
+    
+    if (employeeIdCol === undefined) {
+      console.error('[Code] EmployeeID column not found in Employees sheet');
+      return null;
+    }
+    
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    for (let i = 0; i < values.length; i++) {
+      if (values[i][employeeIdCol] === employeeId) {
+        // Convert row to object using headers
+        const row = values[i];
+        const employee = {};
+        Object.entries(headerMap).forEach(([colName, colIndex]) => {
+          employee[colName] = row[colIndex];
+        });
+        return employee;
+      }
+    }
+    
+    return null;
+  } catch (e) {
+    console.error(`[Code] Error getting employee by ID: ${e.message}`);
+>>>>>>> Stashed changes
     return null;
   }
 }
 
 /**
+<<<<<<< Updated upstream
  * Logs an authentication access attempt for audit trail.
  * @param {string} email - User email
  * @param {string} role - User role
@@ -202,12 +311,88 @@ function logAccessAttempt(email, role, result, reason) {
     // TODO: Store in audit log sheet for production
   } catch (error) {
     console.error('[Code.logAccessAttempt] Error:', error.message);
+=======
+ * Gets an employee by email from the Employees sheet.
+ * @param {string} email - Employee email address
+ * @returns {Object} Employee object or null if not found
+ */
+function getEmployeeByEmail_(email) {
+  try {
+    const SHEETS = {
+      EMPLOYEES: 'Employee Database'
+    };
+    
+    const sheet = getSheet_(SHEETS.EMPLOYEES);
+    const headerMap = getHeaderMap_(sheet);
+    const emailCol = headerMap['Email'];
+    
+    if (emailCol === undefined) {
+      console.error('[Code] Email column not found in Employees sheet');
+      return null;
+    }
+    
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    for (let i = 0; i < values.length; i++) {
+      if (values[i][emailCol] === email) {
+        // Convert row to object using headers
+        const row = values[i];
+        const employee = {};
+        Object.entries(headerMap).forEach(([colName, colIndex]) => {
+          employee[colName] = row[colIndex];
+        });
+        return employee;
+      }
+    }
+    
+    return null;
+  } catch (e) {
+    console.error(`[Code] Error getting employee by email: ${e.message}`);
+    return null;
+>>>>>>> Stashed changes
   }
 }
 
 /* -------------------------------------------------------------------------- */
 /*                           AUTHORIZATION HELPERS                            */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * CRITICAL FIX: Checks if employeeId appears in ANY row's ManagerID column.
+ * This function MUST return true for employee 1 (has reports: 3, 5).
+ */
+function isUserAManager(employeeId) {
+  try {
+    const sheet = getSheet_('Employee Database');
+    const headerMap = getHeaderMap_(sheet);
+    
+    // Get ManagerID column using case-insensitive lookup
+    let mgrCol = -1;
+    for (const [name, idx] of Object.entries(headerMap)) {
+      if (name.toLowerCase() === 'managerid') {
+        mgrCol = idx;
+        break;
+      }
+    }
+    if (mgrCol < 0) return false;
+    
+    // Scan ALL rows for a match
+    const data = sheet.getRange(2, 1, Math.max(1, sheet.getLastRow() - 1), sheet.getLastColumn()).getValues();
+    for (const row of data) {
+      if (row[mgrCol] === employeeId) {
+        console.log(`[isUserAManager FIXED] YES: ${employeeId} is a manager`);
+        return true;
+      }
+    }
+    
+    console.log(`[isUserAManager FIXED] NO: ${employeeId} is NOT a manager`);
+    return false;
+  } catch (e) {
+    console.error(`[isUserAManager] Error: ${e}`);
+    return false;
+  }
+}
 
 /**
  * Checks if a manager can access a specific employee.
@@ -225,7 +410,7 @@ function canManagerAccessEmployee_(managerId, employeeId) {
     }
     
     // Get all team members (direct + indirect reports)
-    const teamMembers = Database.getTeamMembersRecursive(managerId);
+    const teamMembers = getTeamMembersRecursive_(managerId);
     
     // Check if employee is in manager's org tree
     const hasAccess = teamMembers.some(member => member.employeeId === employeeId);
@@ -417,17 +602,19 @@ function getAllScores(employeeId) {
 }
 
 /**
- * Retrieves team members for a manager (Manager Portal).
- * Authorization: Only the manager can retrieve their own team members.
- * Returns direct and indirect reports in manager's organizational tree.
+ * Retrieves team members for a manager with full details and workflow status.
+ * This is used by the Manager Portal to display the team overview.
  * 
  * @param {string} managerId - The manager's employee ID
  * @returns {Object} { success: boolean, data: Object[] }
  */
-function getTeamMembers(managerId) {
+function getTeamMembersWithStatusData(managerId) {
   try {
+    console.log(`[Code] getTeamMembersWithStatusData called with managerId: ${managerId}`);
+    
     // Authorization: Verify user is actually a manager
     if (!isUserAManager(managerId)) {
+      console.log(`[Code] User ${managerId} is not a manager`);
       logAccessAttempt(
         `[User: ${managerId}]`,
         'MANAGER',
@@ -440,12 +627,326 @@ function getTeamMembers(managerId) {
       };
     }
     
+    console.log(`[Code] User ${managerId} is a manager, loading team members...`);
+    
     // Get all team members (direct + indirect reports)
-    const teamMembers = Database.getTeamMembersRecursive(managerId);
-    return { success: true, data: teamMembers };
+    const teamMembers = getTeamMembersRecursive_(managerId);
+    
+    console.log(`[Code] Retrieved ${teamMembers.length} team members`);
+    
+    if (teamMembers.length === 0) {
+      console.warn(`[Code] WARNING: No team members found for manager ${managerId}`);
+      console.log(`[Code] This manager may have no direct reports or the manager ID may not match the data`);
+    }
+    
+    // Enhance with workflow status and Data SPOC details for each team member
+    const enhancedTeamMembers = teamMembers.map(member => {
+      // Find the employee ID column (handle case variations)
+      let employeeId = null;
+      if (member.EmployeeID) {
+        employeeId = member.EmployeeID;
+      } else if (member.employeeId) {
+        employeeId = member.employeeId;
+      } else {
+        // Try to find it by checking all keys
+        for (const key of Object.keys(member)) {
+          if (key.toLowerCase() === 'employeeid') {
+            employeeId = member[key];
+            break;
+          }
+        }
+      }
+      
+      const workflowStatus = getWorkflowStatusForTeam_(employeeId);
+      
+      // Lookup Data SPOC details if DataSpocID is provided
+      let dataSPOCName = null;
+      const dataSPOCId = member.DataSpocID || member.dataSPOCId || member.DataSPOCId;
+      if (dataSPOCId) {
+        const dataSPOC = getEmployeeById_(dataSPOCId);
+        if (dataSPOC) {
+          dataSPOCName = dataSPOC.Name || dataSPOC.name;
+        }
+      }
+      
+      console.log(`[Code] Team member enriched: ID=${employeeId}, Name=${member.Name || member.name}, DataSPOC=${dataSPOCName || 'None'}`);
+      
+      return {
+        employeeId: employeeId,
+        name: member.Name || member.name,
+        email: member.Email || member.email,
+        department: member.Department || member.department,
+        band: member.Band || member.band,
+        group: member.Group || member.group,
+        team: member.Team || member.team,
+        corporation: member.Corporation || member.corporation,
+        managerEmployeeId: member.ManagerID || member.managerId,
+        dataSPOCID: dataSPOCId || null,
+        dataSPOCName: dataSPOCName || null,
+        workflowStatus: workflowStatus
+      };
+    });
+    
+    console.log(`[Code] Returning ${enhancedTeamMembers.length} enhanced team members`);
+    return { success: true, data: enhancedTeamMembers };
   } catch (e) {
-    console.error(`[Code] Error getting team members: ${e.message}`);
+    console.error(`[Code] Error getting team members with status: ${e.message}`);
+    console.error(`[Code] Stack: ${e.stack}`);
     return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Gets recursive team members (direct + indirect reports).
+ * Helper function for getTeamMembersWithStatusData.
+ * 
+ * @param {string} managerId - The manager's employee ID
+ * @returns {Object[]} Array of team members
+ */
+function getTeamMembersRecursive_(managerId) {
+  try {
+    const SHEETS = { EMPLOYEES: 'Employee Database' };
+    const sheet = getSheet_(SHEETS.EMPLOYEES);
+    const headerMap = getHeaderMap_(sheet);
+    
+    console.log(`[Code] getTeamMembersRecursive_ called with managerId: ${managerId}`);
+    console.log(`[Code] managerId type: ${typeof managerId}`);
+    console.log(`[Code] Header map keys:`, Object.keys(headerMap));
+    
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    console.log(`[Code] Total employee records: ${values.length}`);
+    
+    // Find the exact manager ID column name (handle case variations)
+    let managerIdColName = null;
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'managerid') {
+        managerIdColName = colName;
+        break;
+      }
+    }
+    
+    if (!managerIdColName) {
+      console.error(`[Code] ManagerID column not found. Available columns: ${Object.keys(headerMap).join(', ')}`);
+      return [];
+    }
+    
+    console.log(`[Code] Using manager ID column: "${managerIdColName}"`);
+    
+    // Find the exact employee ID column name (handle case variations)
+    let employeeIdColName = null;
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'employeeid') {
+        employeeIdColName = colName;
+        break;
+      }
+    }
+    
+    if (!employeeIdColName) {
+      console.error(`[Code] EmployeeID column not found. Available columns: ${Object.keys(headerMap).join(', ')}`);
+      return [];
+    }
+    
+    console.log(`[Code] Using employee ID column: "${employeeIdColName}"`);
+    
+    // Convert rows to objects
+    const employees = values.map((row, rowIndex) => {
+      const employee = {};
+      Object.entries(headerMap).forEach(([colName, colIndex]) => {
+        employee[colName] = row[colIndex];
+      });
+      
+      if (rowIndex < 10) {
+        console.log(`[Code] Row ${rowIndex + 2}: ID=${employee[employeeIdColName]} (type: ${typeof employee[employeeIdColName]}), ManagerID=${employee[managerIdColName]} (type: ${typeof employee[managerIdColName]}), Name=${employee.Name}`);
+      }
+      
+      return employee;
+    });
+    
+    const result = [];
+    const visited = new Set();
+    
+    const collectTeamMembers = (currentManagerId) => {
+      if (visited.has(currentManagerId)) {
+        console.log(`[Code] Already visited manager ${currentManagerId}, skipping`);
+        return;
+      }
+      visited.add(currentManagerId);
+      
+      console.log(`[Code] Looking for direct reports of manager: ${currentManagerId} (type: ${typeof currentManagerId})`);
+      
+      // Find all direct reports of this manager
+      const directReports = employees.filter(emp => {
+        const empManagerId = emp[managerIdColName];
+        const match = empManagerId === currentManagerId;
+        
+        // Debug first 3 comparisons
+        if (directReports.length < 3 || result.length < 3) {
+          console.log(`[Code]   Comparing: ${empManagerId} (type: ${typeof empManagerId}) === ${currentManagerId} (type: ${typeof currentManagerId}) => ${match}`);
+        }
+        
+        return match;
+      });
+      
+      console.log(`[Code] Found ${directReports.length} direct reports for manager ${currentManagerId}`);
+      
+      directReports.forEach(member => {
+        const memberId = member[employeeIdColName];
+        if (!visited.has(memberId)) {
+          result.push(member);
+          console.log(`[Code] Added team member: ID=${memberId}, Name=${member.Name}`);
+          // Recursively get their team members
+          collectTeamMembers(memberId);
+        }
+      });
+    };
+    
+    collectTeamMembers(managerId);
+    
+    console.log(`[Code] Total team members found (direct + indirect): ${result.length}`);
+    
+    if (result.length === 0) {
+      console.warn(`[Code] WARNING: No team members found. Possible causes:`);
+      console.warn(`[Code] 1. Manager ${managerId} has no direct reports in the database`);
+      console.warn(`[Code] 2. Employee IDs or ManagerID values don't match (check data types - number vs string)`);
+      console.warn(`[Code] 3. All employees in database have blank ManagerID`);
+      console.warn(`[Code] Debug: First employee's ManagerID value: ${employees[0] ? employees[0][managerIdColName] : 'NO EMPLOYEES'}`);
+    }
+    
+    return result;
+  } catch (e) {
+    console.error(`[Code] Error getting recursive team members: ${e.message}`);
+    console.error(`[Code] Stack: ${e.stack}`);
+    return [];
+  }
+}
+
+/**
+ * Gets workflow status for a team member.
+ * Helper function that enriches team member data with status info.
+ * 
+ * @param {string} employeeId - The employee ID
+ * @returns {Object} Workflow status object
+ */
+function getWorkflowStatusForTeam_(employeeId) {
+  try {
+    const SHEETS = {
+      WORKFLOW_STATUS: 'WorkflowStatus',
+      SKILLS_ASSESSMENT: 'SkillsAssessment',
+      OKR_UPLOAD: 'OKRUpload',
+      SELF_ASSESSMENT: 'SelfAssessment',
+      FEED_FORWARD: 'FeedForward',
+      MANAGER_ACK: 'ManagerAcknowledgement'
+    };
+    
+    // Try to read workflow status from sheet
+    try {
+      const sheet = getSheet_(SHEETS.WORKFLOW_STATUS);
+      const headerMap = getHeaderMap_(sheet);
+      
+      // Find the employee ID column (handle case variations)
+      let employeeIdColName = null;
+      for (const colName of Object.keys(headerMap)) {
+        if (colName.toLowerCase() === 'employeeid') {
+          employeeIdColName = colName;
+          break;
+        }
+      }
+      
+      if (!employeeIdColName) {
+        throw new Error('EmployeeID column not found in WorkflowStatus sheet');
+      }
+      
+      const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+      const values = dataRange.getValues();
+      
+      const employeeIdColIndex = headerMap[employeeIdColName];
+      
+      for (let i = 0; i < values.length; i++) {
+        if (values[i][employeeIdColIndex] === employeeId) {
+          // Found the status row
+          const statusRow = {};
+          Object.entries(headerMap).forEach(([colName, colIndex]) => {
+            statusRow[colName] = values[i][colIndex];
+          });
+          return statusRow;
+        }
+      }
+    } catch (e) {
+      console.log(`[Code] WorkflowStatus sheet not accessible or employee not found, calculating from assessment sheets: ${e.message}`);
+    }
+    
+    // Calculate status from assessment sheets if WorkflowStatus sheet unavailable or employee not found
+    const status = {
+      employeeId: employeeId,
+      step1Complete: hasAssessmentData(SHEETS.SKILLS_ASSESSMENT, employeeId),
+      step2Complete: hasAssessmentData(SHEETS.OKR_UPLOAD, employeeId),
+      step3Complete: hasAssessmentData(SHEETS.SELF_ASSESSMENT, employeeId),
+      step4Complete: hasAssessmentData(SHEETS.FEED_FORWARD, employeeId),
+      step5Complete: hasAssessmentData(SHEETS.MANAGER_ACK, employeeId)
+    };
+    
+    return status;
+  } catch (e) {
+    console.error(`[Code] Error getting workflow status for ${employeeId}: ${e.message}`);
+    return {
+      employeeId: employeeId,
+      step1Complete: false,
+      step2Complete: false,
+      step3Complete: false,
+      step4Complete: false,
+      step5Complete: false
+    };
+  }
+}
+
+/**
+ * Checks if an employee has submitted data for a specific sheet.
+ * Helper function for workflow status calculation.
+ * 
+ * @param {string} sheetName - Name of the sheet to check
+ * @param {string} employeeId - The employee ID
+ * @returns {boolean} True if employee has data in that sheet
+ */
+function hasAssessmentData(sheetName, employeeId) {
+  try {
+    const sheet = getSheet_(sheetName);
+    const headerMap = getHeaderMap_(sheet);
+    
+    // Find the employee ID column (handle case variations)
+    let employeeIdColName = null;
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'employeeid') {
+        employeeIdColName = colName;
+        break;
+      }
+    }
+    
+    if (!employeeIdColName) {
+      console.warn(`[Code] EmployeeID column not found in ${sheetName}. Available columns: ${Object.keys(headerMap).join(', ')}`);
+      return false;
+    }
+    
+    const employeeIdColIndex = headerMap[employeeIdColName];
+    
+    if (employeeIdColIndex === undefined) {
+      return false;
+    }
+    
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    for (let i = 0; i < values.length; i++) {
+      if (values[i][employeeIdColIndex] === employeeId) {
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (e) {
+    console.error(`[Code] Error checking assessment data in ${sheetName}: ${e.message}`);
+    return false;
   }
 }
 
@@ -572,5 +1073,180 @@ function detectSheetChanges(sheetName, lastRowCount) {
   } catch (e) {
     console.error(`[Code] Error detecting sheet changes: ${e.message}`);
     return { success: false, message: e.message };
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*                         MANAGER TEAM FUNCTIONS                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Retrieves team members for a manager with full details and workflow status.
+ * This is used by the Manager Portal to display the team overview.
+ * 
+ * @param {string} managerId - The manager's employee ID
+ * @returns {Object} { success: boolean, data: Object[] }
+ */
+function getTeamMembersWithStatusData(managerId) {
+  try {
+    console.log(`[Code] getTeamMembersWithStatusData called with managerId: ${managerId}`);
+    
+    // Authorization: Verify user is actually a manager
+    if (!isUserAManager(managerId)) {
+      console.log(`[Code] User ${managerId} is not a manager`);
+      logAccessAttempt(
+        `[User: ${managerId}]`,
+        'MANAGER',
+        'DENIED',
+        `Unauthorized attempt to retrieve team members (not a manager)`
+      );
+      return { 
+        success: false, 
+        message: 'You do not have authorization to view team members.' 
+      };
+    }
+    
+    console.log(`[Code] User ${managerId} is a manager, loading team members...`);
+    
+    // Get all team members (direct + indirect reports)
+    const teamMembers = getTeamMembersRecursive_(managerId);
+    
+    console.log(`[Code] Retrieved ${teamMembers.length} team members`);
+    
+    if (teamMembers.length === 0) {
+      console.warn(`[Code] WARNING: No team members found for manager ${managerId}`);
+      console.log(`[Code] This manager may have no direct reports or the manager ID may not match the data`);
+    }
+    
+    // Enhance with workflow status for each team member
+    const enhancedTeamMembers = teamMembers.map(member => {
+      // Find the employee ID column (handle case variations)
+      let employeeId = member.EmployeeID || member.employeeId;
+      
+      return {
+        employeeId: employeeId,
+        name: member.Name || member.name,
+        email: member.Email || member.email,
+        department: member.Department || member.department,
+        band: member.Band || member.band,
+        group: member.Group || member.group,
+        team: member.Team || member.team,
+        corporation: member.Corporation || member.corporation,
+        managerEmployeeId: member.ManagerID || member.managerId
+      };
+    });
+    
+    console.log(`[Code] Returning ${enhancedTeamMembers.length} enhanced team members`);
+    return { success: true, data: enhancedTeamMembers };
+  } catch (e) {
+    console.error(`[Code] Error getting team members with status: ${e.message}`);
+    console.error(`[Code] Stack: ${e.stack}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Gets recursive team members (direct + indirect reports).
+ * Helper function for getTeamMembersWithStatusData.
+ * 
+ * @param {string} managerId - The manager's employee ID
+ * @returns {Object[]} Array of team members
+ */
+function getTeamMembersRecursive_(managerId) {
+  try {
+    const SHEETS = { EMPLOYEES: 'Employee Database' };
+    const sheet = getSheet_(SHEETS.EMPLOYEES);
+    const headerMap = getHeaderMap_(sheet);
+    
+    console.log(`[Code] getTeamMembersRecursive_ called with managerId: ${managerId}`);
+    console.log(`[Code] managerId type: ${typeof managerId}`);
+    console.log(`[Code] Available columns:`, Object.keys(headerMap).join(', '));
+    
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    console.log(`[Code] Total employee records: ${values.length}`);
+    
+    // Find the exact manager ID column name (handle case variations)
+    let managerIdColName = null;
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'managerid') {
+        managerIdColName = colName;
+        break;
+      }
+    }
+    
+    if (!managerIdColName) {
+      console.error(`[Code] ManagerID column not found. Available columns: ${Object.keys(headerMap).join(', ')}`);
+      return [];
+    }
+    
+    console.log(`[Code] Using manager ID column: "${managerIdColName}"`);
+    
+    // Find the exact employee ID column name (handle case variations)
+    let employeeIdColName = null;
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'employeeid') {
+        employeeIdColName = colName;
+        break;
+      }
+    }
+    
+    if (!employeeIdColName) {
+      console.error(`[Code] EmployeeID column not found. Available columns: ${Object.keys(headerMap).join(', ')}`);
+      return [];
+    }
+    
+    console.log(`[Code] Using employee ID column: "${employeeIdColName}"`);
+    
+    // Convert rows to objects
+    const employees = values.map((row, rowIndex) => {
+      const employee = {};
+      Object.entries(headerMap).forEach(([colName, colIndex]) => {
+        employee[colName] = row[colIndex];
+      });
+      return employee;
+    });
+    
+    const result = [];
+    const visited = new Set();
+    
+    const collectTeamMembers = (currentManagerId) => {
+      if (visited.has(currentManagerId)) {
+        console.log(`[Code] Already visited manager ${currentManagerId}, skipping`);
+        return;
+      }
+      visited.add(currentManagerId);
+      
+      console.log(`[Code] Looking for direct reports of manager: ${currentManagerId}`);
+      
+      // Find all direct reports of this manager
+      const directReports = employees.filter(emp => {
+        const empManagerId = emp[managerIdColName];
+        return empManagerId === currentManagerId;
+      });
+      
+      console.log(`[Code] Found ${directReports.length} direct reports for manager ${currentManagerId}`);
+      
+      directReports.forEach(member => {
+        const memberId = member[employeeIdColName];
+        if (!visited.has(memberId)) {
+          result.push(member);
+          console.log(`[Code] Added team member: ID=${memberId}, Name=${member.Name}`);
+          // Recursively get their team members
+          collectTeamMembers(memberId);
+        }
+      });
+    };
+    
+    collectTeamMembers(managerId);
+    
+    console.log(`[Code] Total team members found (direct + indirect): ${result.length}`);
+    return result;
+  } catch (e) {
+    console.error(`[Code] Error getting recursive team members: ${e.message}`);
+    console.error(`[Code] Stack: ${e.stack}`);
+    return [];
   }
 }

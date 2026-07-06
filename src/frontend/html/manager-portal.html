@@ -252,6 +252,19 @@
   </main>
 
   <!-- Scripts -->
+  <script>
+    // === CRITICAL: Define PLATFORM early ===
+    // This ensures it's available before any portal scripts load.
+    // Apps Script injection (WebApp.gs) will override this if present,
+    // but this serves as a fallback.
+    if (typeof window.PLATFORM === 'undefined') {
+      window.PLATFORM = typeof google !== 'undefined' && google.script && google.script.run 
+        ? 'APPSCRIPT' 
+        : 'CONVERGE_CLOUD';
+      console.log('[Global] PLATFORM initialized:', window.PLATFORM);
+    }
+  </script>
+  
   <script src="../../shared/constants.js"></script>
   <script src="../js/app.js"></script>
   <script src="../js/gates.js"></script>

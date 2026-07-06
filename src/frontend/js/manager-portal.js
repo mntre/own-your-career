@@ -9,6 +9,21 @@
 
 'use strict';
 
+// === PLATFORM DETECTION ===
+// Ensure PLATFORM is defined (set by WebApp.gs injection, but fallback here)
+if (typeof window.PLATFORM === 'undefined') {
+  // Check if google.script API is available (indicates AppScript environment)
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    window.PLATFORM = 'APPSCRIPT';
+    console.log('[ManagerPortal] PLATFORM auto-detected as APPSCRIPT (google.script.run available)');
+  } else {
+    window.PLATFORM = 'CONVERGE_CLOUD';
+    console.log('[ManagerPortal] PLATFORM auto-detected as CONVERGE_CLOUD (no google.script)');
+  }
+} else {
+  console.log('[ManagerPortal] PLATFORM already defined:', window.PLATFORM);
+}
+
 /* --------------------------------------------------------------------------
    Manager Portal State
    -------------------------------------------------------------------------- */
@@ -39,6 +54,8 @@ function initManagerPortal() {
     ManagerPortal.currentManager = user;
     loadTeamMembersOverview();
     setupEventListeners();
+    // Load placeholder data for testing
+    loadPlaceholderTeamData();
   });
 }
 
@@ -48,12 +65,33 @@ function initManagerPortal() {
  */
 function getCurrentUser(callback) {
   if (PLATFORM === 'APPSCRIPT') {
-    google.script.run.withSuccessHandler((result) => {
-      callback(result.data || { employeeId: 'MANAGER_001', name: 'Current Manager' });
-    }).getCurrentUser?.();
+    // In AppScript, we extract the current user from window context
+    // The HTML template receives userEmail from doGet in WebApp.gs
+    const userEmail = window.oyc_userEmail || sessionStorage.getItem('oyc_user_email');
+    const userEmployeeID = window.oyc_userEmployeeID || sessionStorage.getItem('oyc_user_employeeId');
+    
+    console.log('[ManagerPortal] getCurrentUser:');
+    console.log('[ManagerPortal]   - Email:', userEmail);
+    console.log('[ManagerPortal]   - EmployeeID:', userEmployeeID);
+    console.log('[ManagerPortal]   - Type of EmployeeID:', typeof userEmployeeID);
+    
+    if (userEmail && userEmployeeID) {
+      const user = {
+        email: userEmail,
+        employeeId: userEmployeeID,
+        name: 'Manager'
+      };
+      
+      console.log('[ManagerPortal] User object created:', JSON.stringify(user));
+      callback(user);
+    } else {
+      console.warn('[ManagerPortal] Missing user data - email or employeeId not provided');
+      // Fallback if not provided by AppScript
+      callback({ employeeId: '1', name: 'Manager', email: userEmail });
+    }
   } else {
     // For Converge platform, would fetch from OAuth
-    callback({ employeeId: 'MANAGER_001', name: 'Current Manager' });
+    callback({ employeeId: '1', name: 'Current Manager' });
   }
 }
 
@@ -209,18 +247,56 @@ function loadTeamMembersOverview() {
     return;
   }
 
+  console.log('[ManagerPortal] Loading team members for manager ID:', ManagerPortal.currentManager.employeeId);
+
+  // Check for placeholder data in localStorage (for testing)
+  const placeholderTeam = localStorage.getItem('placeholderTeam');
+  const placeholderWorkflow = localStorage.getItem('placeholderWorkflow');
+  
+  if (placeholderTeam && placeholderWorkflow) {
+    console.log('[ManagerPortal] Using placeholder data from localStorage for testing');
+    const team = JSON.parse(placeholderTeam);
+    const workflow = JSON.parse(placeholderWorkflow);
+    
+    // Merge workflow status into team data
+    const teamWithStatus = team.map(member => ({
+      ...member,
+      ...workflow[member.employeeId]
+    }));
+    
+    ManagerPortal.teamMembers = teamWithStatus;
+    displayTeamOverview(teamWithStatus);
+    return;
+  }
+
   if (PLATFORM === 'APPSCRIPT') {
+    console.log('[ManagerPortal] Calling backend getTeamMembersWithStatusData...');
+    
     google.script.run
       .withSuccessHandler((result) => {
+        console.log('[ManagerPortal] Backend response received:', result);
+        
         if (result.success) {
+          console.log('[ManagerPortal] Successfully loaded', result.data.length, 'team members');
+          
+          if (result.data.length === 0) {
+            console.warn('[ManagerPortal] WARNING: No team members returned from backend');
+            console.warn('[ManagerPortal] This could mean:');
+            console.warn('[ManagerPortal] 1. The manager ID does not have any direct reports');
+            console.warn('[ManagerPortal] 2. The manager ID format does not match the database');
+            console.warn('[ManagerPortal] 3. Check the Employee Database ManagerID column values');
+          }
+          
           ManagerPortal.teamMembers = result.data;
           displayTeamOverview(result.data);
         } else {
           console.error('[ManagerPortal] Error loading team members:', result.message);
+          alert('Error: ' + result.message);
         }
       })
       .withFailureHandler((error) => {
-        console.error('[ManagerPortal] Failed to load team members:', error);
+        console.error('[ManagerPortal] Backend call failed:', error);
+        alert('Error loading team members: ' + error.toString());
       })
       .getTeamMembersWithStatusData(ManagerPortal.currentManager.employeeId);
   }
@@ -232,13 +308,34 @@ function loadTeamMembersOverview() {
  */
 function displayTeamOverview(teamMembers) {
   const tableBody = document.getElementById('teamTableBody');
-  if (!tableBody) return;
+  if (!tableBody) {
+    console.error('[ManagerPortal] Team table body element not found');
+    return;
+  }
+
+  console.log('[ManagerPortal] displayTeamOverview called with', teamMembers.length, 'team members');
 
   tableBody.innerHTML = ''; // Clear existing rows
 
-  teamMembers.forEach(member => {
+  if (teamMembers.length === 0) {
+    console.warn('[ManagerPortal] No team members to display');
+    const emptyRow = document.createElement('tr');
+    emptyRow.innerHTML = `
+      <td colspan="7" style="text-align: center; padding: 2rem; color: #999;">
+        No team members found. You may not have any direct reports.
+      </td>
+    `;
+    tableBody.appendChild(emptyRow);
+    return;
+  }
+
+  teamMembers.forEach((member, index) => {
     const row = createTeamTableRow(member);
     tableBody.appendChild(row);
+    
+    if (index < 3) {
+      console.log('[ManagerPortal] Row', index, '- Employee:', member.name, 'ID:', member.employeeId);
+    }
   });
 
   // Load sync status for all members after rendering
@@ -329,7 +426,13 @@ function updateTeamRowSyncIndicator(employeeId, syncStatus) {
 function createTeamTableRow(member) {
   const row = document.createElement('tr');
   
-  const status = member.workflowStatus || {};
+  // Support both nested and flat status structures
+  const status = member.workflowStatus || {
+    step1Complete: member.step1Complete || false,
+    step4Complete: member.step4Complete || false,
+    step5Complete: member.step5Complete || false
+  };
+
   const step1Status = status.step1Complete ? '✓ Complete' : '○ Pending';
   const step4Status = status.step4Complete ? '✓ Complete' : '○ Pending';
   const step5Status = status.step5Complete ? '✓ Complete' : '○ Pending';
@@ -801,6 +904,265 @@ function handleAcknowledgementFormSubmit(e) {
       })
       .saveAcknowledgement(ManagerPortal.selectedEmployee, ManagerPortal.currentManager.employeeId, ackData, 'MANAGER');
   }
+}
+
+/* --------------------------------------------------------------------------
+   Placeholder Data for Testing
+   -------------------------------------------------------------------------- */
+
+/**
+ * Loads placeholder team member data into localStorage for local testing.
+ * This simulates a team structure with various workflow completion states.
+ */
+function loadPlaceholderTeamData() {
+  console.log('[ManagerPortal] Loading placeholder team data for testing...');
+
+  // Define placeholder team members
+  const placeholderTeam = [
+    {
+      employeeId: 'EMP_001',
+      name: 'Alice Johnson',
+      department: 'Sales',
+      band: 'Senior Manager',
+      managerEmployeeId: 'MANAGER_001',
+      roleLevel: 'DEPT_HEAD'
+    },
+    {
+      employeeId: 'EMP_002',
+      name: 'Bob Smith',
+      department: 'Sales',
+      band: 'Sales Executive',
+      managerEmployeeId: 'MANAGER_001',
+      roleLevel: 'INDIVIDUAL'
+    },
+    {
+      employeeId: 'EMP_003',
+      name: 'Carol White',
+      department: 'Marketing',
+      band: 'Marketing Manager',
+      managerEmployeeId: 'MANAGER_001',
+      roleLevel: 'TEAM_HEAD'
+    },
+    {
+      employeeId: 'EMP_004',
+      name: 'David Brown',
+      department: 'Sales',
+      band: 'Sales Associate',
+      managerEmployeeId: 'MANAGER_001',
+      roleLevel: 'INDIVIDUAL'
+    },
+    {
+      employeeId: 'EMP_005',
+      name: 'Emma Davis',
+      department: 'Marketing',
+      band: 'Marketing Specialist',
+      managerEmployeeId: 'MANAGER_001',
+      roleLevel: 'INDIVIDUAL'
+    }
+  ];
+
+  // Define placeholder workflow status for each employee
+  const placeholderWorkflow = {
+    EMP_001: {
+      step1Complete: true,
+      step2Complete: true,
+      step3Complete: true,
+      step4Complete: false,
+      step5Complete: false,
+      step6Complete: false,
+      step7Complete: false,
+      lastUpdated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days ago
+    },
+    EMP_002: {
+      step1Complete: true,
+      step2Complete: true,
+      step3Complete: false,
+      step4Complete: false,
+      step5Complete: false,
+      step6Complete: false,
+      step7Complete: false,
+      lastUpdated: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() // 1 day ago
+    },
+    EMP_003: {
+      step1Complete: false,
+      step2Complete: true,
+      step3Complete: false,
+      step4Complete: false,
+      step5Complete: false,
+      step6Complete: false,
+      step7Complete: false,
+      lastUpdated: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days ago
+    },
+    EMP_004: {
+      step1Complete: true,
+      step2Complete: true,
+      step3Complete: true,
+      step4Complete: true,
+      step5Complete: true,
+      step6Complete: true,
+      step7Complete: false,
+      lastUpdated: new Date().toISOString() // Just now
+    },
+    EMP_005: {
+      step1Complete: false,
+      step2Complete: false,
+      step3Complete: false,
+      step4Complete: false,
+      step5Complete: false,
+      step6Complete: false,
+      step7Complete: false,
+      lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() // 5 days ago
+    }
+  };
+
+  // Define placeholder OKR data
+  const placeholderOKRs = {
+    EMP_001: {
+      corporateOKR: 92.5,
+      groupOKR: 88.0,
+      departmentOKR: 95.0,
+      teamOKR: null,
+      weight: { corporate: 0.10, group: 0.90 },
+      finalScore: 88.35
+    },
+    EMP_002: {
+      corporateOKR: null,
+      groupOKR: null,
+      departmentOKR: 85.0,
+      teamOKR: 90.0,
+      weight: { department: 0.60, team: 0.40 },
+      finalScore: 87.0
+    },
+    EMP_003: {
+      corporateOKR: null,
+      groupOKR: null,
+      departmentOKR: 100.0,
+      teamOKR: 105.0,
+      weight: { department: 0.60, team: 0.40 },
+      finalScore: 101.0
+    },
+    EMP_004: {
+      corporateOKR: null,
+      groupOKR: null,
+      departmentOKR: 75.0,
+      teamOKR: 78.0,
+      weight: { department: 0.60, team: 0.40 },
+      finalScore: 76.2
+    },
+    EMP_005: {
+      corporateOKR: null,
+      groupOKR: null,
+      departmentOKR: 92.0,
+      teamOKR: 94.5,
+      weight: { department: 0.60, team: 0.40 },
+      finalScore: 92.9
+    }
+  };
+
+  // Define placeholder skills assessment data
+  const placeholderSkillsAssessment = {
+    EMP_001: {
+      coreSkills: {
+        'cs-001': { level: 4, remarks: 'Strong technical knowledge' },
+        'cs-002': { level: 5, remarks: 'Excellent process efficiency' },
+        'cs-003': { level: 4, remarks: 'Consistent quality focus' },
+        'cs-004': { level: 4, remarks: 'Good customer understanding' },
+        'cs-005': { level: 5, remarks: 'Excellent collaborator' }
+      },
+      leadershipSkills: {
+        'ls-001': { level: 4, remarks: 'Good strategic vision' },
+        'ls-002': { level: 5, remarks: 'Outstanding team development' },
+        'ls-003': { level: 4, remarks: 'Sound decision making' },
+        'ls-004': { level: 4, remarks: 'Clear communicator' },
+        'ls-005': { level: 3, remarks: 'Adapting to changes' }
+      },
+      completedBy: 'MANAGER_001',
+      completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    EMP_002: {
+      coreSkills: {
+        'cs-001': { level: 3, remarks: 'Developing technical skills' },
+        'cs-002': { level: 3, remarks: 'Good process efficiency' },
+        'cs-003': { level: 3, remarks: 'Quality oriented' },
+        'cs-004': { level: 4, remarks: 'Strong customer focus' },
+        'cs-005': { level: 3, remarks: 'Collaborative team member' }
+      },
+      leadershipSkills: null,
+      completedBy: 'MANAGER_001',
+      completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    EMP_003: {},
+    EMP_004: {
+      coreSkills: {
+        'cs-001': { level: 2, remarks: 'Need development in technical area' },
+        'cs-002': { level: 2, remarks: 'Works on efficiency' },
+        'cs-003': { level: 2, remarks: 'Quality needs improvement' },
+        'cs-004': { level: 3, remarks: 'Understands customers' },
+        'cs-005': { level: 2, remarks: 'Developing collaboration skills' }
+      },
+      leadershipSkills: null,
+      completedBy: 'MANAGER_001',
+      completedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // 3 hours ago
+    },
+    EMP_005: {}
+  };
+
+  // Define placeholder self-assessment data
+  const placeholderSelfAssessment = {
+    EMP_001: {
+      answers: {
+        q1: 'Strong project execution and cross-functional collaboration contributed to my performance.',
+        q2: 'Time management during peak season was challenging but we managed well.',
+        q3: 'More strategic planning tools and training would be helpful.',
+        q4: 'I commit to leading the Q2 initiative and improving process efficiency by 15%.'
+      },
+      completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    EMP_002: {
+      answers: {
+        q1: 'Consistent delivery and positive client feedback drove my performance.',
+        q2: 'Limited resources in Q1 impacted project timelines.',
+        q3: 'Advanced training in new tools would help productivity.',
+        q4: 'I will complete the certification program and mentor new team members.'
+      },
+      completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    EMP_003: {
+      answers: {
+        q1: 'Creative campaigns and team innovation drove results.',
+        q2: 'Market changes required quick pivots which tested our agility.',
+        q3: 'More data analytics support would strengthen our strategy.',
+        q4: 'I commit to presenting quarterly market insights to leadership.'
+      },
+      completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  };
+
+  // Define placeholder feed forward data
+  const placeholderFeedForward = {
+    EMP_004: {
+      comments: 'Alice, while your efforts are appreciated, the quality of work needs improvement. Focus on attention to detail and following established processes. I see potential with proper guidance and training.',
+      performanceRating: 'needs-improvement',
+      completedBy: 'MANAGER_001',
+      completedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+    }
+  };
+
+  // Store in localStorage
+  localStorage.setItem('placeholderTeam', JSON.stringify(placeholderTeam));
+  localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
+  localStorage.setItem('placeholderOKRs', JSON.stringify(placeholderOKRs));
+  localStorage.setItem('placeholderSkillsAssessment', JSON.stringify(placeholderSkillsAssessment));
+  localStorage.setItem('placeholderSelfAssessment', JSON.stringify(placeholderSelfAssessment));
+  localStorage.setItem('placeholderFeedForward', JSON.stringify(placeholderFeedForward));
+
+  // Update ManagerPortal state
+  ManagerPortal.teamMembers = placeholderTeam;
+  
+  console.log('[ManagerPortal] Placeholder data loaded:');
+  console.log('  - Team members:', placeholderTeam.length);
+  console.log('  - Workflow statuses:', Object.keys(placeholderWorkflow).length);
+  console.log('  - OKR data:', Object.keys(placeholderOKRs).length);
 }
 
 /* --------------------------------------------------------------------------

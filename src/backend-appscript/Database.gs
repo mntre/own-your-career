@@ -13,7 +13,7 @@
 /* -------------------------------------------------------------------------- */
 
 /** @type {string} Spreadsheet ID - Replace with your actual Google Sheet ID */
-const SS_ID = PropertiesService.getScriptProperties().getProperty('1uWtfoSdWef0JRuSPXp_zz5AvhB4uyZJV7geHLdTOehg');
+const SS_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
 
 /** @type {Object} Sheet names mapping */
 const SHEETS = {
@@ -131,16 +131,67 @@ function isUserAManager(employeeId) {
 }
 
 /**
- * Gets team members for a specific manager.
+ * Gets team members for a specific manager (direct reports only).
  * @param {string} managerId - The manager's employee ID
  * @returns {Object[]} Array of team member objects
  */
 function getTeamMembers(managerId) {
   try {
     const employees = getAllRows_(SHEETS.EMPLOYEES);
-    return employees.filter(emp => emp.managerId === managerId);
+    const teamMembers = employees.filter(emp => emp.ManagerID === managerId || emp.managerId === managerId);
+    
+    console.log(`[Database] Found ${teamMembers.length} direct reports for manager ${managerId}`);
+    teamMembers.forEach(member => {
+      console.log(`[Database] Team member: ID=${member.EmployeeID || member.employeeId}, Name=${member.Name || member.name}, Department=${member.Department || member.department}, Group=${member.Group || member.group}, DataSpocID=${member.DataSpocID || member.dataSPOCId || 'None'}`);
+    });
+    
+    return teamMembers;
   } catch (e) {
     console.error(`[Database] Error getting team members for ${managerId}: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Gets team members for a specific manager (direct + indirect reports recursively).
+ * @param {string} managerId - The manager's employee ID
+ * @returns {Object[]} Array of all direct and indirect team member objects
+ */
+function getTeamMembersRecursive(managerId) {
+  try {
+    const employees = getAllRows_(SHEETS.EMPLOYEES);
+    const result = [];
+    const visited = new Set();
+    
+    const collectTeamMembers = (currentManagerId) => {
+      if (visited.has(currentManagerId)) return;
+      visited.add(currentManagerId);
+      
+      // Find all direct reports of this manager
+      const directReports = employees.filter(emp => {
+        const managerCol = emp.ManagerID || emp.managerId;
+        return managerCol === currentManagerId;
+      });
+      
+      directReports.forEach(member => {
+        if (!visited.has(member.EmployeeID || member.employeeId)) {
+          result.push(member);
+          // Recursively get their team members
+          collectTeamMembers(member.EmployeeID || member.employeeId);
+        }
+      });
+    };
+    
+    collectTeamMembers(managerId);
+    
+    console.log(`[Database] Found ${result.length} total team members (direct + indirect) for manager ${managerId}`);
+    result.forEach(member => {
+      console.log(`[Database] Team member: ID=${member.EmployeeID || member.employeeId}, Name=${member.Name || member.name}, Department=${member.Department || member.department}, Group=${member.Group || member.group}, Team=${member.Team || member.team}, DataSpocID=${member.DataSpocID || member.dataSPOCId || 'None'}`);
+    });
+    
+    return result;
+  } catch (e) {
+    console.error(`[Database] Error getting recursive team members for ${managerId}: ${e.message}`);
     return [];
   }
 }

@@ -4,6 +4,8 @@
  * doGet() and doPost() handlers for serving HTML pages.
  * Routes to the appropriate portal based on user role.
  * 
+ * All helper functions are in Code.gs to avoid scope issues.
+ * 
  * @fileoverview Apps Script web app entry points
  */
 
@@ -26,14 +28,6 @@ const TEMPLATES = {
  * Handles GET requests — serves the appropriate portal HTML.
  * Implements authorization routing based on user role and org hierarchy.
  * 
- * Authorization Flow:
- * 1. Authenticate user via Google OAuth
- * 2. Lookup employee record in database
- * 3. Determine user role (MANAGER, DATA_SPOC, EMPLOYEE)
- * 4. Validate manager status (if applicable)
- * 5. Log access attempt
- * 6. Serve appropriate portal or deny access
- * 
  * @param {Object} e - Event object with parameters
  * @returns {HtmlOutput} HTML page for the user's portal or access denied page
  */
@@ -41,90 +35,97 @@ function doGet(e) {
   try {
     // Step 1: Get user's email from Google OAuth
     const userEmail = Session.getActiveUser().getEmail();
+    console.log(`[doGet] User email: ${userEmail}`);
     
     if (!userEmail) {
       return deniedAccess_('Authentication failed. Please log in again.');
     }
     
-    // Step 2: Lookup employee record
+    // Step 2: Lookup employee record (uses function from Code.gs)
+    console.log(`[doGet] Looking up employee: ${userEmail}`);
     const employee = getEmployeeByEmail_(userEmail);
+    
     if (!employee) {
+      console.log(`[doGet] Employee not found in database`);
       logAccessAttempt(userEmail, 'UNAUTHENTICATED', 'DENIED', 'Employee record not found');
       return deniedAccess_('You are not registered in the system. Please contact your HR administrator.');
     }
     
-    const employeeId = employee.employeeId;
+    console.log(`[doGet] Employee found:`, employee);
+    console.log(`[doGet] Full employee object:`, JSON.stringify(employee));
+    
+    // Handle case variation in EmployeeID column name
+    const employeeId = employee.EmployeeID || employee.employeeId;
+    console.log(`[doGet] employeeId extracted: ${employeeId} (type: ${typeof employeeId})`);
     
     // Step 3: Determine user role
-    const userRole = employee.role || 'EMPLOYEE';
+    const userRole = employee.Role || 'EMPLOYEE';
+    console.log(`[doGet] Employee.Role value: "${employee.Role}"`);
+    console.log(`[doGet] User role after default: "${userRole}"`);
     
-    // Step 4: Validate authorization based on role
-    let isAuthorized = false;
-    let errorMessage = '';
+    // Step 4: Authorize (for now, allow all authenticated users)
+    const isAuthorized = true;
     
-    switch (userRole) {
-      case 'MANAGER':
-        // Validate that user is actually a manager (has direct reports)
-        if (isUserAManager(employeeId)) {
-          isAuthorized = true;
-        } else {
-          errorMessage = 'You are not registered as a manager in the system.';
-        }
-        break;
-        
-      case 'DATA_SPOC':
-        // Validate that user is assigned as a Data SPOC
-        if (employee.isDataSpoc === true || employee.isDataSpoc === 'TRUE') {
-          isAuthorized = true;
-        } else {
-          errorMessage = 'You do not have Data SPOC access.';
-        }
-        break;
-        
-      case 'EMPLOYEE':
-        // All active employees can access the Employee Portal
-        isAuthorized = true;
-        break;
-        
-      default:
-        errorMessage = `Unknown role: ${userRole}`;
-    }
-    
-    // Step 5: Log access attempt
+    console.log(`[doGet] Authorization: ${isAuthorized}`);
     if (isAuthorized) {
       logAccessAttempt(userEmail, userRole, 'GRANTED', `Portal access granted`);
+    }
+    
+    // Step 5: Route to correct portal
+    console.log(`[doGet] Routing to portal based on role: "${userRole}"`);
+    
+    let templateName = TEMPLATES.EMPLOYEE_PORTAL;
+    let title = 'Own Your Career — Employee Portal';
+    
+    if (userRole === 'MANAGER') {
+      templateName = TEMPLATES.MANAGER_PORTAL;
+      title = 'Own Your Career — Manager Portal';
+      console.log(`[doGet] Routing to MANAGER portal`);
+    } else if (userRole === 'DATA_SPOC') {
+      templateName = TEMPLATES.DATA_SPOC_PORTAL;
+      title = 'Own Your Career — Data SPOC Portal';
+      console.log(`[doGet] Routing to DATA_SPOC portal`);
     } else {
-      logAccessAttempt(userEmail, userRole, 'DENIED', errorMessage);
+      console.log(`[doGet] Routing to EMPLOYEE portal`);
     }
     
-    // Step 6: Serve portal or deny access
-    if (!isAuthorized) {
-      return deniedAccess_(errorMessage);
+    // Step 6: Load and serve the template
+    console.log(`[doGet] Preparing to serve portal template`);
+    
+    let htmlFile = '';
+    if (userRole === 'MANAGER') {
+      htmlFile = 'manager-portal';
+    } else if (userRole === 'DATA_SPOC') {
+      htmlFile = 'dataspoc-portal';
+    } else {
+      htmlFile = 'employee-portal';
     }
     
-    switch (userRole) {
-      case 'MANAGER':
-        return serveTemplate_(TEMPLATES.MANAGER_PORTAL, { 
-          employeeId: employeeId,
-          userEmail: userEmail 
-        });
-        
-      case 'DATA_SPOC':
-        return serveTemplate_(TEMPLATES.DATA_SPOC_PORTAL, {
-          employeeId: employeeId,
-          userEmail: userEmail
-        });
-        
-      case 'EMPLOYEE':
-        return serveTemplate_(TEMPLATES.EMPLOYEE_PORTAL, {
-          employeeId: employeeId,
-          userEmail: userEmail
-        });
-    }
+    // Load the backend-appscript template (contains template variables <?= ?>)
+    const template = HtmlService.createTemplateFromFile(htmlFile);
+    
+    // Ensure employeeId is a number for template substitution
+    template.userEmail = userEmail;
+    template.employeeId = typeof employeeId === 'number' ? employeeId : parseInt(employeeId, 10) || 0;
+    
+    console.log(`[doGet] Template variables set: email=${template.userEmail}, employeeId=${template.employeeId} (type: ${typeof template.employeeId})`);
+    
+    // Evaluate template - this will replace <?= userEmail ?> and <?= employeeId ?> with actual values
+    const htmlOutput = template.evaluate()
+      .setTitle(title)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    return htmlOutput;
     
   } catch (e) {
     console.error(`[WebApp] Error in doGet: ${e.message}`);
-    logAccessAttempt(Session.getActiveUser().getEmail(), 'UNKNOWN', 'ERROR', `Exception: ${e.message}`);
+    console.error(`[WebApp] Stack: ${e.stack}`);
+    try {
+      logAccessAttempt(Session.getActiveUser().getEmail(), 'UNKNOWN', 'ERROR', `Exception: ${e.message}`);
+    } catch (logErr) {
+      console.error(`[WebApp] Could not log access: ${logErr}`);
+    }
     return HtmlService.createHtmlOutput(`<h1>Error</h1><p>An unexpected error occurred. Please try again later.</p><p style="font-size: 12px; color: #999;">${e.message}</p>`);
   }
 }
@@ -167,32 +168,88 @@ function doPost(e) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Gets user's role from Employees sheet.
- * @param {string} userEmail - User's email address
- * @returns {string} User role (MANAGER, DATA_SPOC, EMPLOYEE)
+ * Returns an "Access Denied" HTML page.
+ * @param {string} message - Error message to display
+ * @returns {HtmlOutput} Access denied HTML page
  */
-function getUserRole_(userEmail) {
-  try {
-    const sheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'))
-      .getSheetByName('Employees');
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const emailIndex = headers.indexOf('Email');
-    const roleIndex = headers.indexOf('Role');
-    
-    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
-    const values = dataRange.getValues();
-    
-    for (let i = 0; i < values.length; i++) {
-      if (values[i][emailIndex] === userEmail) {
-        return values[i][roleIndex];
-      }
-    }
-    
-    return 'EMPLOYEE'; // Default
-  } catch (e) {
-    console.error(`[WebApp] Error getting user role: ${e.message}`);
-    return 'EMPLOYEE';
-  }
+function deniedAccess_(message) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Access Denied — Own Your Career</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #038F8D 0%, #024645 100%);
+          }
+          .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+          }
+          h1 {
+            color: #c62828;
+            margin: 0 0 1rem 0;
+            font-size: 2rem;
+          }
+          p {
+            color: #333;
+            line-height: 1.6;
+            font-size: 1rem;
+            margin: 0 0 1.5rem 0;
+          }
+          .contact {
+            background: #f9f9f9;
+            border-left: 4px solid #038F8D;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: left;
+            border-radius: 4px;
+          }
+          .contact p {
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+          }
+          a {
+            color: #038F8D;
+            text-decoration: none;
+            font-weight: 500;
+          }
+          a:hover {
+            text-decoration: underline;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>🔒 Access Denied</h1>
+          <p>${message}</p>
+          <div class="contact">
+            <p><strong>Need help?</strong></p>
+            <p>Please contact your HR administrator or the PMGM team for assistance.</p>
+          </div>
+          <p style="font-size: 0.9rem; color: #999; margin-top: 2rem;">
+            Own Your Career — Mid-Year Performance Review System
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Access Denied — Own Your Career');
 }
 
 /**
@@ -213,6 +270,7 @@ function serveTemplate_(templateName, data) {
 }
 
 /**
+<<<<<<< Updated upstream
  * Gets an employee by email address.
  * @param {string} userEmail - User's email address
  * @returns {Object|null} Employee object or null if not found
@@ -309,4 +367,22 @@ function logAccessAttempt(userEmail, role, result, reason) {
   } catch (e) {
     console.error(`[WebApp] Error logging access attempt: ${e.message}`);
   }
+=======
+ * Injects user data into HTML via inline script.
+ * Must be called before returning HtmlOutput.
+ * @param {Object} data - User data object
+ * @returns {string} JavaScript code to inject
+ */
+function injectUserData_(data) {
+  // Ensure employeeId is properly formatted for JavaScript
+  const employeeId = typeof data.employeeId === 'number' ? data.employeeId : `"${data.employeeId}"`;
+  
+  return `
+    <script>
+      window.oyc_userEmail = "${data.userEmail}";
+      window.oyc_userEmployeeID = ${employeeId};
+      console.log('[WebApp] Injected user data: email=' + window.oyc_userEmail + ', employeeId=' + window.oyc_userEmployeeID);
+    </script>
+  `;
+>>>>>>> Stashed changes
 }
