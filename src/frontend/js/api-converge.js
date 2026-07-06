@@ -16,10 +16,10 @@
 const APIConverge = {
   /**
    * Base API endpoint URL
-   * In development: '/api'
+   * In development: 'http://localhost:3000/api'
    * In production: 'https://yourdomain.com/api'
    */
-  BASE_URL: '/api',
+  BASE_URL: 'http://localhost:3000/api',
 
   /**
    * Login function (HTTP-based for Converge)
