@@ -29,29 +29,47 @@
           <div class="form-group hierarchy-group">
             <label for="corporate">Corporate</label>
             <select id="corporate" name="corporate">
-              <option value="converge-ict">Converge ICT Solutions</option>
+              <option value="">-- Select Corporate --</option>
             </select>
           </div>
 
           <div class="form-group hierarchy-group">
             <label for="group">Group</label>
-            <select id="group" name="group">
+            <select id="group" name="group" disabled class="disabled-field">
               <option value="">-- Select Group --</option>
-              <option value="people-culture">People and Culture</option>
-              <option value="corporate-services">Corporate Services</option>
-              <option value="operations">Operations</option>
             </select>
           </div>
 
           <div class="form-group hierarchy-group">
             <label for="department">Department</label>
-            <select id="department" name="department">
+            <select id="department" name="department" disabled class="disabled-field">
               <option value="">-- Select Department --</option>
-              <option value="people-platforms">People Platforms & Analytics</option>
-              <option value="recruitment">Recruitment</option>
-              <option value="compensation">Compensation & Benefits</option>
             </select>
           </div>
+
+          <div class="form-group hierarchy-group">
+            <label for="team">Team</label>
+            <select id="team" name="team" disabled class="disabled-field">
+              <option value="">-- Select Team --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- CSV File Upload Section -->
+        <div class="form-group">
+          <label for="okr-csv-upload" class="upload-label">Upload OKR Data</label>
+          <div class="file-upload-container">
+            <input 
+              type="file" 
+              id="okr-csv-upload" 
+              name="okr-csv-upload" 
+              accept=".csv" 
+              aria-label="Upload OKR data CSV file"
+              data-testid="okr-csv-input"
+            >
+            <p class="file-upload-hint">Accepted format: CSV only (.csv)</p>
+          </div>
+          <div id="csv-upload-feedback" class="upload-feedback" style="display: none;"></div>
         </div>
 
         <!-- Generate OKR Form Button -->
@@ -102,63 +120,14 @@
             <table class="okr-table">
               <thead>
                 <tr>
-                  <th class="col-label">OKR / Key Result</th>
-                  <th class="col-target">Target</th>
+                  <th class="col-label">Objective</th>
+                  <th class="col-label">Key Result</th>
                   <th class="col-weight">Weight (%)</th>
                   <th class="col-actual">Actual Result</th>
                 </tr>
               </thead>
-              <tbody>
-                <!-- Corporate OKR Section -->
-                <tr class="section-header">
-                  <td colspan="4"><strong>Corporate OKR</strong> <span class="section-note">Auto-populated from corporate scorecard</span></td>
-                </tr>
-                <tr>
-                  <td class="label-cell">Revenue Growth Target</td>
-                  <td class="target-cell">15%</td>
-                  <td class="weight-cell">40%</td>
-                  <td class="actual-cell"><input type="number" class="input-actual" name="corporate_revenue" step="0.1" placeholder="e.g., 14.2"></td>
-                </tr>
-                <tr>
-                  <td class="label-cell">Customer Satisfaction Score</td>
-                  <td class="target-cell">90</td>
-                  <td class="weight-cell">30%</td>
-                  <td class="actual-cell"><input type="number" class="input-actual" name="corporate_satisfaction" step="0.1" placeholder="e.g., 92"></td>
-                </tr>
-                <tr>
-                  <td class="label-cell">Employee Engagement Index</td>
-                  <td class="target-cell">85%</td>
-                  <td class="weight-cell">30%</td>
-                  <td class="actual-cell"><input type="number" class="input-actual" name="corporate_engagement" step="0.1" placeholder="e.g., 88"></td>
-                </tr>
-
-                <!-- Group OKR Section -->
-                <tr class="section-header">
-                  <td colspan="4"><strong>Group OKR</strong> <span class="section-note">Depending on uploaded OKR</span></td>
-                </tr>
-                <tr>
-                  <td class="label-cell">Group Growth Target</td>
-                  <td class="target-cell">12%</td>
-                  <td class="weight-cell">50%</td>
-                  <td class="actual-cell"><input type="number" class="input-actual" name="group_growth" step="0.1" placeholder="Enter value"></td>
-                </tr>
-
-                <!-- Team OKR Section -->
-                <tr class="section-header">
-                  <td colspan="4"><strong>Team OKR</strong> <span class="section-note">Department-specific objectives</span></td>
-                </tr>
-                <tr>
-                  <td class="label-cell">Reduce Attrition Rate</td>
-                  <td class="target-cell">5%</td>
-                  <td class="weight-cell">50%</td>
-                  <td class="actual-cell"><input type="number" class="input-actual" name="team_attrition" step="0.1" placeholder="e.g., 4.8"></td>
-                </tr>
-                <tr>
-                  <td class="label-cell">Complete PMGM System Launch</td>
-                  <td class="target-cell">100%</td>
-                  <td class="weight-cell">50%</td>
-                  <td class="actual-cell"><input type="number" class="input-actual" name="team_launch" step="0.1" placeholder="e.g., 95"></td>
-                </tr>
+              <tbody id="okr-table-body">
+                <!-- Dynamically populated from CSV key results -->
               </tbody>
             </table>
           </div>
@@ -174,10 +143,10 @@
     </section>
   </main>
 
-  <script src="../js/app.js"></script>
-  <script src="../js/gates.js"></script>
-  <script src="../js/calculations.js"></script>
   <script src="../js/validation.js"></script>
+  <script src="../js/calculations.js"></script>
+  <script src="../js/gates.js"></script>
+  <script src="../js/app.js"></script>
 
   <script>
     /**
@@ -186,21 +155,21 @@
      */
     const departmentMembers = {
       'people-platforms': [
-        { name: 'Charvin Kale Penaverde', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
-        { name: 'Ernica Castronero', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
-        { name: 'Jeremy Louise Carino', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
-        { name: 'Juan Carlo Claudio', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
-        { name: 'Luigi Gabriel Espiritu', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
-        { name: 'Ma. Zaira Bajar', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' },
-        { name: 'Michael Ryan Escobilla', department: 'People Platforms & Analytics', status: 'Pending', lastUpdated: '—' }
+        { name: 'Charvin Kale Penaverde', department: 'People Platforms & Analytics', team: 'platforms', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null },
+        { name: 'Ernica Castronero', department: 'People Platforms & Analytics', team: 'analytics', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null },
+        { name: 'Jeremy Louise Carino', department: 'People Platforms & Analytics', team: 'platforms', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null },
+        { name: 'Juan Carlo Claudio', department: 'People Platforms & Analytics', team: 'platforms', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null },
+        { name: 'Luigi Gabriel Espiritu', department: 'People Platforms & Analytics', team: 'platforms', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null },
+        { name: 'Ma. Zaira Bajar', department: 'People Platforms & Analytics', team: 'platforms', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null },
+        { name: 'Michael Ryan Escobilla', department: 'People Platforms & Analytics', team: 'analytics', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null }
       ],
       'recruitment': [
-        { name: 'John Doe', department: 'Recruitment', status: 'Pending', lastUpdated: '—' },
-        { name: 'Jane Smith', department: 'Recruitment', status: 'Pending', lastUpdated: '—' }
+        { name: 'John Doe', department: 'Recruitment', team: 'platforms', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null },
+        { name: 'Jane Smith', department: 'Recruitment', team: 'platforms', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null }
       ],
       'compensation': [
-        { name: 'Alice Johnson', department: 'Compensation & Benefits', status: 'Pending', lastUpdated: '—' },
-        { name: 'Bob Wilson', department: 'Compensation & Benefits', status: 'Pending', lastUpdated: '—' }
+        { name: 'Alice Johnson', department: 'Compensation & Benefits', team: 'platforms', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null },
+        { name: 'Bob Wilson', department: 'Compensation & Benefits', team: 'platforms', status: 'Pending', lastUpdated: '—', lastUpdatedTimestamp: null }
       ]
     };
 
@@ -208,10 +177,36 @@
      * Department ID to display name mapping
      */
     const departmentNames = {
-      'people-platforms': 'People Platforms & Analytics',
-      'recruitment': 'Recruitment',
-      'compensation': 'Compensation & Benefits'
+      'People Platforms and Analytics': 'People Platforms & Analytics',
+      'Recruitment': 'Recruitment',
+      'Compensation & Benefits': 'Compensation & Benefits'
     };
+
+    /**
+     * Format time difference as human-readable string
+     * @param {Date} date - The date to compare against current time
+     * @returns {string} Human-readable time ago string
+     */
+    function formatTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      
+      let interval = seconds / 31536000;
+      if (interval > 1) return Math.floor(interval) + ' year' + (Math.floor(interval) > 1 ? 's' : '') + ' ago';
+      
+      interval = seconds / 2592000;
+      if (interval > 1) return Math.floor(interval) + ' month' + (Math.floor(interval) > 1 ? 's' : '') + ' ago';
+      
+      interval = seconds / 86400;
+      if (interval > 1) return Math.floor(interval) + ' day' + (Math.floor(interval) > 1 ? 's' : '') + ' ago';
+      
+      interval = seconds / 3600;
+      if (interval > 1) return Math.floor(interval) + ' hour' + (Math.floor(interval) > 1 ? 's' : '') + ' ago';
+      
+      interval = seconds / 60;
+      if (interval > 1) return Math.floor(interval) + ' minute' + (Math.floor(interval) > 1 ? 's' : '') + ' ago';
+      
+      return 'just now';
+    }
 
     /**
      * Local storage for OKR draft data
@@ -219,54 +214,529 @@
     let okrDraftData = {};
 
     /**
-     * Handles department selection and populates the uploading status table
+     * CSV File Upload Handler
+     * Parses CSV, validates structure, and extracts hierarchy + key results
      */
-    document.getElementById('department').addEventListener('change', function() {
-      const selectedDept = this.value;
-      const tbody = document.getElementById('uploading-status-body');
+    document.getElementById('okr-csv-upload').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      const feedbackDiv = document.getElementById('csv-upload-feedback');
       
-      // Clear existing rows
-      tbody.innerHTML = '';
-
-      if (selectedDept && departmentMembers[selectedDept]) {
-        const members = departmentMembers[selectedDept];
-        
-        members.forEach(member => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${member.name}</td>
-            <td>${member.department}</td>
-            <td><span class="status-indicator status-indicator--pending">${member.status}</span></td>
-            <td>${member.lastUpdated}</td>
-          `;
-          tbody.appendChild(row);
-        });
+      // Reset feedback
+      feedbackDiv.style.display = 'none';
+      feedbackDiv.className = 'upload-feedback';
+      
+      // No file selected
+      if (!file) {
+        console.log('No file selected');
+        return;
       }
+      
+      console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+      
+      // Validate file type
+      const validMimeTypes = ['text/csv', 'application/csv', 'text/plain'];
+      const validExtensions = ['.csv'];
+      const fileName = file.name;
+      const fileExtension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+      
+      console.log('File extension:', fileExtension, 'MIME type:', file.type);
+      
+      // Check file extension
+      if (!validExtensions.includes(fileExtension)) {
+        showUploadFeedback('error', `Invalid file type. Only CSV files (.csv) are accepted. You selected: ${fileName}`);
+        e.target.value = '';
+        return;
+      }
+      
+      // Check MIME type (additional validation) - allow text/plain for CSV files
+      if (!validMimeTypes.includes(file.type) && file.type !== '') {
+        console.warn('MIME type not recognized, but extension is .csv, proceeding anyway');
+      }
+      
+      // Check file size (max 5MB)
+      const maxFileSize = 5 * 1024 * 1024;
+      if (file.size > maxFileSize) {
+        showUploadFeedback('error', `File size exceeds 5MB limit. Please upload a smaller file.`);
+        e.target.value = '';
+        return;
+      }
+      
+      // Show loading feedback
+      showUploadFeedback('info', `Uploading and validating "${fileName}"...`);
+      
+      // Parse CSV file
+      parseCSVFile(file)
+        .then(function(parsedHierarchy) {
+          console.log('CSV Parsed Successfully!');
+          console.log('Corporates:', parsedHierarchy.corporates);
+          console.log('Groups:', parsedHierarchy.groups);
+          console.log('Departments:', parsedHierarchy.departments);
+          console.log('Teams:', parsedHierarchy.teams);
+          console.log('Total Key Results:', parsedHierarchy.keyResults.length);
+          
+          // Validate that we have data
+          if (!parsedHierarchy.corporates || parsedHierarchy.corporates.length === 0) {
+            throw new Error('No corporate data found in CSV file.');
+          }
+          
+          if (!parsedHierarchy.keyResults || parsedHierarchy.keyResults.length === 0) {
+            throw new Error('No key results found in CSV file.');
+          }
+          
+          // CSV parsing successful
+          showUploadFeedback('success', `✓ CSV file "${fileName}" validated successfully!\n\n` +
+            `Corporates: ${parsedHierarchy.corporates.length} | ` +
+            `Groups: ${parsedHierarchy.groups.length} | ` +
+            `Departments: ${parsedHierarchy.departments.length} | ` +
+            `Teams: ${parsedHierarchy.teams.length} | ` +
+            `Key Results: ${parsedHierarchy.keyResults.length}`);
+          
+          // Store hierarchy for later use
+          window.pendingCSVHierarchy = parsedHierarchy;
+          window.pendingCSVFile = file;
+          
+          // Populate dropdown selectors with CSV data
+          populateHierarchyDropdowns(parsedHierarchy);
+        })
+        .catch(function(error) {
+          console.error('CSV Parsing Error:', error);
+          // CSV parsing failed
+          showUploadFeedback('error', `CSV validation failed: ${error.message}`);
+          e.target.value = '';
+          window.pendingCSVHierarchy = null;
+          window.pendingCSVFile = null;
+        });
     });
 
     /**
+     * Populates Corporate, Group, Department, Team dropdowns with CSV data
+     * Adds CSV options (keeps existing placeholder, appends new options)
+     * Supports multiple CSV uploads — new data is added to existing options
+     * @param {Object} hierarchy - Parsed hierarchy object from CSV
+     */
+    function populateHierarchyDropdowns(hierarchy) {
+      const corporateSelect = document.getElementById('corporate');
+      const groupSelect = document.getElementById('group');
+      const departmentSelect = document.getElementById('department');
+      const teamSelect = document.getElementById('team');
+
+      console.log('populateHierarchyDropdowns called with:', hierarchy);
+
+      // Helper function to add unique options to a select
+      function addUniqueOptions(selectElement, values) {
+        // Get existing values (excluding placeholder)
+        const existingValues = new Set();
+        Array.from(selectElement.options).forEach(function(opt) {
+          if (opt.value) { // Skip empty placeholder
+            existingValues.add(opt.value);
+          }
+        });
+
+        console.log('addUniqueOptions - Existing values:', Array.from(existingValues));
+        console.log('addUniqueOptions - New values to add:', values);
+
+        // Add new values that don't already exist
+        values.forEach(function(value) {
+          if (!existingValues.has(value)) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            selectElement.appendChild(option);
+            console.log('Added option:', value);
+          }
+        });
+      }
+
+      // Add unique options for each hierarchy level
+      console.log('Adding corporate options...');
+      addUniqueOptions(corporateSelect, hierarchy.corporates);
+      console.log('Adding group options...');
+      addUniqueOptions(groupSelect, hierarchy.groups);
+      console.log('Adding department options...');
+      addUniqueOptions(departmentSelect, hierarchy.departments);
+      console.log('Adding team options...');
+      addUniqueOptions(teamSelect, hierarchy.teams);
+
+      // Enable corporate dropdown if it has options (after CSV is loaded)
+      if (hierarchy.corporates && hierarchy.corporates.length > 0) {
+        console.log('Enabling corporate dropdown. Total options:', hierarchy.corporates.length);
+        corporateSelect.disabled = false;
+        corporateSelect.classList.remove('disabled-field');
+      } else {
+        console.warn('No corporates found in hierarchy');
+      }
+
+      // Do NOT enable group, department, team yet — keep them grayed out until Corporate is selected
+      // These stay disabled until user selects a value in the previous dropdown
+
+      // Store hierarchy data globally for cascading filters
+      window.csvHierarchyData = hierarchy;
+      console.log('Hierarchy data stored globally');
+    }
+
+    /**
+     * Handles Corporate selection - enables Group dropdown
+     * Also filters groups based on selected corporate
+     */
+    document.getElementById('corporate').addEventListener('change', function() {
+      const selectedCorporate = this.value;
+      const groupSelect = document.getElementById('group');
+      const departmentSelect = document.getElementById('department');
+      const teamSelect = document.getElementById('team');
+
+      if (!selectedCorporate) {
+        // No corporate selected - disable all downstream
+        groupSelect.disabled = true;
+        groupSelect.classList.add('disabled-field');
+        groupSelect.value = '';
+        
+        departmentSelect.disabled = true;
+        departmentSelect.classList.add('disabled-field');
+        departmentSelect.value = '';
+        
+        teamSelect.disabled = true;
+        teamSelect.classList.add('disabled-field');
+        teamSelect.value = '';
+        return;
+      }
+
+      // Corporate is selected - enable and filter group dropdown
+      if (!window.csvHierarchyData) {
+        return;
+      }
+
+      // Get all groups for selected corporate
+      const groupsForCorporate = [];
+      const groupSet = new Set();
+      window.csvHierarchyData.keyResults.forEach(function(kr) {
+        if (kr.corporate === selectedCorporate && !groupSet.has(kr.group)) {
+          groupSet.add(kr.group);
+          groupsForCorporate.push(kr.group);
+        }
+      });
+
+      // Rebuild group dropdown with filtered values
+      groupSelect.innerHTML = '<option value="">-- Select Group --</option>';
+      groupsForCorporate.forEach(function(group) {
+        const option = document.createElement('option');
+        option.value = group;
+        option.textContent = group;
+        groupSelect.appendChild(option);
+      });
+
+      // Enable group if corporate has groups
+      if (groupsForCorporate.length > 0) {
+        groupSelect.disabled = false;
+        groupSelect.classList.remove('disabled-field');
+      } else {
+        groupSelect.disabled = true;
+        groupSelect.classList.add('disabled-field');
+      }
+
+      // Reset downstream selections
+      departmentSelect.disabled = true;
+      departmentSelect.classList.add('disabled-field');
+      departmentSelect.value = '';
+      departmentSelect.innerHTML = '<option value="">-- Select Department --</option>';
+      
+      teamSelect.disabled = true;
+      teamSelect.classList.add('disabled-field');
+      teamSelect.value = '';
+      teamSelect.innerHTML = '<option value="">-- Select Team --</option>';
+    });
+
+    /**
+     * Filters departments based on selected group
+     * Also cascades gray-out to Team when Group changes
+     */
+    document.getElementById('group').addEventListener('change', function() {
+      const selectedGroup = this.value;
+      const departmentSelect = document.getElementById('department');
+      const teamSelect = document.getElementById('team');
+
+      if (!window.csvHierarchyData) {
+        return;
+      }
+
+      // Get all key results for selected group
+      const groupKeyResults = window.csvHierarchyData.keyResults.filter(function(kr) {
+        return kr.group === selectedGroup;
+      });
+
+      // Extract unique departments for this group
+      const departmentsForGroup = [];
+      const departmentSet = new Set();
+      groupKeyResults.forEach(function(kr) {
+        if (!departmentSet.has(kr.department)) {
+          departmentSet.add(kr.department);
+          departmentsForGroup.push(kr.department);
+        }
+      });
+
+      // Rebuild department dropdown
+      departmentSelect.innerHTML = '<option value="">-- Select Department --</option>';
+      departmentsForGroup.forEach(function(dept) {
+        const option = document.createElement('option');
+        option.value = dept;
+        option.textContent = dept;
+        departmentSelect.appendChild(option);
+      });
+
+      if (selectedGroup) {
+        // Enable department dropdown when group is selected
+        departmentSelect.disabled = false;
+        departmentSelect.classList.remove('disabled-field');
+      } else {
+        // Disable department and team
+        departmentSelect.disabled = true;
+        departmentSelect.classList.add('disabled-field');
+        teamSelect.disabled = true;
+        teamSelect.classList.add('disabled-field');
+      }
+
+      // Reset department and team selections
+      departmentSelect.value = '';
+      teamSelect.value = '';
+      
+      // Gray out team since department options changed
+      teamSelect.disabled = true;
+      teamSelect.classList.add('disabled-field');
+      teamSelect.innerHTML = '<option value="">-- Select Team --</option>';
+    });
+
+    /**
+     * Filters teams based on selected department
+     */
+    document.getElementById('department').addEventListener('change', function() {
+      const selectedGroup = document.getElementById('group').value;
+      const selectedDept = this.value;
+      const teamSelect = document.getElementById('team');
+
+      if (!window.csvHierarchyData) {
+        return;
+      }
+
+      // Get all key results for selected group AND department
+      const deptKeyResults = window.csvHierarchyData.keyResults.filter(function(kr) {
+        return kr.group === selectedGroup && kr.department === selectedDept;
+      });
+
+      // Extract unique teams for this department
+      const teamsForDept = [];
+      const teamSet = new Set();
+      deptKeyResults.forEach(function(kr) {
+        if (!teamSet.has(kr.team)) {
+          teamSet.add(kr.team);
+          teamsForDept.push(kr.team);
+        }
+      });
+
+      // Rebuild team dropdown
+      teamSelect.innerHTML = '<option value="">-- Select Team --</option>';
+      teamsForDept.forEach(function(team) {
+        const option = document.createElement('option');
+        option.value = team;
+        option.textContent = team;
+        teamSelect.appendChild(option);
+      });
+
+      if (selectedDept) {
+        // Enable team dropdown when department is selected
+        teamSelect.disabled = false;
+        teamSelect.classList.remove('disabled-field');
+      } else {
+        // Disable team
+        teamSelect.disabled = true;
+        teamSelect.classList.add('disabled-field');
+      }
+
+      // Reset team selection
+      teamSelect.value = '';
+    });
+    
+    /**
+     * Display upload feedback message
+     * @param {string} type - 'success', 'error', or 'info'
+     * @param {string} message - Feedback message to display
+     */
+    function showUploadFeedback(type, message) {
+      const feedbackDiv = document.getElementById('csv-upload-feedback');
+      feedbackDiv.className = `upload-feedback upload-feedback--${type}`;
+      feedbackDiv.innerHTML = message.replace(/\n/g, '<br>');
+      feedbackDiv.style.display = 'block';
+    }
+
+    /**
      * Handles Generate OKR Form button click
-     * Shows OKR form and loads any saved draft data
+     * Displays OKR form with dynamic key result rows from CSV
+     * Filters by selected Group, Department, and Team
      */
     document.getElementById('generate-okr-btn').addEventListener('click', function() {
+      const corporate = document.getElementById('corporate').value;
+      const group = document.getElementById('group').value;
       const dept = document.getElementById('department').value;
+      const team = document.getElementById('team').value;
+      
+      // Validate required selections
+      if (!corporate) {
+        alert('Please select a corporate entity first');
+        return;
+      }
+      
+      if (!group) {
+        alert('Please select a group first');
+        return;
+      }
       
       if (!dept) {
         alert('Please select a department first');
         return;
       }
       
-      // Update form title
-      const deptName = departmentNames[dept];
+      if (!team) {
+        alert('Please select a team first');
+        return;
+      }
+      
+      if (!window.pendingCSVHierarchy) {
+        alert('No CSV data loaded. Please upload a CSV file first.');
+        return;
+      }
+      
+      // Update form title to show selected hierarchy
+      const deptName = dept || 'Unknown Department';
       document.getElementById('form-department-title').textContent = `OKR Upload: ${deptName} Department`;
       
-      // Load draft data if it exists
-      loadOKRDraft(dept);
+      // Get all key results from CSV
+      const allKeyResults = window.pendingCSVHierarchy.keyResults;
+      
+      if (!allKeyResults || allKeyResults.length === 0) {
+        alert('No key results found in CSV');
+        return;
+      }
+      
+      // Populate OKR table with filtered rows (by Corporate, Group, Department, Team)
+      populateDynamicOKRTable(allKeyResults, corporate, group, dept, team);
       
       // Switch views
       document.getElementById('step-2-content').style.display = 'none';
       document.getElementById('okr-form-content').style.display = 'block';
     });
+
+    /**
+     * Add event listeners to hierarchy dropdowns to regenerate OKR table on change
+     * (Only if form is already open)
+     */
+    document.getElementById('group').addEventListener('change', function() {
+      if (document.getElementById('okr-form-content').style.display !== 'none') {
+        regenerateOKRTable();
+      }
+    });
+
+    document.getElementById('department').addEventListener('change', function() {
+      if (document.getElementById('okr-form-content').style.display !== 'none') {
+        regenerateOKRTable();
+      }
+    });
+
+    document.getElementById('team').addEventListener('change', function() {
+      if (document.getElementById('okr-form-content').style.display !== 'none') {
+        regenerateOKRTable();
+      }
+    });
+
+    /**
+     * Regenerates OKR table based on current dropdown selections
+     */
+    function regenerateOKRTable() {
+      const corporate = document.getElementById('corporate').value;
+      const group = document.getElementById('group').value;
+      const dept = document.getElementById('department').value;
+      const team = document.getElementById('team').value;
+      
+      if (!window.pendingCSVHierarchy) {
+        return;
+      }
+
+      const allKeyResults = window.pendingCSVHierarchy.keyResults;
+      populateDynamicOKRTable(allKeyResults, corporate, group, dept, team);
+    }
+
+    /**
+     * Populates the OKR table with dynamic key result rows from CSV
+     * Filters by Corporate, Group, Department, and Team
+     * Groups key results by objective for cleaner display
+     * @param {Array<Object>} keyResults - Array of key result objects
+     * @param {string} selectedCorporate - Selected corporate value
+     * @param {string} selectedGroup - Selected group value
+     * @param {string} selectedDepartment - Selected department value
+     * @param {string} selectedTeam - Selected team value
+     */
+    function populateDynamicOKRTable(keyResults, selectedCorporate, selectedGroup, selectedDepartment, selectedTeam) {
+      const tbody = document.getElementById('okr-table-body');
+      tbody.innerHTML = ''; // Clear existing rows
+
+      // Filter key results by selected hierarchy
+      const filteredResults = keyResults.filter(function(kr) {
+        const corporateMatch = !selectedCorporate || kr.corporate === selectedCorporate;
+        const groupMatch = !selectedGroup || kr.group === selectedGroup;
+        const deptMatch = !selectedDepartment || kr.department === selectedDepartment;
+        const teamMatch = !selectedTeam || kr.team === selectedTeam;
+        return corporateMatch && groupMatch && deptMatch && teamMatch;
+      });
+
+      if (filteredResults.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="4" style="text-align: center; padding: 20px; color: #999;">No key results found for the selected filters</td>';
+        tbody.appendChild(row);
+        window.currentKeyResults = [];
+        return;
+      }
+
+      // Group key results by objective
+      const objectiveGroups = {};
+      filteredResults.forEach(function(kr, index) {
+        const objective = kr.objective;
+        if (!objectiveGroups[objective]) {
+          objectiveGroups[objective] = [];
+        }
+        objectiveGroups[objective].push({ ...kr, index: index });
+      });
+
+      // Render grouped key results
+      Object.keys(objectiveGroups).forEach(function(objective) {
+        const krsInGroup = objectiveGroups[objective];
+
+        krsInGroup.forEach(function(kr, krsIndex) {
+          const row = document.createElement('tr');
+          
+          // Only show objective in first row of group
+          const objectiveCell = krsIndex === 0 
+            ? `<td class="label-cell" rowspan="${krsInGroup.length}">${kr.objective}</td>`
+            : '';
+
+          row.innerHTML = `
+            ${objectiveCell}
+            <td class="label-cell">${kr.keyResult}</td>
+            <td class="weight-cell">${kr.weight}%</td>
+            <td class="actual-cell">
+              <input 
+                type="number" 
+                class="input-actual" 
+                data-kr-index="${kr.index}"
+                step="0.1" 
+                placeholder="Enter actual result"
+                aria-label="Actual result for ${kr.keyResult}"
+              >
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+
+      // Store filtered key results for later validation
+      window.currentKeyResults = filteredResults;
+    }
 
     /**
      * Loads saved OKR draft data into form fields
@@ -284,19 +754,51 @@
     }
 
     /**
-     * Collects OKR form data
+     * Calculates the weighted OKR final score from key results
+     * Formula: Sum of (Actual Result * Weight) / Total Weight
+     * All weights should sum to 100%; actual results are treated as percentages
+     * 
+     * @param {Array<Object>} keyResults - Array of key result objects with actualResult and weight
+     * @returns {number} Weighted average score as a percentage
+     */
+    function calculateOKRFinalScore(keyResults) {
+      if (!keyResults || keyResults.length === 0) {
+        return 0;
+      }
+
+      let totalWeightedScore = 0;
+      let totalWeight = 0;
+
+      keyResults.forEach(function(kr) {
+        const actualResult = parseFloat(kr.actualResult) || 0;
+        const weight = parseFloat(kr.weight) || 0;
+        
+        totalWeightedScore += (actualResult * weight);
+        totalWeight += weight;
+      });
+
+      // Calculate weighted average
+      const finalScore = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
+      return finalScore;
+    }
+
+    /**
+     * Collects OKR form data from dynamic table inputs
+     * (Note: This is now replaced by direct input collection in form submit)
      */
     function collectOKRFormData() {
+      // This function is deprecated in favor of direct input collection in submit handler
+      // Kept for backward compatibility if needed
       const formData = {};
-      document.querySelectorAll('.input-actual').forEach(input => {
-        formData[input.name] = input.value;
+      document.querySelectorAll('.input-actual').forEach(function(input, index) {
+        formData[`kr_${index}`] = input.value;
       });
       return formData;
     }
 
     /**
      * Handles Save Draft button click
-     * Saves form data and returns to main view
+     * Saves form data and updates timestamp for all department members
      */
     document.getElementById('save-draft-okr-btn').addEventListener('click', function() {
       const dept = document.getElementById('department').value;
@@ -304,6 +806,9 @@
       
       // Save to local storage/memory
       okrDraftData[dept] = formData;
+      
+      // Update last updated timestamp for all members in department
+      updateLastUpdatedForAllMembers(dept, 'Draft Saved');
       
       console.log('OKR Draft saved for department:', dept, formData);
       
@@ -314,35 +819,72 @@
 
     /**
      * Handles Submit OKR Data button click
-     * Submits form data and updates uploading status for all department members
+     * Validates all key result inputs, collects data, calculates OKR score and bracket, submits
      */
     document.getElementById('okr-form').addEventListener('submit', function(e) {
       e.preventDefault();
       
       const dept = document.getElementById('department').value;
-      const formData = collectOKRFormData();
       
-      // Validate that all fields are filled
-      const allFilled = Object.values(formData).every(val => val !== '');
-      if (!allFilled) {
-        alert('Please fill in all Actual Result fields');
+      if (!window.currentKeyResults || window.currentKeyResults.length === 0) {
+        alert('No key results loaded. Please generate form first.');
+        return;
+      }
+
+      // Collect actual results from form inputs
+      const inputs = document.querySelectorAll('.input-actual');
+      const updatedKeyResults = [];
+      
+      inputs.forEach(function(input) {
+        const krIndex = parseInt(input.getAttribute('data-kr-index'));
+        const actualResult = parseFloat(input.value);
+        
+        if (window.currentKeyResults[krIndex]) {
+          const kr = { ...window.currentKeyResults[krIndex] };
+          kr.actualResult = isNaN(actualResult) ? 0 : actualResult;
+          updatedKeyResults.push(kr);
+        }
+      });
+
+      // Update the global reference
+      window.currentKeyResults = updatedKeyResults;
+
+      // Validate all key results have actual results
+      const validation = validateOKRForm(window.currentKeyResults);
+      if (!validation.valid) {
+        alert('Form validation failed:\n\n' + validation.errors.join('\n'));
         return;
       }
       
-      // Save data
-      okrDraftData[dept] = formData;
+      // Calculate OKR final score based on weighted key results
+      const finalScore = calculateOKRFinalScore(window.currentKeyResults);
       
-      // Update uploading status for ALL members in this department
+      // Assign performance bracket
+      const bracket = assignPerformanceBracket(finalScore);
+      const bracketDisplay = getBracketDisplay(bracket);
+      
+      // Store calculation results
+      window.currentKeyResults.finalScore = finalScore;
+      window.currentKeyResults.bracket = bracket;
+      window.currentKeyResults.bracketDisplay = bracketDisplay;
+      
+      // Save data
+      okrDraftData[dept] = window.currentKeyResults;
+      
+      // Update uploading status and timestamp for all members
       updateUploadingStatusForAllMembers(dept, 'Uploaded');
       
-      console.log('OKR Data submitted for department:', dept, formData);
+      console.log('OKR Data submitted for department:', dept);
+      console.log('  Final Score:', finalScore.toFixed(2) + '%');
+      console.log('  Performance Bracket:', bracketDisplay.label);
+      console.log('  Key Results:', window.currentKeyResults);
       
       // Return to main view
       document.getElementById('okr-form-content').style.display = 'none';
       document.getElementById('step-2-content').style.display = 'block';
       
-      // Show success message
-      alert('OKR Data submitted successfully! Data can be resubmitted until the deadline.');
+      // Show success message with bracket
+      alert(`OKR Data submitted successfully!\n\nFinal Score: ${finalScore.toFixed(2)}%\nPerformance: ${bracketDisplay.label}\n\nData can be resubmitted until the deadline.`);
     });
 
     /**
@@ -358,18 +900,39 @@
      * Updates the uploading status table with submission info for ALL members in department
      */
     function updateUploadingStatusForAllMembers(dept, status) {
-      // Update status in the table (if currently viewing this department)
       const currentDept = document.getElementById('department').value;
-      if (currentDept === dept) {
+      if (currentDept === dept && departmentMembers[dept]) {
+        const now = new Date();
         const tbody = document.getElementById('uploading-status-body');
         const rows = tbody.querySelectorAll('tr');
         
-        // Update ALL employee rows with new status
-        rows.forEach(row => {
+        // Update ALL employee rows with new status and timestamp
+        rows.forEach((row, index) => {
           const statusCell = row.querySelector('td:nth-child(3)');
+          const lastUpdatedCell = row.querySelector('td:nth-child(4)');
+          
+          // Update status
           if (statusCell) {
             statusCell.innerHTML = `<span class="status-indicator status-indicator--uploaded">✓ ${status}</span>`;
           }
+          
+          // Update last updated with time-ago format
+          if (lastUpdatedCell) {
+            departmentMembers[dept][index].lastUpdatedTimestamp = now;
+            lastUpdatedCell.textContent = formatTimeAgo(now);
+          }
+        });
+      }
+    }
+
+    /**
+     * Updates last updated timestamp for all members in department (for draft saves)
+     */
+    function updateLastUpdatedForAllMembers(dept, action) {
+      if (departmentMembers[dept]) {
+        const now = new Date();
+        departmentMembers[dept].forEach(member => {
+          member.lastUpdatedTimestamp = now;
         });
       }
     }
