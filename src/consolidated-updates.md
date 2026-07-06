@@ -151,6 +151,20 @@ Example log output:
 
 These are addressed in Phase 2 (mock Express backend) and Phase 3 (real Converge backend).
 
+### Defensive Programming: Avoiding ".map is not a function"
+
+All Phase 1 code includes defensive checks to prevent array-related errors:
+
+- `api.js`: Checks `Array.isArray(MOCK_ALLOWLIST)` before calling `.find()`
+- `login.js`: Checks `Array.isArray(testUsers)` before calling `.map()`
+- `app.js`: Verifies querySelectors are iterable before calling `.forEach()`
+
+**If you still see ".map is not a function" error:**
+1. Open browser DevTools (F12) → Console tab
+2. Look for the error message (should have line number)
+3. Check if the variable is actually an array: type `typeof variableName` in console
+4. If it's an object `{}` instead of array `[]`, the API may have changed structure
+
 ### Implementation Details
 
 **Files Created:**
