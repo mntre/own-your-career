@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Own Your Career — Manager Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       Own Your Career — Global Styles (Inline for AppScript)
+       ========================================================================== */
+    :root {
+      --color-primary: #038F8D;
+      --color-black: #000000;
+      --color-white: #FFFFFF;
+      --color-teal-dark: #024645;
+      --color-teal-mid: #027574;
+      --color-aquamarine: #49D7D1;
+      --color-teal-soft: #9AC0C3;
+      --color-violet: #8965F5;
+      --color-complete: #0a7c42;
+      --color-pending: #f9a825;
+      --color-locked: #9AC0C3;
+      --font-heading: 'Funnel Display', sans-serif;
+      --font-body: 'Funnel Sans', 'DM Sans', sans-serif;
+      --spacing-xs: 0.25rem;
+      --spacing-sm: 0.5rem;
+      --spacing-md: 1rem;
+      --spacing-lg: 1.5rem;
+      --spacing-xl: 2rem;
+      --spacing-2xl: 3rem;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--font-body); color: var(--color-black); background-color: #f5f5f5; line-height: 1.6; }
+
+    h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 700; line-height: 1.2; color: var(--color-black); }
+    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.25rem; }
+    p { margin-bottom: var(--spacing-md); }
+
+    .portal-header {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-teal-dark) 100%);
+      color: var(--color-white);
+      padding: var(--spacing-xl) var(--spacing-2xl);
+    }
+    .portal-header h1 { color: var(--color-white); margin: 0; }
+    .portal-header__subtitle { margin-top: var(--spacing-sm); font-size: 0.95rem; opacity: 0.95; }
+    .portal-main { max-width: 1200px; margin: 0 auto; padding: var(--spacing-xl); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-sm) var(--spacing-lg);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn:focus-visible { outline: 3px solid var(--color-aquamarine); outline-offset: 2px; }
+    .btn--primary { background-color: var(--color-primary); color: var(--color-white); }
+    .btn--primary:hover { background-color: var(--color-teal-mid); }
+    .btn--secondary { background-color: var(--color-teal-soft); color: var(--color-teal-dark); }
+    .btn--secondary:hover { background-color: var(--color-aquamarine); }
+    .btn--small { padding: 0.4rem 0.8rem; font-size: 0.875rem; margin-right: 0.5rem; }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .table th, .table td { padding: var(--spacing-sm) var(--spacing-md); text-align: left; }
+    .table th {
+      background-color: var(--color-teal-dark);
+      color: var(--color-white);
+      font-weight: 600;
+      border-bottom: 2px solid var(--color-teal-dark);
+    }
+    .table tr:hover { background-color: rgba(154, 192, 195, 0.15); }
+    .table td { border-bottom: 1px solid var(--color-teal-soft); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .status-complete { background-color: #e8f5e9; color: #0a7c42; }
+    .status-pending { background-color: #fff3e0; color: #f9a825; }
+
+    .team-header {
+      margin-bottom: var(--spacing-lg);
+      padding-bottom: var(--spacing-md);
+      border-bottom: 2px solid var(--color-teal-soft);
+    }
+    .team-header h2 { margin-bottom: var(--spacing-sm); }
+    .team-header__info {
+      font-size: 0.95rem;
+      color: #666;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+    .info-icon { font-size: 1.2rem; }
+
+    .card { background: white; border: 1px solid var(--color-teal-soft); border-radius: var(--radius-md); padding: var(--spacing-lg); margin-bottom: var(--spacing-lg); box-shadow: var(--shadow-sm); }
+    .card__header { font-family: var(--font-heading); font-size: 1.25rem; margin-bottom: var(--spacing-md); color: var(--color-teal-dark); display: flex; align-items: center; gap: var(--spacing-md); }
+    .step-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background-color: var(--color-primary); color: white; border-radius: 50%; font-size: 0.875rem; font-weight: 700; }
+
+    .form-group { margin-bottom: var(--spacing-lg); }
+    .form-group label { display: block; font-weight: 500; margin-bottom: var(--spacing-xs); color: var(--color-black); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-sm);
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+    }
+
+    .form-actions { display: flex; gap: var(--spacing-md); margin-top: var(--spacing-2xl); justify-content: flex-end; }
+    .team-section { background: white; padding: var(--spacing-lg); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="portal-header">
+    <div class="portal-header__content">
+      <h1>My Team</h1>
+      <p class="portal-header__subtitle">View your direct reports and their performance review status</p>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="portal-main">
+    <!-- My Team Table (Overview) -->
+    <section class="team-section" id="teamOverviewSection">
+      <!-- Filter/Info Bar -->
+      <div class="team-header">
+        <h2>Performance Review Status</h2>
+        <p class="team-header__info">
+          <span class="info-icon">ℹ️</span>
+          Skills Assessment must be completed for ALL team members before Feed Forward is enabled.
+        </p>
+      </div>
+
+      <!-- Team Table -->
+      <div class="team-table-container">
+        <table class="table team-table" role="grid" aria-label="Team performance review status">
+          <thead>
+            <tr>
+              <th scope="col">Employee Name</th>
+              <th scope="col">Department</th>
+              <th scope="col">Band</th>
+              <th scope="col">Step 1: Skills</th>
+              <th scope="col">Step 4: Feed Forward</th>
+              <th scope="col">Step 5: Acknowledgement</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="teamTableBody">
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 2rem; color: #999;">Loading team members...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // === PLATFORM DETECTION (AppScript) ===
+    // Template variables will be substituted by Google Apps Script
+    window.PLATFORM = 'APPSCRIPT';
+    window.oyc_userEmail = '<?= userEmail ?>';
+    window.oyc_userEmployeeID = <?= employeeId ?>;
+
+    console.log('[ManagerPortal] Platform:', window.PLATFORM);
+    console.log('[ManagerPortal] User Email:', window.oyc_userEmail);
+    console.log('[ManagerPortal] User ID:', window.oyc_userEmployeeID);
+
+    /**
+     * Manager Portal State & Functions
+     */
+    const ManagerPortal = {
+      currentManager: null,
+      teamMembers: [],
+
+      init: function() {
+        console.log('[ManagerPortal] Initializing...');
+        this.currentManager = {
+          email: window.oyc_userEmail,
+          employeeId: window.oyc_userEmployeeID,
+          name: 'Manager'
+        };
+        this.loadTeamMembers();
+      },
+
+      loadTeamMembers: function() {
+        console.log('[ManagerPortal] Loading team members for manager ID:', this.currentManager.employeeId);
+
+        google.script.run
+          .withSuccessHandler((result) => {
+            console.log('[ManagerPortal] Backend response:', result);
+            if (result.success) {
+              console.log('[ManagerPortal] Loaded', result.data.length, 'team members');
+              this.teamMembers = result.data;
+              this.displayTeamOverview(result.data);
+            } else {
+              console.error('[ManagerPortal] Error:', result.message);
+              alert('Error: ' + result.message);
+            }
+          })
+          .withFailureHandler((error) => {
+            console.error('[ManagerPortal] Backend error:', error);
+            alert('Error loading team members: ' + error.toString());
+          })
+          .getTeamMembersWithStatusData(this.currentManager.employeeId);
+      },
+
+      displayTeamOverview: function(teamMembers) {
+        const tableBody = document.getElementById('teamTableBody');
+        if (!tableBody) return;
+
+        console.log('[ManagerPortal] Displaying', teamMembers.length, 'team members');
+
+        tableBody.innerHTML = '';
+
+        if (teamMembers.length === 0) {
+          const emptyRow = document.createElement('tr');
+          emptyRow.innerHTML = '<td colspan="7" style="text-align: center; padding: 2rem; color: #999;">No team members found. You may not have any direct reports.</td>';
+          tableBody.appendChild(emptyRow);
+          return;
+        }
+
+        teamMembers.forEach((member, index) => {
+          const row = this.createTeamTableRow(member);
+          tableBody.appendChild(row);
+          if (index < 3) {
+            console.log('[ManagerPortal] Row', index, '-', member.name, 'ID:', member.employeeId);
+          }
+        });
+      },
+
+      createTeamTableRow: function(member) {
+        const row = document.createElement('tr');
+
+        const status = member.workflowStatus || {
+          step1Complete: member.step1Complete || false,
+          step4Complete: member.step4Complete || false,
+          step5Complete: member.step5Complete || false
+        };
+
+        const step1Status = status.step1Complete ? '✓ Complete' : '○ Pending';
+        const step4Status = status.step4Complete ? '✓ Complete' : '○ Pending';
+        const step5Status = status.step5Complete ? '✓ Complete' : '○ Pending';
+
+        const step1Class = status.step1Complete ? 'status-complete' : 'status-pending';
+        const step4Class = status.step4Complete ? 'status-complete' : 'status-pending';
+        const step5Class = status.step5Complete ? 'status-complete' : 'status-pending';
+
+        row.innerHTML = `
+          <td>${member.name || 'N/A'}</td>
+          <td>${member.department || 'N/A'}</td>
+          <td>${member.band || 'N/A'}</td>
+          <td><span class="status-badge ${step1Class}">${step1Status}</span></td>
+          <td><span class="status-badge ${step4Class}">${step4Status}</span></td>
+          <td><span class="status-badge ${step5Class}">${step5Status}</span></td>
+          <td>
+            <button class="btn btn--small btn--secondary">View</button>
+          </td>
+        `;
+
+        return row;
+      }
+    };
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      ManagerPortal.init();
+    });
+
+    // Also initialize immediately if DOM is ready
+    if (document.readyState !== 'loading') {
+      ManagerPortal.init();
+    }
+  </script>
+</body>
+</html>

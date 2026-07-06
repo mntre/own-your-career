@@ -134,6 +134,15 @@
   <script src="../js/validation.js"></script>
 
   <script>
+    // === CRITICAL: Define PLATFORM early ===
+    // This ensures it's available before any portal scripts load
+    if (typeof window.PLATFORM === 'undefined') {
+      window.PLATFORM = typeof google !== 'undefined' && google.script && google.script.run 
+        ? 'APPSCRIPT' 
+        : 'CONVERGE_CLOUD';
+      console.log('[Global] PLATFORM initialized:', window.PLATFORM);
+    }
+    
     /**
      * Displays Step 2 (OKR Read-Only) content.
      */

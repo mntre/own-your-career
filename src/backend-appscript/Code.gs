@@ -914,3 +914,312 @@ function getAuditLog() {
     };
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                         MANAGER TEAM FUNCTIONS                             */
+/*          (Jeremy's Appscript Integration — Manager Portal)                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Retrieves team members for a manager with full details and workflow status.
+ * This is used by the Manager Portal to display the team overview.
+ * 
+ * @param {string} managerId - The manager's employee ID
+ * @returns {Object} { success: boolean, data: Object[] }
+ */
+function getTeamMembersWithStatusData(managerId) {
+  try {
+    console.log(`[Code] getTeamMembersWithStatusData called with managerId: ${managerId}`);
+    
+    // Authorization: Verify user is actually a manager
+    if (!isUserAManager(managerId)) {
+      console.log(`[Code] User ${managerId} is not a manager`);
+      logAccessAttempt(
+        `[User: ${managerId}]`,
+        'MANAGER',
+        'DENIED',
+        `Unauthorized attempt to retrieve team members (not a manager)`
+      );
+      return { 
+        success: false, 
+        message: 'You do not have authorization to view team members.' 
+      };
+    }
+    
+    console.log(`[Code] User ${managerId} is a manager, loading team members...`);
+    
+    // Get all team members (direct + indirect reports)
+    const teamMembers = getTeamMembersRecursive_(managerId);
+    
+    console.log(`[Code] Retrieved ${teamMembers.length} team members`);
+    
+    if (teamMembers.length === 0) {
+      console.warn(`[Code] WARNING: No team members found for manager ${managerId}`);
+      console.log(`[Code] This manager may have no direct reports or the manager ID may not match the data`);
+    }
+    
+    // Enhance with workflow status and Data SPOC details for each team member
+    const enhancedTeamMembers = teamMembers.map(member => {
+      let employeeId = null;
+      if (member.EmployeeID) {
+        employeeId = member.EmployeeID;
+      } else if (member.employeeId) {
+        employeeId = member.employeeId;
+      } else {
+        for (const key of Object.keys(member)) {
+          if (key.toLowerCase() === 'employeeid') {
+            employeeId = member[key];
+            break;
+          }
+        }
+      }
+      
+      const workflowStatus = getWorkflowStatusForTeam_(employeeId);
+      
+      // Lookup Data SPOC details if DataSpocID is provided
+      let dataSPOCName = null;
+      const dataSPOCId = member.DataSpocID || member.dataSPOCId || member.DataSPOCId;
+      if (dataSPOCId) {
+        const dataSPOC = getEmployeeById_(dataSPOCId);
+        if (dataSPOC) {
+          dataSPOCName = dataSPOC.Name || dataSPOC.name;
+        }
+      }
+      
+      return {
+        employeeId: employeeId,
+        name: member.Name || member.name,
+        email: member.Email || member.email,
+        department: member.Department || member.department,
+        band: member.Band || member.band,
+        group: member.Group || member.group,
+        team: member.Team || member.team,
+        corporation: member.Corporation || member.corporation,
+        managerEmployeeId: member.ManagerID || member.managerId,
+        dataSPOCID: dataSPOCId || null,
+        dataSPOCName: dataSPOCName || null,
+        workflowStatus: workflowStatus
+      };
+    });
+    
+    console.log(`[Code] Returning ${enhancedTeamMembers.length} enhanced team members`);
+    return { success: true, data: enhancedTeamMembers };
+  } catch (e) {
+    console.error(`[Code] Error getting team members with status: ${e.message}`);
+    console.error(`[Code] Stack: ${e.stack}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Gets recursive team members (direct + indirect reports).
+ * @param {string} managerId - The manager's employee ID
+ * @returns {Object[]} Array of team members
+ */
+function getTeamMembersRecursive_(managerId) {
+  try {
+    const SHEETS = { EMPLOYEES: 'Employee Database' };
+    const sheet = getSheet_(SHEETS.EMPLOYEES);
+    const headerMap = getHeaderMap_(sheet);
+    
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    // Find manager ID column (handle case variations)
+    let managerIdColName = null;
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'managerid') {
+        managerIdColName = colName;
+        break;
+      }
+    }
+    if (!managerIdColName) return [];
+    
+    // Find employee ID column (handle case variations)
+    let employeeIdColName = null;
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'employeeid') {
+        employeeIdColName = colName;
+        break;
+      }
+    }
+    if (!employeeIdColName) return [];
+    
+    // Convert rows to objects
+    const employees = values.map(row => {
+      const employee = {};
+      Object.entries(headerMap).forEach(([colName, colIndex]) => {
+        employee[colName] = row[colIndex];
+      });
+      return employee;
+    });
+    
+    const result = [];
+    const visited = new Set();
+    
+    const collectTeamMembers = (currentManagerId) => {
+      if (visited.has(currentManagerId)) return;
+      visited.add(currentManagerId);
+      
+      const directReports = employees.filter(emp => emp[managerIdColName] === currentManagerId);
+      
+      directReports.forEach(member => {
+        const memberId = member[employeeIdColName];
+        if (!visited.has(memberId)) {
+          result.push(member);
+          collectTeamMembers(memberId);
+        }
+      });
+    };
+    
+    collectTeamMembers(managerId);
+    return result;
+  } catch (e) {
+    console.error(`[Code] Error getting recursive team members: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Gets workflow status for a team member.
+ * @param {string} employeeId - The employee ID
+ * @returns {Object} Workflow status object
+ */
+function getWorkflowStatusForTeam_(employeeId) {
+  try {
+    const SHEETS = {
+      WORKFLOW_STATUS: 'WorkflowStatus',
+      SKILLS_ASSESSMENT: 'SkillsAssessment',
+      OKR_UPLOAD: 'OKRUpload',
+      SELF_ASSESSMENT: 'SelfAssessment',
+      FEED_FORWARD: 'FeedForward',
+      MANAGER_ACK: 'ManagerAcknowledgement'
+    };
+    
+    try {
+      const sheet = getSheet_(SHEETS.WORKFLOW_STATUS);
+      const headerMap = getHeaderMap_(sheet);
+      
+      let employeeIdColName = null;
+      for (const colName of Object.keys(headerMap)) {
+        if (colName.toLowerCase() === 'employeeid') {
+          employeeIdColName = colName;
+          break;
+        }
+      }
+      if (!employeeIdColName) throw new Error('EmployeeID column not found');
+      
+      const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+      const values = dataRange.getValues();
+      const employeeIdColIndex = headerMap[employeeIdColName];
+      
+      for (let i = 0; i < values.length; i++) {
+        if (values[i][employeeIdColIndex] === employeeId) {
+          const statusRow = {};
+          Object.entries(headerMap).forEach(([colName, colIndex]) => {
+            statusRow[colName] = values[i][colIndex];
+          });
+          return statusRow;
+        }
+      }
+    } catch (e) {
+      console.log(`[Code] WorkflowStatus unavailable, calculating from sheets: ${e.message}`);
+    }
+    
+    // Fallback: calculate from assessment sheets
+    return {
+      employeeId: employeeId,
+      step1Complete: hasAssessmentData(SHEETS.SKILLS_ASSESSMENT, employeeId),
+      step2Complete: hasAssessmentData(SHEETS.OKR_UPLOAD, employeeId),
+      step3Complete: hasAssessmentData(SHEETS.SELF_ASSESSMENT, employeeId),
+      step4Complete: hasAssessmentData(SHEETS.FEED_FORWARD, employeeId),
+      step5Complete: hasAssessmentData(SHEETS.MANAGER_ACK, employeeId)
+    };
+  } catch (e) {
+    console.error(`[Code] Error getting workflow status for ${employeeId}: ${e.message}`);
+    return {
+      employeeId: employeeId,
+      step1Complete: false,
+      step2Complete: false,
+      step3Complete: false,
+      step4Complete: false,
+      step5Complete: false
+    };
+  }
+}
+
+/**
+ * Checks if an employee has submitted data for a specific sheet.
+ * @param {string} sheetName - Name of the sheet to check
+ * @param {string} employeeId - The employee ID
+ * @returns {boolean} True if employee has data in that sheet
+ */
+function hasAssessmentData(sheetName, employeeId) {
+  try {
+    const sheet = getSheet_(sheetName);
+    const headerMap = getHeaderMap_(sheet);
+    
+    let employeeIdColName = null;
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'employeeid') {
+        employeeIdColName = colName;
+        break;
+      }
+    }
+    if (!employeeIdColName) return false;
+    
+    const employeeIdColIndex = headerMap[employeeIdColName];
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    for (let i = 0; i < values.length; i++) {
+      if (values[i][employeeIdColIndex] === employeeId) {
+        return true;
+      }
+    }
+    return false;
+  } catch (e) {
+    console.error(`[Code] Error checking assessment data in ${sheetName}: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Gets an employee by ID (helper for manager team functions).
+ * @param {string} employeeId - The employee ID
+ * @returns {Object|null} Employee object or null
+ */
+function getEmployeeById_(employeeId) {
+  try {
+    const SHEETS = { EMPLOYEES: 'Employee Database' };
+    const sheet = getSheet_(SHEETS.EMPLOYEES);
+    const headerMap = getHeaderMap_(sheet);
+    
+    let employeeIdColName = null;
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'employeeid') {
+        employeeIdColName = colName;
+        break;
+      }
+    }
+    if (!employeeIdColName) return null;
+    
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    const employeeIdColIndex = headerMap[employeeIdColName];
+    
+    for (let i = 0; i < values.length; i++) {
+      if (values[i][employeeIdColIndex] === employeeId) {
+        const employee = {};
+        Object.entries(headerMap).forEach(([colName, colIndex]) => {
+          employee[colName] = values[i][colIndex];
+        });
+        return employee;
+      }
+    }
+    return null;
+  } catch (e) {
+    console.error(`[Code] Error getting employee by ID: ${e.message}`);
+    return null;
+  }
+}

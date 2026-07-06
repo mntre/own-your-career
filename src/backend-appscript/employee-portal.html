@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Own Your Career — Employee Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-primary: #038F8D;
+      --color-black: #000000;
+      --color-white: #FFFFFF;
+      --color-teal-dark: #024645;
+      --color-teal-mid: #027574;
+      --color-aquamarine: #49D7D1;
+      --color-teal-soft: #9AC0C3;
+      --font-heading: 'Funnel Display', sans-serif;
+      --font-body: 'Funnel Sans', 'DM Sans', sans-serif;
+      --spacing-md: 1rem;
+      --spacing-lg: 1.5rem;
+      --spacing-xl: 2rem;
+      --radius-md: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--font-body); color: var(--color-black); background-color: #f5f5f5; line-height: 1.6; }
+
+    h1, h2, h3 { font-family: var(--font-heading); font-weight: 700; line-height: 1.2; color: var(--color-black); }
+    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; }
+
+    .portal-header {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-teal-dark) 100%);
+      color: var(--color-white);
+      padding: var(--spacing-xl) var(--spacing-xl);
+    }
+    .portal-header h1 { color: var(--color-white); margin: 0; }
+    .portal-main { max-width: 1200px; margin: 0 auto; padding: var(--spacing-xl); }
+
+    .card { background: white; border: 1px solid var(--color-teal-soft); border-radius: var(--radius-md); padding: var(--spacing-lg); margin-bottom: var(--spacing-lg); }
+    .card h2 { margin-bottom: var(--spacing-md); color: var(--color-teal-dark); }
+
+    .form-group { margin-bottom: var(--spacing-lg); }
+    .form-group label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
+    .form-group textarea {
+      width: 100%;
+      padding: var(--spacing-md);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      min-height: 120px;
+    }
+    .form-group textarea:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15); }
+
+    .form-actions { display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl); justify-content: flex-end; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: var(--spacing-md) var(--spacing-lg);
+      font-family: var(--font-body);
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+    .btn--primary { background-color: var(--color-primary); color: white; }
+    .btn--primary:hover { background-color: var(--color-teal-mid); }
+    .btn--secondary { background-color: var(--color-teal-soft); color: var(--color-teal-dark); }
+
+    .form-guidance { color: #666; font-size: 0.95rem; margin-bottom: var(--spacing-md); }
+    .form-note { font-size: 0.9rem; color: #999; margin-top: var(--spacing-lg); border-top: 1px solid var(--color-teal-soft); padding-top: var(--spacing-md); }
+  </style>
+</head>
+<body>
+  <header class="portal-header">
+    <h1>Own Your Career — Employee Portal</h1>
+  </header>
+
+  <main class="portal-main">
+    <section class="card" id="self-assessment-section">
+      <h2>Step 3: Self-Assessment</h2>
+      <p class="form-guidance">Answer the following 4 questions about your performance this review period. All fields are mandatory.</p>
+
+      <form id="self-assessment-form">
+        <div class="form-group">
+          <label for="q1">1. What contributed to your performance in the first half of this year (1H)?</label>
+          <textarea id="q1" name="q1" placeholder="Describe your key contributions, achievements, and what drove your performance in 1H..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="q2">2. What challenges or gaps impacted your performance in the second half of this year (2H)?</label>
+          <textarea id="q2" name="q2" placeholder="Describe any obstacles, resource gaps, or challenges that affected your output in 2H..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="q3">3. What support do you need going forward?</label>
+          <textarea id="q3" name="q3" placeholder="Describe what tools, training, coaching, or resources would help you improve..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="q4">4. What specific commitments will you make to improve/sustain performance?</label>
+          <textarea id="q4" name="q4" placeholder="Describe your specific commitments to improve or sustain performance..." required></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn--secondary" id="backBtn" onclick="goBack()">Back</button>
+          <button type="submit" class="btn btn--primary">Submit Self-Assessment</button>
+        </div>
+      </form>
+
+      <p class="form-guidance form-note">Self Assessment can be edited until the deadline. Once Feed Forward (Step 4) begins, this form becomes read-only.</p>
+    </section>
+  </main>
+
+  <script>
+    // === Navigation Functions ===
+    function goBack() {
+      // Navigate back in browser history
+      // This will show the previous portal state or redirect to login
+      window.history.back();
+    }
+
+    // === PLATFORM DETECTION (AppScript) ===
+    window.PLATFORM = 'APPSCRIPT';
+    // NOTE: userEmail and employeeId are injected by WebApp.gs via template evaluation
+    // AppScript template syntax uses <?= ?> for output
+    window.oyc_userEmail = '<?= userEmail ?>';
+    window.oyc_userEmployeeID = <?= employeeId ?>;
+
+    console.log('[EmployeePortal] Platform:', window.PLATFORM);
+    console.log('[EmployeePortal] User Email:', window.oyc_userEmail);
+    console.log('[EmployeePortal] User ID:', window.oyc_userEmployeeID);
+
+    // PROBLEM 1 FIX: Validate that google.script.run is available
+    // PROBLEM 3 FIX: Check if user ID exists before using it
+    const googleScriptAvailable = typeof google !== 'undefined' && google.script && google.script.run;
+    const hasValidEmployeeId = window.oyc_userEmployeeID && window.oyc_userEmployeeID !== '';
+
+    const form = document.getElementById('self-assessment-form');
+    const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+
+    if (form && googleScriptAvailable && hasValidEmployeeId) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        // PROBLEM 3 FIX: Validate all fields are filled
+        const q1 = document.getElementById('q1').value.trim();
+        const q2 = document.getElementById('q2').value.trim();
+        const q3 = document.getElementById('q3').value.trim();
+        const q4 = document.getElementById('q4').value.trim();
+
+        if (!q1 || !q2 || !q3 || !q4) {
+          alert('Please fill in all 4 questions before submitting.');
+          return;
+        }
+
+        // PROBLEM 5 FIX: Only disable textareas and submit button, not ALL buttons (back button stays enabled)
+        const originalButtonText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+        // Disable only form textareas, NOT the back button
+        const textareas = form.querySelectorAll('textarea');
+        textareas.forEach(ta => ta.disabled = true);
+
+        const formData = new FormData(form);
+        // PROBLEM 2 FIX: Add timestamp to form data
+        const data = {
+          q1: q1,
+          q2: q2,
+          q3: q3,
+          q4: q4,
+          dateSubmitted: new Date().toISOString()
+        };
+
+        console.log('[EmployeePortal] Submitting self-assessment:', data);
+
+        // PROBLEM 2 FIX: Check if google.script.run exists before calling
+        google.script.run
+          .withSuccessHandler((result) => {
+            // Re-enable form
+            textareas.forEach(ta => ta.disabled = false);
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalButtonText;
+
+            if (result.success) {
+              alert('Self-Assessment submitted successfully!');
+              form.reset();
+            } else {
+              alert('Error: ' + result.message);
+            }
+          })
+          .withFailureHandler((error) => {
+            // Re-enable form
+            textareas.forEach(ta => ta.disabled = false);
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalButtonText;
+
+            console.error('[EmployeePortal] Error:', error);
+            alert('Error submitting form');
+          })
+          .saveSelfAssessment(window.oyc_userEmployeeID, data);
+      });
+    } else {
+      // Disable form only if dependencies missing - don't disable back button
+      if (form) {
+        const formInputs = form.querySelectorAll('textarea, input, button[type="submit"]');
+        formInputs.forEach(input => input.disabled = true);
+
+        if (!googleScriptAvailable) {
+          console.error('[EmployeePortal] ERROR: google.script.run not available (not in AppScript context)');
+        }
+        if (!hasValidEmployeeId) {
+          console.error('[EmployeePortal] ERROR: Employee ID not provided or invalid');
+        }
+      }
+    }
+  </script>
+</body>
+</html>

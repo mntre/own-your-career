@@ -1,4 +1,5 @@
 {
+<<<<<<< Updated upstream
   "timeZone": "America/New_York",
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
@@ -8,4 +9,17 @@
   "sheets": {
     "macros": []
   }
+=======
+  "timeZone": "America/Los_Angeles",
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "webapp": {
+    "access": "ANYONE",
+    "executeAs": "USER_DEPLOYING"
+  },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/gmail.send"
+  ]
+>>>>>>> Stashed changes
 }
