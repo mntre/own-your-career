@@ -127,7 +127,42 @@ async function verifyGoogleIdToken(idToken) {
  * @returns {Promise<Object>} Auth result with success status and token
  */
 async function authenticateUser(email, role, idToken) {
-  // Validate email format (must be Converge email)
+  // Phase 1B Testing Mode: Accept test emails
+  const isTestingMode = process.env.NODE_ENV !== 'production';
+  
+  if (isTestingMode) {
+    // Phase 1B Testing Mode: Accept predefined test users
+    const testAllowlist = [
+      { email: 'manager@example.com', role: 'MANAGER' },
+      { email: 'employee@example.com', role: 'EMPLOYEE' },
+      { email: 'dataspoc@example.com', role: 'DATA_SPOC' },
+      { email: 'admin@example.com', role: 'ADMIN' }
+    ];
+    
+    const testUser = testAllowlist.find(u => u.email === email && u.role === role);
+    
+    if (!testUser) {
+      return {
+        success: false,
+        message: 'Test user not found. Use: manager@, employee@, dataspoc@, admin@example.com'
+      };
+    }
+    
+    // Generate session token
+    const token = generateToken(email, role);
+    
+    return {
+      success: true,
+      message: 'Authentication successful (Phase 1B Testing Mode)',
+      token: token,
+      user: {
+        email: email,
+        role: role
+      }
+    };
+  }
+  
+  // Production Mode: Validate email format (must be Converge email)
   if (!isValidCorporateEmail(email)) {
     return {
       success: false,
@@ -161,7 +196,7 @@ async function authenticateUser(email, role, idToken) {
   }
 
   // Validate role
-  const validRoles = ['EMPLOYEE', 'MANAGER', 'DATA_SPOC'];
+  const validRoles = ['EMPLOYEE', 'MANAGER', 'DATA_SPOC', 'ADMIN'];
   if (!validRoles.includes(role)) {
     return {
       success: false,

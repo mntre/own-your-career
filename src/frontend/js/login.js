@@ -109,7 +109,7 @@ async function simulateLogin(email, role) {
   
   try {
     // Call mock API (no Google credential needed in Phase 1)
-    const apiResult = await API.login(email, role, 'mock_google_credential');
+    const apiResult = await API.login(email, role, '');
     
     if (apiResult.success) {
       // Store session info

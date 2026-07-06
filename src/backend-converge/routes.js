@@ -22,7 +22,7 @@ const auth = require('./middleware/auth');
  * User login via SSO (Google or corporate email)
  * No authentication required (public endpoint)
  */
-router.post('/login', async (req, res) => {
+router.post('/api/login', async (req, res) => {
   try {
     const { email, role, googleCredential } = req.body;
 
@@ -34,7 +34,7 @@ router.post('/login', async (req, res) => {
     }
 
     // If Google credential is provided, verify it
-    if (googleCredential) {
+    if (googleCredential && googleCredential.trim() !== '') {
       try {
         // Decode the JWT credential
         const payload = JSON.parse(Buffer.from(googleCredential.split('.')[1], 'base64').toString('utf8'));
@@ -86,7 +86,7 @@ router.post('/login', async (req, res) => {
  * POST /api/logout
  * User logout - clears session
  */
-router.post('/logout', auth.authMiddleware, (req, res) => {
+router.post('/api/logout', auth.authMiddleware, (req, res) => {
   // In a real implementation, you'd invalidate the token on the server
   // For JWT, we just stop accepting it (client-side clearing is handled by frontend)
   res.json({
