@@ -14,6 +14,11 @@ own-your-career/
 │   │   ├── css/
 │   │   │   └── styles.css           # All styles (Converge brand)
 │   │   └── js/
+│   │       ├── platform.js          # Platform detection (Converge vs AppScript)
+│   │       ├── api-adapter.js       # Routes API to platform-specific implementation
+│   │       ├── api-converge.js      # HTTP-based API for Converge Cloud
+│   │       ├── api-appscript.js     # google.script.run API for Google Apps Script
+│   │       ├── api.js               # (LEGACY Phase 1 mock API - fallback only)
 │   │       ├── app.js               # Main app logic, routing
 │   │       ├── login.js             # Google SSO authentication
 │   │       ├── gates.js             # Hard gate enforcement
@@ -56,6 +61,11 @@ own-your-career/
 
 | File | Responsibility |
 |------|---------------|
+| `platform.js` | Runtime platform detection (Converge vs Google Apps Script) |
+| `api-adapter.js` | Routes API calls to correct platform implementation |
+| `api-converge.js` | HTTP-based API implementation for Converge Cloud (fetch calls) |
+| `api-appscript.js` | google.script.run API implementation for Google Apps Script |
+| `api.js` | (LEGACY) Phase 1 mock API — fallback only, not used in production |
 | `app.js` | Main orchestrator — portal routing, UI state, step navigation |
 | `login.js` | Google Identity Services SSO, token handling |
 | `gates.js` | Hard gate checks (is step enabled for this user?) |

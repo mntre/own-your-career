@@ -17,6 +17,19 @@ Same codebase deployed to BOTH platforms simultaneously:
 - Shared across both platforms
 - No frontend frameworks (React, Vue, etc.)
 - Google Sign-In (Google Identity Services) for SSO
+- **Platform Abstraction Layer** — Single codebase routes to platform-specific backends
+
+### Platform Abstraction Architecture
+
+The frontend uses a runtime detection + adapter pattern to support both platforms from a single codebase:
+
+1. **platform.js** — Detects if running on Converge Cloud (standard web) or Google Apps Script
+2. **api-adapter.js** — Routes API calls to the correct implementation
+3. **api-converge.js** — HTTP-based API (uses fetch) for Converge Cloud
+4. **api-appscript.js** — google.script.run API for Google Apps Script
+5. **login.js, app.js, etc.** — Identical on both platforms (call the API object)
+
+**Result:** One codebase, two deployments. No code duplication. Platform detection is automatic.
 
 ## Converge Cloud Backend
 
@@ -141,35 +154,37 @@ All development MUST follow security.md guidelines before launch.
 
 **Allowed Markdown Files:**
 - `README.md` — Project overview (at root)
-- `.kiro/steering/*.md` — Guidance files (structured, numbered list)
-- `PHASE1_TESTING.md` — Phase-specific testing guides (only if explicitly created)
+- `.kiro/steering/*.md` — Guidance files (business-rules, product, structure, tech, branding)
+- `src/consolidated-updates.md` — Phase updates, testing guides, implementation notes
 
 **FORBIDDEN Markdown Files:**
 - ❌ `UPDATE.md` — Use README.md instead
 - ❌ `CHANGELOG.md` — Use git log or Jira tickets
-- ❌ `NOTES.md` — Use steering files or comments in code
-- ❌ `INSTRUCTIONS.md` — Put in steering files
+- ❌ `NOTES.md` — Use consolidated-updates.md
+- ❌ `INSTRUCTIONS.md` — Put in steering files or consolidated-updates.md
 - ❌ `docs/*.md` — Must use `.kiro/steering/` instead
 - ❌ `SETUP.md` — Must update README.md
+- ❌ `PHASE*.md` (PHASE1_TESTING.md, PHASE2_TESTING.md, etc.) — Add to consolidated-updates.md
+- ❌ `API.md` — Add to `.kiro/steering/tech.md` or consolidated-updates.md
 - ❌ Any other `*.md` file not explicitly listed above
 
-**Why:** Prevents documentation sprawl and maintains single source of truth (README + steering).
+**Why:** Prevents documentation sprawl and maintains single source of truth (README + steering + consolidated-updates).
 
 **For Kiro AI:** If you need to create any new markdown:
 1. Check this list FIRST
 2. If not in allowed list → DO NOT CREATE
-3. Instead: Update existing file or ask to add to steering
+3. Instead: Update existing file or add to `src/consolidated-updates.md`
 4. Violation: Creating unauthorized markdown = violates governance rules
 5. Consequence: File must be deleted and content merged into allowed files
 
 **Example: Correct vs Incorrect**
 
 ❌ Incorrect:
+- Create `PHASE1_TESTING.md` for testing guide
 - Create `DEPLOYMENT.md` for deployment steps
-- Create `API.md` for API documentation
 - Create `docs/design.md` for architecture notes
 
 ✅ Correct:
+- Add Phase 1 testing to `src/consolidated-updates.md`
 - Add deployment steps to README.md → "Development Setup" section
-- Add API documentation to `.kiro/steering/tech.md`
-- Add architecture notes to `.kiro/steering/[new-file].md` with proper approval
+- Add architecture notes to `src/consolidated-updates.md`
