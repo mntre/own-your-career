@@ -159,52 +159,90 @@ function getRAGStatus(actualLevel, requiredLevel) {
 /**
  * Calculates the weighted OKR final score from key results.
  * 
- * Formula: Sum of ((Actual Result / Target Result) * Weight)
+ * Formula: Sum of ((Actual Result / Target Result) × Weight%)
  * 
- * This function calculates the achievement percentage for each key result,
- * then multiplies by its weight to get the contribution, and sums all contributions.
+ * Where Weight% from CSV is stored with level-specific names:
+ * - Group level: groupWeight (e.g., "25%")
+ * - Department level: departmentWeight (e.g., "30%")
+ * - Team level: teamWeight (e.g., "30%")
+ * 
+ * For each key result:
+ * 1. Parse Actual Result as float
+ * 2. Extract level-specific weight from CSV (e.g., "30%" → 30)
+ * 3. Calculate: (Actual / Target) × (Weight / 100)
+ * 4. Sum all contributions
+ * 5. Multiply by 100 to convert to percentage for display
  * 
  * @param {Array<Object>} keyResults - Array of key result objects
- * @param {number} keyResults[].actualResult - Actual result achieved (numeric)
- * @param {number} keyResults[].targetResult - Target result expected (numeric)
- * @param {number} keyResults[].weight - Weight percentage for this KR (0-100)
+ * @param {number} keyResults[].actualResult - Actual result achieved (numeric or string)
+ * @param {number} keyResults[].groupTargetResult|departmentTargetResult|teamTargetResult - Target result expected
+ * @param {string} keyResults[].groupWeight|departmentWeight|teamWeight - Weight from CSV as string "30%"
  * @returns {number} Weighted OKR score as a percentage
  * 
  * @example
- * // Single KR: Actual=85, Target=100, Weight=100%
- * // Score = (85/100) * 100 = 85%
- * 
- * @example
- * // Multiple KRs:
- * // KR1: Actual=90, Target=100, Weight=40% → (90/100)*40 = 36%
- * // KR2: Actual=110, Target=100, Weight=30% → (110/100)*30 = 33%
- * // KR3: Actual=80, Target=100, Weight=30% → (80/100)*30 = 24%
- * // Total Score = 36 + 33 + 24 = 93%
+ * // Single KR: Actual=17.28, Target="18.91", Weight="25%"
+ * // Score = ((17.28/18.91) × (25/100)) × 100 = 22.85%
  */
 function calculateOKRFinalScore(keyResults) {
   if (!Array.isArray(keyResults) || keyResults.length === 0) {
     return 0;
   }
 
-  let totalWeightedScore = 0;
+  let totalContribution = 0;
+  let levelType = null; // Will be detected from first KR's properties
 
   keyResults.forEach(function(kr) {
-    const actualResult = parseFloat(kr.actualResult) || 0;
-    const targetResult = parseFloat(kr.targetResult) || 1; // Default to 1 to avoid division by zero
-    const weight = parseFloat(kr.weight) || 0;
+    // Detect level type from available properties (only need to do once)
+    if (!levelType) {
+      if (kr.hasOwnProperty('groupWeight')) {
+        levelType = 'group';
+      } else if (kr.hasOwnProperty('departmentWeight')) {
+        levelType = 'department';
+      } else if (kr.hasOwnProperty('teamWeight')) {
+        levelType = 'team';
+      }
+    }
+
+    // Get level-specific property names
+    let targetResultProp, weightProp;
     
-    // Calculate achievement percentage: (Actual / Target) * 100
-    const achievement = (actualResult / targetResult) * 100;
+    if (levelType === 'group') {
+      targetResultProp = 'groupTargetResult';
+      weightProp = 'groupWeight';
+    } else if (levelType === 'department') {
+      targetResultProp = 'departmentTargetResult';
+      weightProp = 'departmentWeight';
+    } else if (levelType === 'team') {
+      targetResultProp = 'teamTargetResult';
+      weightProp = 'teamWeight';
+    } else {
+      // Fallback to generic properties (for backward compatibility)
+      targetResultProp = 'targetResult';
+      weightProp = 'weight';
+    }
+
+    // Parse actual result (user input, may include %)
+    let actualResult = parseFloat(String(kr.actualResult).replace('%', '')) || 0;
     
-    // Calculate contribution: (Achievement * Weight) / 100
-    const contribution = (achievement * weight) / 100;
+    // Parse target result (from CSV, may include %)
+    let targetResult = parseFloat(String(kr[targetResultProp]).replace('%', '')) || 1;
     
-    totalWeightedScore += contribution;
+    // Parse weight (from CSV as "30%")
+    let weight = parseFloat(String(kr[weightProp]).replace('%', '')) || 0;
+    
+    // Convert weight from percentage to decimal
+    weight = weight / 100;
+    
+    // Calculate contribution: (Actual / Target) × Weight
+    const contribution = (actualResult / targetResult) * weight;
+    
+    totalContribution += contribution;
   });
 
-  // Ensure score is capped at reasonable limits (can go above 100 if exceeding targets)
-  // Allow up to 200% for overachievement
-  return Math.min(totalWeightedScore, 200);
+  // Convert to percentage: multiply by 100
+  const finalScore = totalContribution * 100;
+
+  return Math.min(finalScore, 300);
 }
 
 /**
@@ -222,18 +260,23 @@ function calculateOKRFinalScore(keyResults) {
  * // contribution = (85/100)*30 = 25.5%
  */
 function calculateKeyResultScore(actualResult, targetResult, weight) {
-  const actualNum = parseFloat(actualResult) || 0;
-  const targetNum = parseFloat(targetResult) || 1;
-  const weightNum = parseFloat(weight) || 0;
-
-  // Achievement percentage: (Actual / Target) * 100
-  const score = (actualNum / targetNum) * 100;
+  // Parse actual result (user input, may include %)
+  let actualNum = parseFloat(String(actualResult).replace('%', '')) || 0;
   
-  // Contribution to total: (Score * Weight) / 100
-  const contribution = (score * weightNum) / 100;
+  // Parse target result (from CSV, may include %)
+  let targetNum = parseFloat(String(targetResult).replace('%', '')) || 1;
+  
+  // Parse weight (from CSV as "30%")
+  let weightNum = parseFloat(String(weight).replace('%', '')) || 0;
+  
+  // Convert weight from percentage to decimal
+  weightNum = weightNum / 100;
+
+  // Contribution: (Actual / Target) × Weight
+  const contribution = (actualNum / targetNum) * weightNum;
 
   return {
-    score: Math.min(score, 200), // Cap individual score at 200%
+    score: contribution,
     contribution: contribution
   };
 }
