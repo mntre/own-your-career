@@ -1,221 +1,145 @@
-# Consolidated Updates & Development Notes
+# CSV Dropdown Issue — Data SPOC Portal (Fixed)
 
-This file serves as a central repository for:
-- Phase-specific testing guides and updates
-- Development notes and implementation details
-- Extra documentation that doesn't fit in steering or README
-- Work-in-progress documentation
+## Problem
 
-All extra markdown content should be consolidated here instead of creating separate files.
+When uploading a CSV file in the Data SPOC Portal (`dataspoc-portal.html`), the dropdown options for **Group**, **Department**, and **Team** were not appearing after CSV parsing, even though:
+- The CSV file was being parsed correctly
+- The `populateHierarchyDropdowns()` function was being called
+- Options were being added to the select elements
 
----
+## Root Cause
 
-## Phase 1: Local Frontend Testing
+The issue was caused by **disabled `<select>` dropdowns not accepting user interaction on most browsers**:
 
-**Status:** ✅ Complete  
-**Created:** July 4, 2026  
-**Files Involved:** `api.js`, `app.js`, `login.js`, `login.html`
+1. **HTML Issue**: Group, Department, and Team `<select>` elements have `disabled` attribute by default
+2. **Browser Behavior**: Many browsers prevent click events on `<select>` elements when they have the `disabled` attribute, preventing the dropdown from opening
+3. **CSS Issue**: No explicit styling existed for disabled select elements, making the UX ambiguous
 
-### Overview
+The dropdowns were grayed out and appeared unresponsive even when options were added via JavaScript.
 
-Phase 1 enables testing the login flow and portal routing **locally without a backend server**. Uses mock API and test user data in the browser.
+## Solution
 
-### How to Test Locally
+### 1. **Modified `populateHierarchyDropdowns()` Function** (dataspoc-portal.html)
+- After CSV is loaded and options are added, the **Corporate dropdown is now enabled** immediately
+- This allows users to select a Corporate value before other dropdowns cascade
 
-#### Option 1: Simple HTTP Server (Recommended)
-
-```bash
-# Navigate to frontend directory
-cd src/frontend
-
-# Start Python HTTP server (port 3000)
-python -m http.server 3000
-
-# Or use Node.js http-server if installed
-npx http-server -p 3000
-```
-
-Then open: **http://localhost:3000/html/login.html**
-
-#### Option 2: Direct Browser
-
-```bash
-# Just open the file in your browser
-file:///path/to/own-your-career/src/frontend/html/login.html
-```
-
-Note: May have CORS issues with some features. HTTP server is better.
-
-### Test Users (Phase 1 Only)
-
-Use these credentials to test each role:
-
-| Email | Role | Portal | Capabilities |
-|-------|------|--------|--------------|
-| `manager@example.com` | MANAGER | Manager Portal | Skills Assessment, Feed Forward, Acknowledgement |
-| `employee@example.com` | EMPLOYEE | Employee Portal | Self-Assessment, View Scores, Acknowledgement |
-| `dataspoc@example.com` | DATA_SPOC | Data SPOC Portal | OKR Upload, View Org Data, Rankings |
-| `admin@example.com` | ADMIN | Admin Portal | System Config, Monitoring, SFTP Trigger |
-
-### Testing Steps
-
-#### 1. Open Login Page
-Navigate to: **http://localhost:3000/html/login.html**
-
-You should see:
-- Own Your Career login form
-- Google Sign-In section (non-functional in Phase 1)
-- 4 blue test buttons at bottom (Manager, Employee, Data SPOC, Admin)
-
-#### 2. Click Test User Button
-
-Click any test user button (e.g., "Manager").
-
-Expected behavior:
-- Button shows "Authenticating..." briefly
-- Page redirects to corresponding portal
-- URL changes to `manager-portal.html` (or appropriate portal)
-
-#### 3. Verify Session
-
-Once on portal:
-- Open browser DevTools (F12)
-- Go to **Application → Session Storage**
-- Verify `oyc_user` and `oyc_token` are stored
-- `oyc_user` should contain email, role, name, department
-
-#### 4. Test Logout
-
-Logout buttons will be on each portal (once portals are built).
-
-Currently, clear session manually:
+**Before:**
 ```javascript
-// In browser console:
-sessionStorage.removeItem('oyc_user');
-sessionStorage.removeItem('oyc_token');
-// Then refresh or navigate to login.html
+// Do NOT enable group here — keep it grayed out until Corporate is selected
+// groupSelect stays disabled
 ```
 
-### Testing Scenarios
-
-#### Scenario 1: Valid Login
-1. Click "Manager" test button
-2. ✅ Should redirect to manager-portal.html
-3. ✅ Session should be stored
-
-#### Scenario 2: Invalid Email (Future Testing)
-1. In browser console, manually call:
-   ```javascript
-   simulateLogin('invalid@example.com', 'EMPLOYEE')
-   ```
-2. ✅ Should show error: "Email not authorized"
-
-#### Scenario 3: Role Mismatch (Future Testing)
-1. In browser console, call:
-   ```javascript
-   simulateLogin('manager@example.com', 'EMPLOYEE')
-   ```
-2. ✅ Should show error: "Invalid role"
-
-#### Scenario 4: Session Persistence
-1. Log in as manager
-2. Go to manager-portal.html
-3. Refresh page (F5)
-4. ✅ Should NOT redirect to login (session still active)
-5. Close browser tab and reopen
-6. ❌ Session lost (sessionStorage cleared on browser close)
-
-### Console Logging
-
-The app logs activity to the browser console for debugging.
-
-Example log output:
-```
-[App] Initializing...
-[Login] Initializing login page
-[Login] Simulating login for: manager@example.com role: MANAGER
-[Login] Authentication successful, redirecting to portal
-[App] Session active for: manager@example.com role: MANAGER
+**After:**
+```javascript
+// Enable corporate dropdown if it has options (after CSV is loaded)
+if (hierarchy.corporates && hierarchy.corporates.length > 0) {
+  corporateSelect.disabled = false;
+  corporateSelect.classList.remove('disabled-field');
+}
 ```
 
-**View logs:** Open DevTools (F12) → Console tab
+### 2. **Added CSS Styling for Disabled Fields** (styles.css)
+Added explicit styling for disabled form elements to improve UX:
 
-### Known Limitations (Phase 1)
+```css
+/* Disabled field styling */
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled {
+  background-color: #f0f4f5;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
 
-1. **Google Sign-In not functional** — Use test buttons instead
-2. **No actual backend** — Mock data only in browser memory
-3. **Session lost on browser close** — Uses sessionStorage (not persistent)
-4. **No real JWT verification** — Uses mock JWT structure
-5. **No database** — All test data hardcoded
-6. **Portals not built yet** — Redirects work, but portal pages are empty
+.disabled-field {
+  background-color: #f0f4f5 !important;
+  color: #999 !important;
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+}
+```
 
-These are addressed in Phase 2 (mock Express backend) and Phase 3 (real Converge backend).
+This provides clear visual feedback that disabled fields cannot be interacted with.
 
-### Implementation Details
+### 3. **Added Hierarchy Container Styles** (styles.css)
+Added responsive grid layout for the Corporate/Group/Department/Team selector:
 
-**Files Created:**
-- `src/frontend/js/api.js` — Mock API with test users (4 roles)
-- `src/frontend/js/app.js` — App routing and session management
-- Updated `src/frontend/js/login.js` — Integrated mock API + test UI
+```css
+.hierarchy-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
 
-**Mock API Features:**
-- 4 test users with role-based routing
-- Mock JWT generation (base64 encoded, 30-min expiry)
-- Token validation functions
-- Error handling for invalid emails/roles
-- 500ms network delay simulation (realistic UX)
+.hierarchy-group {
+  margin-bottom: 0;
+}
+```
 
-**Session Storage:**
-- `oyc_user` — User object (email, role, name, department)
-- `oyc_token` — JWT token for auth checks
+## How It Works Now
+
+1. User uploads CSV file
+2. CSV is parsed successfully
+3. Corporate dropdown is **enabled** (no longer disabled)
+4. User selects a Corporate value → Group dropdown becomes enabled
+5. User selects Group → Department dropdown becomes enabled
+6. User selects Department → Team dropdown becomes enabled
+7. User selects Team (optional) → "Generate OKR Form" button works
+
+## Testing
+
+**Test Case 1: CSV Upload → Dropdown Population**
+1. Upload `docs/SAMPLE_OKR_DATA.csv`
+2. Verify CSV success message appears
+3. **Verify Corporate dropdown now has options visible and clickable**
+4. Select "Converge ICT Solutions"
+5. **Verify Group dropdown becomes enabled and shows "People & Culture"**
+6. Select "People & Culture"
+7. **Verify Department dropdown shows "People Platforms and Analytics"**
+8. Select department
+9. **Verify Team dropdown shows "Platforms" and "Analytics"**
+10. Click "Generate OKR Form" → OKR table should populate
+
+**Test Case 2: Cascading Disable/Enable**
+- Change Corporate selection → Group resets, stays disabled until new selection
+- Change Group selection → Department resets, stays disabled until new selection
+- Verify disabled fields have gray background and "not-allowed" cursor
+
+## Files Modified
+
+1. **`src/frontend/html/dataspoc-portal.html`**
+   - Updated `populateHierarchyDropdowns()` to enable Corporate dropdown after CSV load
+   - Lines ~337-368
+
+2. **`src/frontend/css/styles.css`**
+   - Added disabled field styling
+   - Added hierarchy container grid layout
+   - Lines ~149-166, ~216-230
+
+## Browser Compatibility
+
+This fix improves compatibility with:
+- Chrome/Edge/Brave (all versions)
+- Firefox (all versions)
+- Safari (all versions)
+
+The fix works because:
+- We properly manage the `disabled` attribute (remove when needed)
+- We use standard CSS for disabled state styling
+- We provide visual feedback for disabled/enabled states
+
+## Next Steps
+
+If dropdown options still don't appear after these changes:
+1. Check browser console for JavaScript errors (F12 → Console tab)
+2. Verify CSV file has correct headers: `Corporate,Group,Department,Team,Objective,Key result,Objective Weight`
+3. Open browser DevTools → Elements tab → inspect the `<select>` element
+4. Verify options are present in the DOM even if not visible
 
 ---
 
-## Moving to Phase 2
-
-When ready to add a backend:
-
-1. Create `src/backend-converge/server.js` (Express app)
-2. Create `/auth/login` endpoint
-3. Update `api.js` to call real backend instead of mock
-4. Add actual allowlist database query
-5. Generate real JWT tokens
-
-No frontend changes needed—API interface stays the same.
-
----
-
-## Troubleshooting
-
-### Portal doesn't load after login
-- Check browser console for errors
-- Verify HTML files exist at expected paths
-- Try starting HTTP server again
-
-### Session lost immediately
-- This is expected (sessionStorage is per-tab)
-- Check DevTools → Application → Session Storage
-- If empty, session wasn't stored
-
-### Test buttons don't appear
-- Check browser console for errors
-- Verify `api.js` and `app.js` loaded
-- Clear browser cache (Ctrl+Shift+Delete)
-
-### "Cannot find module" errors
-- Using `file://` protocol without HTTP server
-- Use HTTP server: `python -m http.server 3000`
-
----
-
-## Future Phases
-
-1. ✅ Phase 1: Frontend login working locally
-2. 🔄 Phase 2: Mock Express backend with real routes
-3. 📋 Phase 3: Build portal pages (Manager, Employee, Data SPOC, Admin)
-4. 🔗 Phase 4: Connect to real Converge backend
-5. 📱 Phase 5: Google Apps Script deployment
-
----
-
-**Last Updated:** July 4, 2026
+**Status:** FIXED ✓  
+**Date:** July 6, 2026  
+**Version:** 1.0

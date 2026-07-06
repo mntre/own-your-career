@@ -319,8 +319,14 @@
       addUniqueOptions(departmentSelect, hierarchy.departments);
       addUniqueOptions(teamSelect, hierarchy.teams);
 
-      // Do NOT enable group here — keep it grayed out until Corporate is selected
-      // groupSelect stays disabled
+      // Enable corporate dropdown if it has options (after CSV is loaded)
+      if (hierarchy.corporates && hierarchy.corporates.length > 0) {
+        corporateSelect.disabled = false;
+        corporateSelect.classList.remove('disabled-field');
+      }
+
+      // Do NOT enable group, department, team yet — keep them grayed out until Corporate is selected
+      // These stay disabled until user selects a value in the previous dropdown
 
       // Store hierarchy data globally for cascading filters
       window.csvHierarchyData = hierarchy;

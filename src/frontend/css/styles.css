@@ -208,6 +208,23 @@ p {
   box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
 }
 
+/* Disabled field styling */
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled {
+  background-color: #f0f4f5;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.disabled-field {
+  background-color: #f0f4f5 !important;
+  color: #999 !important;
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+}
+
 .form-group textarea {
   min-height: 120px;
   resize: vertical;
@@ -395,6 +412,20 @@ p {
 }
 
 /* --------------------------------------------------------------------------
+   Hierarchy Selection Styles
+   -------------------------------------------------------------------------- */
+.hierarchy-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.hierarchy-group {
+  margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
    Responsive
    -------------------------------------------------------------------------- */
 @media (min-width: 768px) {
@@ -402,7 +433,6 @@ p {
     padding: var(--spacing-2xl);
   }
 }
-
 
 /* --------------------------------------------------------------------------
    File Upload Styles
