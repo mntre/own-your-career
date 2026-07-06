@@ -211,3 +211,102 @@ function serveTemplate_(templateName, data) {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+
+/**
+ * Gets an employee by email address.
+ * @param {string} userEmail - User's email address
+ * @returns {Object|null} Employee object or null if not found
+ */
+function getEmployeeByEmail_(userEmail) {
+  try {
+    const employees = Database.getAllEmployees();
+    return employees.find(emp => emp.email === userEmail || emp.Email === userEmail) || null;
+  } catch (e) {
+    console.error(`[WebApp] Error getting employee by email: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Returns a denied access HTML page.
+ * @param {string} message - Error message to display
+ * @returns {HtmlOutput} HTML output with error message
+ */
+function deniedAccess_(message) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Access Denied — Own Your Career</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          margin: 0;
+          background: #f5f5f5;
+        }
+        .container {
+          text-align: center;
+          background: white;
+          padding: 40px;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          max-width: 500px;
+        }
+        h1 {
+          color: #d32f2f;
+          margin-top: 0;
+        }
+        p {
+          color: #666;
+          line-height: 1.6;
+        }
+        .icon {
+          font-size: 64px;
+          margin-bottom: 20px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="icon">🔒</div>
+        <h1>Access Denied</h1>
+        <p>${message}</p>
+        <p style="font-size: 14px; color: #999;">
+          If you believe this is an error, please contact your HR administrator.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+  return HtmlService.createHtmlOutput(html);
+}
+
+/**
+ * Logs an access attempt for audit trail.
+ * @param {string} userEmail - User's email address
+ * @param {string} role - User's role (MANAGER, DATA_SPOC, EMPLOYEE, UNKNOWN)
+ * @param {string} result - Access result (GRANTED, DENIED, ERROR)
+ * @param {string} reason - Reason for the result
+ */
+function logAccessAttempt(userEmail, role, result, reason) {
+  try {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      userEmail: userEmail,
+      role: role,
+      result: result,
+      reason: reason
+    };
+    
+    console.log(`[WebApp] Access Attempt: ${JSON.stringify(logEntry)}`);
+    
+    // In a production system, this could write to an audit log sheet
+    // For now, just logging to console
+  } catch (e) {
+    console.error(`[WebApp] Error logging access attempt: ${e.message}`);
+  }
+}

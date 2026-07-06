@@ -324,21 +324,21 @@ function saveSkillsAssessment(employeeId, assessmentData) {
     }
     
     const now = new Date().toISOString();
-    
-    // Serialize array fields to JSON strings for storage in Sheets
     const assessmentObj = {
       assessmentId: assessmentData.assessmentId || Utilities.getUuid(),
       employeeId: employeeId,
-      managerId: assessmentData.managerId || null,
+      lastSyncedAt: now,
+      syncStatus: 'SYNCED',
+      // JSON.stringify array fields for storage in Sheets
       skills: JSON.stringify(assessmentData.skills || []),
       requiredLevel: JSON.stringify(assessmentData.requiredLevel || []),
       actualLevel: JSON.stringify(assessmentData.actualLevel || []),
       remarks: JSON.stringify(assessmentData.remarks || []),
-      lastSyncedAt: now,
-      syncStatus: 'SYNCED',
-      // Include other non-array fields from assessmentData
-      ...(assessmentData.submittedAt && { submittedAt: assessmentData.submittedAt }),
-      ...(assessmentData.status && { status: assessmentData.status })
+      ...Object.fromEntries(
+        Object.entries(assessmentData).filter(
+          ([key]) => !['skills', 'requiredLevel', 'actualLevel', 'remarks'].includes(key)
+        )
+      )
     };
     
     if (existingIndex >= 0) {
@@ -396,23 +396,20 @@ function saveOKRUpload(employeeId, okrData) {
     });
     
     const now = new Date().toISOString();
-    
-    // Serialize array fields to JSON strings for storage in Sheets
     const okrObj = {
       uploadId: okrData.uploadId || Utilities.getUuid(),
       employeeId: employeeId,
-      dataSPOCId: okrData.dataSPOCId || null,
-      corporateOKR: okrData.corporateOKR || null,
-      teamOKR: okrData.teamOKR || null,
+      lastSyncedAt: now,
+      syncStatus: 'SYNCED',
+      // JSON.stringify array fields for storage in Sheets
       targets: JSON.stringify(okrData.targets || []),
       weight: JSON.stringify(okrData.weight || []),
       result: JSON.stringify(okrData.result || []),
-      lastSyncedAt: now,
-      syncStatus: 'SYNCED',
-      // Include other non-array fields from okrData
-      ...(okrData.finalScore !== undefined && { finalScore: okrData.finalScore }),
-      ...(okrData.bracket && { bracket: okrData.bracket }),
-      ...(okrData.submittedAt && { submittedAt: okrData.submittedAt })
+      ...Object.fromEntries(
+        Object.entries(okrData).filter(
+          ([key]) => !['targets', 'weight', 'result'].includes(key)
+        )
+      )
     };
     
     if (existingIndex >= 0) {
@@ -471,7 +468,6 @@ function saveSelfAssessment(employeeId, selfAssessmentData) {
     
     const now = new Date().toISOString();
     const assessmentObj = {
-      selfAssessmentId: selfAssessmentData.selfAssessmentId || Utilities.getUuid(),
       employeeId: employeeId,
       lastSyncedAt: now,
       syncStatus: 'SYNCED',
@@ -557,7 +553,6 @@ function saveFeedForward(employeeId, managerId, feedForwardData) {
     
     const now = new Date().toISOString();
     const feedForwardObj = {
-      feedForwardId: feedForwardData.feedForwardId || Utilities.getUuid(),
       employeeId: employeeId,
       managerId: managerId,
       lastSyncedAt: now,
@@ -622,7 +617,6 @@ function saveManagerAcknowledgement(employeeId, managerId, ackData) {
     
     const now = new Date().toISOString();
     const ackObj = {
-      ackId: ackData.ackId || Utilities.getUuid(),
       employeeId: employeeId,
       managerId: managerId,
       lastSyncedAt: now,
@@ -686,7 +680,6 @@ function saveEmployeeAcknowledgement(employeeId, ackData) {
     
     const now = new Date().toISOString();
     const ackObj = {
-      ackId: ackData.ackId || Utilities.getUuid(),
       employeeId: employeeId,
       lastSyncedAt: now,
       syncStatus: 'SYNCED',
@@ -780,41 +773,14 @@ function getSkillsAssessment(employeeId) {
     
     if (row) {
       const rowObj = rowToObject_(row, Object.keys(headers));
-      
-      // Deserialize array fields from JSON strings
-      if (rowObj.skills && typeof rowObj.skills === 'string') {
-        try {
-          rowObj.skills = JSON.parse(rowObj.skills);
-        } catch (e) {
-          rowObj.skills = [];
-        }
-      }
-      
-      if (rowObj.requiredLevel && typeof rowObj.requiredLevel === 'string') {
-        try {
-          rowObj.requiredLevel = JSON.parse(rowObj.requiredLevel);
-        } catch (e) {
-          rowObj.requiredLevel = [];
-        }
-      }
-      
-      if (rowObj.actualLevel && typeof rowObj.actualLevel === 'string') {
-        try {
-          rowObj.actualLevel = JSON.parse(rowObj.actualLevel);
-        } catch (e) {
-          rowObj.actualLevel = [];
-        }
-      }
-      
-      if (rowObj.remarks && typeof rowObj.remarks === 'string') {
-        try {
-          rowObj.remarks = JSON.parse(rowObj.remarks);
-        } catch (e) {
-          rowObj.remarks = [];
-        }
-      }
-      
-      return rowObj;
+      // Parse array fields from JSON strings
+      return {
+        ...rowObj,
+        skills: rowObj.skills ? JSON.parse(rowObj.skills) : [],
+        requiredLevel: rowObj.requiredLevel ? JSON.parse(rowObj.requiredLevel) : [],
+        actualLevel: rowObj.actualLevel ? JSON.parse(rowObj.actualLevel) : [],
+        remarks: rowObj.remarks ? JSON.parse(rowObj.remarks) : []
+      };
     }
     return null;
   } catch (e) {
@@ -842,33 +808,13 @@ function getOKRUpload(employeeId) {
     
     if (row) {
       const rowObj = rowToObject_(row, Object.keys(headers));
-      
-      // Deserialize array fields from JSON strings
-      if (rowObj.targets && typeof rowObj.targets === 'string') {
-        try {
-          rowObj.targets = JSON.parse(rowObj.targets);
-        } catch (e) {
-          rowObj.targets = [];
-        }
-      }
-      
-      if (rowObj.weight && typeof rowObj.weight === 'string') {
-        try {
-          rowObj.weight = JSON.parse(rowObj.weight);
-        } catch (e) {
-          rowObj.weight = [];
-        }
-      }
-      
-      if (rowObj.result && typeof rowObj.result === 'string') {
-        try {
-          rowObj.result = JSON.parse(rowObj.result);
-        } catch (e) {
-          rowObj.result = [];
-        }
-      }
-      
-      return rowObj;
+      // Parse array fields from JSON strings
+      return {
+        ...rowObj,
+        targets: rowObj.targets ? JSON.parse(rowObj.targets) : [],
+        weight: rowObj.weight ? JSON.parse(rowObj.weight) : [],
+        result: rowObj.result ? JSON.parse(rowObj.result) : []
+      };
     }
     return null;
   } catch (e) {
@@ -1069,7 +1015,7 @@ function detectConflict(sheetName, employeeId, incomingData) {
     let existingRow = null;
     values.forEach((row) => {
       const rowObj = rowToObject_(row, Object.keys(headers));
-      if (rowObj.employeeId === employeeId) {
+      if (rowObj.employeeId === employeeId || rowObj.EmployeeId === employeeId) {
         existingRow = rowObj;
       }
     });
@@ -1208,11 +1154,11 @@ function logConflict(employeeId, sheetName, conflictInfo) {
  */
 function getSyncStatusForEmployee(employeeId) {
   try {
-    const skills = Database.getSkillsAssessment(employeeId);
-    const okr = Database.getOKRUpload(employeeId);
-    const selfAssessment = Database.getSelfAssessment(employeeId);
-    const feedForward = Database.getFeedForward(employeeId);
-    const managerAck = Database.getManagerAcknowledgement(employeeId);
+    const skills = getSkillsAssessment(employeeId);
+    const okr = getOKRUpload(employeeId);
+    const selfAssessment = getSelfAssessment(employeeId);
+    const feedForward = getFeedForward(employeeId);
+    const managerAck = getManagerAcknowledgement(employeeId);
 
     return {
       employeeId: employeeId,
