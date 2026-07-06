@@ -500,3 +500,190 @@ p {
   color: #c62828;
   border-left: 4px solid #c62828;
 }
+
+.upload-feedback--info {
+  background-color: #e8f4fd;
+  color: var(--color-primary);
+  border-left: 4px solid var(--color-primary);
+}
+
+/* --------------------------------------------------------------------------
+   OKR Uploading Form Table
+   -------------------------------------------------------------------------- */
+.okr-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--spacing-lg) 0;
+  border: 1px solid var(--color-teal-soft);
+}
+
+.okr-table thead {
+  background-color: var(--color-teal-dark);
+  color: var(--color-white);
+}
+
+.okr-table th {
+  padding: var(--spacing-md);
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid var(--color-teal-dark);
+}
+
+.okr-table tbody tr {
+  border-bottom: 1px solid var(--color-teal-soft);
+}
+
+.okr-table tbody tr:hover {
+  background-color: rgba(154, 192, 195, 0.1);
+}
+
+.okr-table td {
+  padding: var(--spacing-md);
+  vertical-align: middle;
+}
+
+/* Label cells (Objective and Key Result columns) */
+.label-cell {
+  font-weight: 500;
+  color: var(--color-black);
+  word-wrap: break-word;
+  word-break: break-word;
+  border-left: 1px solid var(--color-teal-soft);
+}
+
+/* Objective column with rowspan */
+.okr-table td.label-cell:first-child {
+  background-color: #f9fbfb;
+  border-right: 2px solid var(--color-teal-soft);
+  border-left: 2px solid var(--color-teal-soft);
+  font-family: var(--font-heading);
+  color: var(--color-teal-dark);
+  font-weight: 600;
+}
+
+/* Key Result column (second label-cell) */
+.okr-table td.label-cell:not(:first-child) {
+  border-left: 2px solid var(--color-teal-soft);
+}
+
+/* Weight column */
+.weight-cell {
+  text-align: center;
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 80px;
+  border-left: 2px solid var(--color-teal-soft);
+}
+
+/* Actual Result input column */
+.actual-cell {
+  min-width: 150px;
+}
+
+.input-actual {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s ease;
+}
+
+.input-actual:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+}
+
+.input-actual::placeholder {
+  color: #ccc;
+}
+
+/* Table responsive wrapper */
+.table-responsive {
+  overflow-x: auto;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Table description and notes */
+.table-description {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: var(--spacing-md);
+}
+
+.table-note {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: var(--spacing-md);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.info-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* OKR Form Actions */
+.okr-form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-2xl);
+  justify-content: flex-start;
+}
+
+.okr-form-actions .btn {
+  flex-shrink: 0;
+}
+
+/* Section styling */
+.section-subtitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-teal-dark);
+  margin-bottom: var(--spacing-sm);
+}
+
+.section-description {
+  font-size: 0.95rem;
+  color: #666;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Card header with accent border */
+.card-header-accent {
+  border-bottom: 3px solid var(--color-primary);
+  padding-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  .okr-table {
+    font-size: 0.9rem;
+  }
+
+  .okr-table th,
+  .okr-table td {
+    padding: var(--spacing-sm);
+  }
+
+  .okr-table td.label-cell:first-child {
+    min-width: 150px;
+  }
+
+  .input-actual {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.95rem;
+  }
+
+  .okr-form-actions {
+    flex-direction: column;
+  }
+
+  .okr-form-actions .btn {
+    width: 100%;
+  }
+}

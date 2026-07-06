@@ -144,14 +144,16 @@ function validateSelfAssessment(formData) {
   return { valid: errors.length === 0, errors: errors };
 }
 
-<<<<<<< HEAD
+/* -------------------------------------------------------------------------- */
+/*                    CSV PARSING (STEP 2 - DATA SPOC)                        */
+/* -------------------------------------------------------------------------- */
 
 /**
  * Parses a CSV file and extracts OKR hierarchy and key results data.
  * Handles multi-line fields (text with line breaks within quoted cells).
  * 
  * Expected CSV structure (with headers):
- * Corporate,Group,Department,Team,Objective,Key result,Objective Weight
+ * Corporate,Group,Department,Team,Objective,Key Result,Objective Weight
  * 
  * @param {File} file - The CSV file to parse
  * @returns {Promise<Object>} Parsed OKR structure with hierarchy and key results
@@ -162,19 +164,43 @@ function parseCSVFile(file) {
 
     reader.onload = function(event) {
       try {
-        const csv = event.target.result;
+        let csv = event.target.result;
+        
+        console.log('=== CSV Parsing Started ===');
+        console.log('File name:', file.name);
+        console.log('Raw CSV length:', csv.length);
+        console.log('First 300 chars:', csv.substring(0, 300));
+        
+        // Remove BOM (Byte Order Mark) if present
+        if (csv.charCodeAt(0) === 0xFEFF) {
+          csv = csv.slice(1);
+          console.log('BOM removed');
+        }
         
         // Parse CSV using proper CSV parsing (handles quoted fields with line breaks)
         const lines = parseCSVContent(csv);
+        
+        console.log('Total lines parsed:', lines.length);
+        if (lines.length > 0) {
+          console.log('Header row:', lines[0]);
+          if (lines.length > 1) {
+            console.log('First data row:', lines[1]);
+          }
+        }
 
         if (lines.length < 2) {
-          throw new Error('CSV file must contain at least one data row.');
+          throw new Error('CSV file must contain at least one data row (header + 1 data row minimum).');
         }
 
         // Parse header row
         const headers = lines[0].map(function(h) {
           return h.trim();
+        }).filter(function(h) {
+          return h.length > 0;
         });
+
+        console.log('Headers found:', headers);
+        console.log('Headers count:', headers.length);
 
         const expectedHeaders = [
           'Corporate',
@@ -182,13 +208,13 @@ function parseCSVFile(file) {
           'Department',
           'Team',
           'Objective',
-          'Key result',
+          'Key Result',
           'Objective Weight'
         ];
 
         // Validate headers
         if (headers.length !== expectedHeaders.length) {
-          throw new Error(`CSV must have exactly ${expectedHeaders.length} columns. Found: ${headers.length}`);
+          throw new Error(`CSV must have exactly ${expectedHeaders.length} columns. Found: ${headers.length}.\nHeaders: [${headers.join(', ')}]\nExpected: [${expectedHeaders.join(', ')}]`);
         }
 
         for (let i = 0; i < headers.length; i++) {
@@ -197,24 +223,37 @@ function parseCSVFile(file) {
           }
         }
 
+        console.log('Header validation: PASSED');
+
         // Parse data rows and build structure
         const hierarchy = {
           corporates: [],
           groups: [],
           departments: [],
           teams: [],
-          keyResults: [] // All key results
+          keyResults: []
         };
 
-        const departmentKeyResultsMap = {}; // Map departments to their key results
+        const departmentKeyResultsMap = {};
+        let validRowCount = 0;
+        let skippedRowCount = 0;
 
         for (let i = 1; i < lines.length; i++) {
           const row = lines[i].map(function(val) {
             return val.trim();
           });
 
+          // Skip completely empty rows
+          if (row.every(function(cell) { return cell === ''; })) {
+            console.log(`Row ${i}: Skipped (empty row)`);
+            skippedRowCount++;
+            continue;
+          }
+
           if (row.length !== expectedHeaders.length) {
-            throw new Error(`Row ${i + 1}: Expected ${expectedHeaders.length} columns, found ${row.length}.`);
+            console.warn(`Row ${i}: Column count mismatch (expected ${expectedHeaders.length}, got ${row.length}). Row:`, row);
+            skippedRowCount++;
+            continue;
           }
 
           const corporate = row[0];
@@ -225,14 +264,25 @@ function parseCSVFile(file) {
           const keyResult = row[5];
           const weight = parseFloat(row[6]);
 
+          // Skip row if corporate is empty
+          if (!corporate || corporate.length === 0) {
+            console.log(`Row ${i}: Skipped (no corporate value)`);
+            skippedRowCount++;
+            continue;
+          }
+
           // Validate weight is numeric
           if (isNaN(weight)) {
             throw new Error(`Row ${i + 1}: Objective Weight "${row[6]}" is not a valid number.`);
           }
 
+          validRowCount++;
+          console.log(`Row ${i}: ✓ Valid - Corporate: "${corporate}", Group: "${group}", Dept: "${department}", Team: "${team}"`);
+
           // Add unique values to hierarchy
           if (hierarchy.corporates.indexOf(corporate) === -1) {
             hierarchy.corporates.push(corporate);
+            console.log('  → Added corporate:', corporate);
           }
           if (hierarchy.groups.indexOf(group) === -1) {
             hierarchy.groups.push(group);
@@ -253,7 +303,7 @@ function parseCSVFile(file) {
             objective: objective,
             keyResult: keyResult,
             weight: weight,
-            actualResult: '' // Placeholder for user input
+            actualResult: ''
           };
 
           hierarchy.keyResults.push(keyResultObj);
@@ -266,12 +316,27 @@ function parseCSVFile(file) {
           departmentKeyResultsMap[deptKey].push(keyResultObj);
         }
 
+        console.log('=== CSV Parsing Complete ===');
+        console.log('Valid rows processed:', validRowCount);
+        console.log('Skipped rows:', skippedRowCount);
+        console.log('Unique corporates:', hierarchy.corporates);
+        console.log('Total key results:', hierarchy.keyResults.length);
+
+        if (hierarchy.corporates.length === 0) {
+          throw new Error('No valid corporate data extracted from CSV. Check that Corporate column has values.');
+        }
+
+        if (hierarchy.keyResults.length === 0) {
+          throw new Error('No key results found in CSV data.');
+        }
+
         // Attach department-keyed map to hierarchy
         hierarchy.departmentKeyResultsMap = departmentKeyResultsMap;
 
         resolve(hierarchy);
       } catch (error) {
-        reject(new Error('CSV parsing failed: ' + error.message));
+        console.error('CSV parsing error details:', error);
+        reject(new Error('CSV validation failed: ' + error.message));
       }
     };
 
@@ -377,7 +442,7 @@ function validateOKRForm(keyResults) {
 
   return { valid: errors.length === 0, errors: errors };
 }
-=======
+
 /* -------------------------------------------------------------------------- */
 /*                         FEED FORWARD (STEP 4)                              */
 /* -------------------------------------------------------------------------- */
@@ -536,4 +601,3 @@ function clearValidationErrors(formElement) {
     errorContainer.remove();
   }
 }
->>>>>>> 3f1f1848bda26db4958c1968348c61a96ba1c9c1
