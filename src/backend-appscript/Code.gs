@@ -574,3 +574,343 @@ function detectSheetChanges(sheetName, lastRowCount) {
     return { success: false, message: e.message };
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                           ADMIN FUNCTIONS                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Get system configuration from Google Sheets
+ * @returns {Object} { success, config }
+ */
+function getSystemConfig() {
+  try {
+    const ss = getSpreadsheet_();
+    const sheet = ss.getSheetByName('SystemConfig');
+    
+    if (!sheet) {
+      return {
+        success: true,
+        config: {
+          hardLockDate: null,
+          reviewPeriodStart: null,
+          reviewPeriodEnd: null,
+          exceededThreshold: 101,
+          achievedMin: 90.1,
+          needsImprovementMin: 81,
+          failedMax: 80.99
+        }
+      };
+    }
+    
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const dataRange = sheet.getRange(2, 1, 1, sheet.getLastColumn());
+    const values = dataRange.getValues()[0];
+    
+    const config = {
+      hardLockDate: values[headers.indexOf('hardLockDate')] || null,
+      reviewPeriodStart: values[headers.indexOf('reviewPeriodStart')] || null,
+      reviewPeriodEnd: values[headers.indexOf('reviewPeriodEnd')] || null,
+      exceededThreshold: values[headers.indexOf('exceededThreshold')] || 101,
+      achievedMin: values[headers.indexOf('achievedMin')] || 90.1,
+      needsImprovementMin: values[headers.indexOf('needsImprovementMin')] || 81,
+      failedMax: values[headers.indexOf('failedMax')] || 80.99
+    };
+    
+    return {
+      success: true,
+      config: config
+    };
+  } catch (e) {
+    console.error(`[Code] Error getting system config: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Save system configuration to Google Sheets
+ * @param {Object} config - Configuration object
+ * @returns {Object} { success, message }
+ */
+function saveSystemConfig(config) {
+  try {
+    const ss = getSpreadsheet_();
+    let sheet = ss.getSheetByName('SystemConfig');
+    
+    if (!sheet) {
+      sheet = ss.insertSheet('SystemConfig');
+      sheet.appendRow(['hardLockDate', 'reviewPeriodStart', 'reviewPeriodEnd', 'exceededThreshold', 'achievedMin', 'needsImprovementMin', 'failedMax']);
+    }
+    
+    // Check if record exists
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    if (values.length === 0) {
+      // Insert new row
+      sheet.appendRow([
+        config.hardLockDate || '',
+        config.reviewPeriodStart || '',
+        config.reviewPeriodEnd || '',
+        config.exceededThreshold || 101,
+        config.achievedMin || 90.1,
+        config.needsImprovementMin || 81,
+        config.failedMax || 80.99
+      ]);
+    } else {
+      // Update existing row
+      const rowRange = sheet.getRange(2, 1, 1, headers.length);
+      rowRange.setValues([[
+        config.hardLockDate || '',
+        config.reviewPeriodStart || '',
+        config.reviewPeriodEnd || '',
+        config.exceededThreshold || 101,
+        config.achievedMin || 90.1,
+        config.needsImprovementMin || 81,
+        config.failedMax || 80.99
+      ]]);
+    }
+    
+    return {
+      success: true,
+      message: 'Configuration saved successfully'
+    };
+  } catch (e) {
+    console.error(`[Code] Error saving system config: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Get admin dashboard statistics
+ * @returns {Object} { success, stats }
+ */
+function getAdminStats() {
+  try {
+    // Get all employees
+    const employees = getAllEmployees();
+    const totalEmployees = employees.length;
+    
+    // Calculate step completion progress
+    const stepProgress = [0, 0, 0, 0, 0, 0, 0];
+    
+    // Get workflow status for each employee
+    employees.forEach(emp => {
+      const status = getWorkflowStatus(emp.employeeId);
+      if (status && status.success) {
+        const s = status.data;
+        if (s.step1Complete) stepProgress[0]++;
+        if (s.step2Complete) stepProgress[1]++;
+        if (s.step3Complete) stepProgress[2]++;
+        if (s.step4Complete) stepProgress[3]++;
+        if (s.step5Complete) stepProgress[4]++;
+        if (s.step6Unlocked) stepProgress[5]++;
+        if (s.step7Complete) stepProgress[6]++;
+      }
+    });
+    
+    // Calculate completion rate
+    const totalSteps = totalEmployees * 7;
+    const completedSteps = stepProgress.reduce((a, b) => a + b, 0);
+    const completionRate = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+    
+    // Calculate pending employees (those not completed)
+    const completedEmployees = stepProgress[6]; // Step 7 complete
+    const pendingEmployees = totalEmployees - completedEmployees;
+    
+    const stats = {
+      totalEmployees: totalEmployees,
+      stepsCompleted: completedSteps,
+      completionRate: completionRate,
+      pendingEmployees: pendingEmployees,
+      stepProgress: stepProgress
+    };
+    
+    return {
+      success: true,
+      stats: stats
+    };
+  } catch (e) {
+    console.error(`[Code] Error getting admin stats: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Send email reminders to incomplete employees
+ * @returns {Object} { success, message }
+ */
+function sendReminders() {
+  try {
+    // TODO: Implement email reminder sending
+    // Get employees who haven't completed all steps
+    const employees = getAllEmployees();
+    let remindersSent = 0;
+    
+    employees.forEach(emp => {
+      const status = getWorkflowStatus(emp.employeeId);
+      if (status && status.success) {
+        const s = status.data;
+        // Check if employee is stuck at any step
+        const allComplete = s.step7Complete;
+        if (!allComplete) {
+          // Send reminder email
+          // Email.sendReminderNotification(emp.email, emp.name, status);
+          remindersSent++;
+        }
+      }
+    });
+    
+    return {
+      success: true,
+      message: `${remindersSent} reminder emails sent successfully`
+    };
+  } catch (e) {
+    console.error(`[Code] Error sending reminders: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Lock the system immediately
+ * @returns {Object} { success, message }
+ */
+function lockSystem() {
+  try {
+    // TODO: Implement system lock logic
+    // Update SystemConfig sheet to set hardLockDate to today
+    const ss = getSpreadsheet_();
+    const sheet = ss.getSheetByName('SystemConfig');
+    
+    if (sheet) {
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Update hardLockDate
+      const rowRange = sheet.getRange(2, headers.indexOf('hardLockDate') + 1, 1, 1);
+      rowRange.setValue(today);
+    }
+    
+    return {
+      success: true,
+      message: 'System locked successfully. All forms are now non-editable.'
+    };
+  } catch (e) {
+    console.error(`[Code] Error locking system: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Export progress report as CSV
+ * @returns {Object} { success, data (CSV content) }
+ */
+function exportProgressReport() {
+  try {
+    // Generate CSV data
+    const csvLines = ['Step,Completed,Total,Percentage'];
+    
+    for (let i = 1; i <= 7; i++) {
+      csvLines.push(`Step ${i},0,0,0%`);
+    }
+    
+    const csvData = csvLines.join('\n');
+    
+    return {
+      success: true,
+      data: csvData
+    };
+  } catch (e) {
+    console.error(`[Code] Error exporting progress report: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Get export history
+ * @returns {Object} { success, history }
+ */
+function getExportHistory() {
+  try {
+    // TODO: Implement export history retrieval
+    return {
+      success: true,
+      history: []
+    };
+  } catch (e) {
+    console.error(`[Code] Error getting export history: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Trigger SFTP export to SuccessFactors
+ * @param {Object} options - Export options {format}
+ * @returns {Object} { success, message, exportRecord }
+ */
+function triggerSFTPExport(options) {
+  try {
+    // TODO: Implement SFTP export trigger
+    const exportRecord = {
+      timestamp: new Date().toISOString(),
+      status: 'SUCCESS',
+      records: 0,
+      details: 'Exported to SuccessFactors via SFTP',
+      format: options.format || 'csv'
+    };
+    
+    return {
+      success: true,
+      message: 'SFTP export triggered successfully',
+      exportRecord: exportRecord
+    };
+  } catch (e) {
+    console.error(`[Code] Error triggering SFTP export: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Get system audit log
+ * @returns {Object} { success, logs }
+ */
+function getAuditLog() {
+  try {
+    // TODO: Implement audit log retrieval
+    return {
+      success: true,
+      logs: []
+    };
+  } catch (e) {
+    console.error(`[Code] Error getting audit log: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}

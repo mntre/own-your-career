@@ -144,7 +144,8 @@ own-your-career/
 │   │   │   ├── login.html       # Google SSO login page
 │   │   │   ├── manager-portal.html
 │   │   │   ├── dataspoc-portal.html
-│   │   │   └── employee-portal.html
+│   │   │   ├── employee-portal.html
+│   │   │   └── admin-portal.html    # Admin dashboard (Phase 1)
 │   │   ├── css/                 # Stylesheets
 │   │   │   └── styles.css
 │   │   └── js/                  # Client-side JavaScript
