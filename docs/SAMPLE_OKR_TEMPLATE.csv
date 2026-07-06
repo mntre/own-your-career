@@ -1,0 +1,15 @@
+Corporate,Group,Group_Objective,Group_KeyResult,Department,Department_Objective,Department_KeyResult,Team,Team_Objective,Team_KeyResult,Weight
+Converge,People Platforms,Drive data-driven decision making,Increase data dashboard adoption to 80%,People Platforms & Analytics,,,Data Analytics,,,15
+Converge,People Platforms,Drive data-driven decision making,Increase data dashboard adoption to 80%,People Platforms & Analytics,,,Data Analytics,,,20
+Converge,People Platforms,Improve reporting efficiency,Reduce report generation time by 50%,People Platforms & Analytics,Improve reporting quality,Deliver 12+ ad-hoc reports,Data Analytics,,,25
+Converge,People Platforms,Improve reporting efficiency,Reduce report generation time by 50%,People Platforms & Analytics,Improve reporting quality,Deliver 12+ ad-hoc reports,Platforms,,,25
+Converge,People Platforms,Build scalable systems,Deploy new portal infrastructure by Q2,People Platforms & Analytics,,,Platforms,,,20
+Converge,People Platforms,Build scalable systems,Deploy new portal infrastructure by Q2,People Platforms & Analytics,,,Platforms,Enhance user experience,Achieve 95% user satisfaction,20
+Converge,People Platforms,Build scalable systems,Deploy new portal infrastructure by Q2,People Platforms & Analytics,,,Platforms,Enhance user experience,Implement accessibility standards,30
+Converge,People Platforms,Improve data quality,Achieve 99.5% data accuracy,People Platforms & Analytics,Improve reporting quality,Achieve 99.5% data accuracy,Data Analytics,Optimize team performance,Complete 100% of data projects,25
+Converge,People Platforms,Streamline hiring process,Reduce time-to-hire by 20%,Recruitment,,,Recruitment Operations,,,35
+Converge,People Platforms,Streamline hiring process,Reduce time-to-hire by 20%,Recruitment,,,Recruitment Operations,,,35
+Converge,People Platforms,Improve candidate experience,Implement candidate portal,Recruitment,,,Recruitment Operations,Build feedback system,Collect 90% feedback rate,30
+Converge,People Platforms,Ensure compliance and governance,Maintain 100% audit compliance,Compensation & Benefits,,,Compensation Strategy,,,40
+Converge,People Platforms,Ensure compliance and governance,Maintain 100% audit compliance,Compensation & Benefits,,,Compensation Strategy,,,30
+Converge,People Platforms,Ensure compliance and governance,Maintain 100% audit compliance,Compensation & Benefits,,,Compensation Strategy,Optimize rewards,Achieve 85% benefits satisfaction,30

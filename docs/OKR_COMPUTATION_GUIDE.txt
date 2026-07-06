@@ -1,0 +1,279 @@
+================================================================================
+OKR COMPUTATION GUIDE — Complete Hierarchy Template
+================================================================================
+
+OVERVIEW:
+This guide explains the OKR hierarchy structure and computation logic, including
+fallback rules when certain levels are missing.
+
+================================================================================
+1. OKR HIERARCHY LEVELS
+================================================================================
+
+Corporate
+  └─ Group
+      └─ Department
+          └─ Team
+              └─ Individual Employee
+
+Example hierarchy for "People Platforms" group:
+
+Converge (Corporate)
+  └─ People Platforms (Group)
+      ├─ People Platforms & Analytics (Department)
+      │   ├─ Data Analytics (Team)
+      │   └─ Platforms (Team)
+      ├─ Recruitment (Department)
+      │   └─ Recruitment Operations (Team)
+      └─ Compensation & Benefits (Department)
+          └─ Compensation Strategy (Team)
+
+
+================================================================================
+2. CSV TEMPLATE STRUCTURE
+================================================================================
+
+Required Columns (in exact order):
+  1. Corporate              - Company/Converge entity
+  2. Group                  - Business group (e.g., People Platforms)
+  3. Department             - Functional department
+  4. Team                   - Team within department
+  5. Objective              - What to achieve (1-2 sentences)
+  6. Key Result             - Measurable outcome
+  7. Objective Weight       - Percentage weight (0-100)
+
+Example Row:
+  Converge,People Platforms,People Platforms & Analytics,Data Analytics,"Drive data-driven decision making","Increase data dashboard adoption to 80% of managers",25
+
+Notes:
+  - Objective Weight totals should equal 100% per team
+  - Text fields with commas must be quoted
+  - One row = One Key Result
+  - Multiple Key Results can share same Objective
+
+
+================================================================================
+3. OKR SCORE CALCULATION (Step 2 - Data SPOC Portal)
+================================================================================
+
+Formula:
+  OKR Score = Sum(Actual Result % × Weight) / 100
+
+Example:
+  Key Result 1: Actual = 95%, Weight = 25%  → 95 × 0.25 = 23.75
+  Key Result 2: Actual = 80%, Weight = 25%  → 80 × 0.25 = 20.00
+  Key Result 3: Actual = 100%, Weight = 25% → 100 × 0.25 = 25.00
+  Key Result 4: Actual = 90%, Weight = 25%  → 90 × 0.25 = 22.50
+                                    Total = 91.25%
+
+Performance Bracket Assignment:
+  ≥ 101%        → EXCEEDED
+  90.1% - 100%  → ACHIEVED
+  81% - 90%     → NEEDS IMPROVEMENT
+  < 80%         → FAILED
+
+
+================================================================================
+4. FINAL OKR SCORE CALCULATION (Step 6 - Employee Portal)
+================================================================================
+
+After all employees upload their OKR data, the system computes their FINAL
+performance score based on role level:
+
+Role-Based Formula:
+  • Group Heads:        10% Corporate OKR + 90% Group OKR
+  • Department Heads:   60% Group OKR + 40% Department OKR
+  • Team Heads:         60% Department OKR + 40% Team OKR
+  • Individual Employees: 60% Department OKR + 40% Team OKR
+
+Example Calculation for Team Member:
+  Department OKR Score = 91.25%
+  Team OKR Score       = 87.50%
+  
+  Final Score = (91.25 × 0.60) + (87.50 × 0.40)
+              = 54.75 + 35.00
+              = 89.75%
+              → NEEDS IMPROVEMENT (81-90% range)
+
+
+================================================================================
+5. FALLBACK LOGIC (When OKR Levels Missing)
+================================================================================
+
+Scenario A: Team OKR exists, but Department OKR missing
+  → Department OKR = Team OKR (cascade up)
+  
+Example:
+  - Team OKR Score: 87.5%
+  - Department OKR Score: [MISSING] → USE 87.5%
+  - Employee Final Score = (87.5 × 0.60) + (87.5 × 0.40) = 87.5%
+
+
+Scenario B: Department OKR exists, but Group OKR missing
+  → Group OKR = Department OKR (cascade up)
+  
+Example:
+  - Department OKR Score: 89.0%
+  - Group OKR Score: [MISSING] → USE 89.0%
+  - Group Head Final Score = (89.0 × 0.60) + (89.0 × 0.40) = 89.0%
+
+
+Scenario C: Multiple levels missing
+  → Cascade the lowest available score upward
+  
+Example: Only Team OKR uploaded
+  - Team OKR Score: 85.0%
+  - Department OKR = 85.0% (missing → use team)
+  - Group OKR = 85.0% (missing → use department)
+  - Corporate OKR = [Not computed at team level]
+
+
+Implementation Logic:
+  ```
+  function getOKRScore(teamOKR, departmentOKR, groupOKR, corporateOKR) {
+    // Fill in missing values by cascading up from lowest level
+    const finalDeptOKR = departmentOKR !== null ? departmentOKR : teamOKR;
+    const finalGroupOKR = groupOKR !== null ? groupOKR : finalDeptOKR;
+    const finalCorpOKR = corporateOKR !== null ? corporateOKR : finalGroupOKR;
+    
+    return {
+      corporate: finalCorpOKR,
+      group: finalGroupOKR,
+      department: finalDeptOKR,
+      team: teamOKR
+    };
+  }
+  ```
+
+
+================================================================================
+6. CSV TEMPLATE EXAMPLE: COMPLETE HIERARCHY
+================================================================================
+
+Converge (Corporate Level)
+│
+└─ People Platforms (Group Level)
+    │
+    ├─ People Platforms & Analytics (Department Level)
+    │   │
+    │   ├─ Data Analytics (Team Level)
+    │   │   └─ OKRs:
+    │   │       - Drive data-driven decision making (50%)
+    │   │       - Improve data quality (50%)
+    │   │
+    │   └─ Platforms (Team Level)
+    │       └─ OKRs:
+    │           - Build scalable systems (50%)
+    │           - Enhance user experience (50%)
+    │
+    ├─ Recruitment (Department Level)
+    │   │
+    │   └─ Recruitment Operations (Team Level)
+    │       └─ OKRs:
+    │           - Streamline hiring process (70%)
+    │           - Improve candidate experience (30%)
+    │
+    └─ Compensation & Benefits (Department Level)
+        │
+        └─ Compensation Strategy (Team Level)
+            └─ OKRs:
+                - Optimize total rewards (70%)
+                - Ensure compliance (30%)
+
+
+CSV Data:
+  Corporate,Group,Department,Team,Objective,Key Result,Objective Weight
+  Converge,People Platforms,People Platforms & Analytics,Data Analytics,"Drive data-driven decision making","Increase data dashboard adoption to 80%",25
+  Converge,People Platforms,People Platforms & Analytics,Data Analytics,"Drive data-driven decision making","Reduce report generation time by 50%",25
+  Converge,People Platforms,People Platforms & Analytics,Data Analytics,"Improve data quality","Achieve 99.5% data accuracy",25
+  Converge,People Platforms,People Platforms & Analytics,Data Analytics,"Improve data quality","Complete data cleansing for 100%",25
+  Converge,People Platforms,People Platforms & Analytics,Platforms,"Build scalable systems","Deploy portal infrastructure by Q2",30
+  Converge,People Platforms,People Platforms & Analytics,Platforms,"Build scalable systems","Reduce portal load time to <2 seconds",20
+  Converge,People Platforms,People Platforms & Analytics,Platforms,"Enhance user experience","Implement accessibility standards",25
+  Converge,People Platforms,People Platforms & Analytics,Platforms,"Enhance user experience","Achieve 95% user satisfaction",25
+  Converge,People Platforms,Recruitment,Recruitment Operations,"Streamline hiring process","Reduce time-to-hire by 20%",35
+  Converge,People Platforms,Recruitment,Recruitment Operations,"Streamline hiring process","Achieve 90% offer acceptance rate",35
+  Converge,People Platforms,Recruitment,Recruitment Operations,"Improve candidate experience","Implement candidate portal",30
+  Converge,People Platforms,Compensation & Benefits,Compensation Strategy,"Optimize total rewards","Complete market salary benchmarking",40
+  Converge,People Platforms,Compensation & Benefits,Compensation Strategy,"Optimize total rewards","Achieve 85% benefits satisfaction",30
+  Converge,People Platforms,Compensation & Benefits,Compensation Strategy,"Ensure compliance","Achieve 100% payroll compliance",30
+
+
+================================================================================
+7. WORKFLOW: FROM CSV UPLOAD TO FINAL SCORE
+================================================================================
+
+Step 1: Data SPOC uploads CSV (dataspoc-portal.html - Step 2)
+  ├─ System parses CSV
+  ├─ Extracts hierarchy: Corporate → Group → Department → Team
+  └─ Stores Key Results with weights
+
+Step 2: Manager enters actual results for team members
+  ├─ For each Key Result: Manager enters "Actual Result %" (0-200%)
+  ├─ System calculates: Team OKR Score = Sum(Actual × Weight) / 100
+  └─ System assigns bracket: Exceeded/Achieved/Needs Improvement/Failed
+
+Step 3: System applies fallback logic (if levels missing)
+  ├─ If Department OKR missing → Use Team OKR
+  ├─ If Group OKR missing → Use Department OKR
+  └─ Store all computed scores in database
+
+Step 4: Employee views final score (employee-portal.html - Step 6)
+  ├─ System retrieves: Corporate, Group, Department, Team OKR scores
+  ├─ System applies role-level formula:
+  │   - Group Head: 10% Corp + 90% Group
+  │   - Dept Head: 60% Group + 40% Dept
+  │   - Team/Individual: 60% Dept + 40% Team
+  └─ System displays: Final Score + Bracket + Feedback
+
+
+================================================================================
+8. KEY POINTS FOR IMPLEMENTATION
+================================================================================
+
+✓ Weight Distribution:
+  - Per Team: Weights should sum to ~100% (allow 1% tolerance for rounding)
+  - Report if total ≠ 100% to Data SPOC during upload
+
+✓ Actual Results:
+  - Can be 0-200% (allows overachievement)
+  - Default to 0% if not provided
+
+✓ Cascading Logic:
+  - Always cascade UP (Team → Department → Group → Corporate)
+  - Never cascade DOWN
+  - Use the LOWEST available score for missing levels
+
+✓ Database Schema:
+  Store per employee:
+    - team_okr_score (calculated from team key results)
+    - department_okr_score (use team if missing)
+    - group_okr_score (use department if missing)
+    - corporate_okr_score (use group if missing)
+    - final_score (role-based formula)
+    - performance_bracket (Exceeded/Achieved/Needs Improvement/Failed)
+
+✓ Persistence:
+  - All scores must be saved to database
+  - Not ephemeral (lost on page refresh)
+  - Immutable after Step 2 submission (unless resubmitted before hard lock)
+
+
+================================================================================
+9. SAMPLE OKR DATA FILE
+================================================================================
+
+See: docs/SAMPLE_OKR_TEMPLATE.csv
+
+This file contains:
+  - 3 departments under "People Platforms" group
+  - 4 teams total
+  - 15 key results
+  - Complete hierarchy from Corporate → Group → Department → Team
+  - Ready to upload into Data SPOC Portal for testing
+
+
+================================================================================
+Last Updated: July 6, 2026
+Owner: Charvin Penaverde
+Status: Ready for implementation

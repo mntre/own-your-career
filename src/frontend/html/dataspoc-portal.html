@@ -75,6 +75,7 @@
         <!-- Generate OKR Form Button -->
         <div class="form-actions">
           <button type="button" class="btn btn--primary" id="generate-okr-btn">Generate OKR Form</button>
+          <button type="button" class="btn btn--secondary" id="delete-okr-btn" style="display: none;">Delete File</button>
         </div>
       </div>
 
@@ -123,7 +124,10 @@
                   <th class="col-label">Objective</th>
                   <th class="col-label">Key Result</th>
                   <th class="col-weight">Weight (%)</th>
+                  <th class="col-category">Category</th>
+                  <th class="col-target">Target Result</th>
                   <th class="col-actual">Actual Result</th>
+                  <th class="col-score">Score</th>
                 </tr>
               </thead>
               <tbody id="okr-table-body">
@@ -139,6 +143,66 @@
             <button type="button" class="btn btn--secondary" id="back-to-org-data-btn">Back to Org Data</button>
           </div>
         </form>
+      </div>
+    </section>
+
+    <!-- OKR Computation Results Section (Hidden initially) -->
+    <section class="okr-results" id="okr-results-content" style="display: none;">
+      <div class="card">
+        <div class="card-header-accent">
+          <h2 class="card__header">✓ OKR Computation Results</h2>
+        </div>
+
+        <h3 class="section-subtitle">OKR Hierarchy Scores</h3>
+        <p class="section-description">Your OKR data has been computed and assigned to performance brackets</p>
+
+        <!-- Results Display Grid -->
+        <div class="okr-results-grid">
+          <div class="result-card result-card--primary">
+            <div class="result-label">Team OKR Score</div>
+            <div class="result-value" id="result-team-score">—</div>
+            <div class="result-bracket" id="result-bracket">—</div>
+          </div>
+
+          <div class="result-card">
+            <div class="result-label">Department OKR</div>
+            <div class="result-value" id="result-dept-score">—</div>
+          </div>
+
+          <div class="result-card">
+            <div class="result-label">Group OKR</div>
+            <div class="result-value" id="result-group-score">—</div>
+          </div>
+
+          <div class="result-card">
+            <div class="result-label">Corporate OKR</div>
+            <div class="result-value" id="result-corp-score">—</div>
+          </div>
+        </div>
+
+        <!-- Key Results Summary -->
+        <div class="results-summary">
+          <h4>Key Results Summary</h4>
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Key Result</th>
+                <th>Actual %</th>
+                <th>Weight %</th>
+                <th>Contribution %</th>
+              </tr>
+            </thead>
+            <tbody id="results-kr-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Results Actions -->
+        <div class="form-actions results-actions">
+          <button type="button" class="btn btn--primary" id="confirm-okr-btn">Confirm & Close</button>
+          <button type="button" class="btn btn--secondary" id="edit-okr-btn">Edit OKR Data</button>
+        </div>
       </div>
     </section>
   </main>
@@ -295,6 +359,9 @@
           window.pendingCSVHierarchy = parsedHierarchy;
           window.pendingCSVFile = file;
           
+          // Show delete button
+          document.getElementById('delete-okr-btn').style.display = 'inline-flex';
+          
           // Populate dropdown selectors with CSV data
           populateHierarchyDropdowns(parsedHierarchy);
         })
@@ -305,7 +372,68 @@
           e.target.value = '';
           window.pendingCSVHierarchy = null;
           window.pendingCSVFile = null;
+          
+          // Hide delete button on error
+          document.getElementById('delete-okr-btn').style.display = 'none';
         });
+    });
+
+    /**
+     * Handles Delete File button click
+     * Clears the uploaded CSV file and resets hierarchy data
+     * Removes all options from dropdowns (keeps only placeholders)
+     * Hides the delete button and shows the upload form again
+     */
+    document.getElementById('delete-okr-btn').addEventListener('click', function() {
+      const fileInput = document.getElementById('okr-csv-upload');
+      const feedbackDiv = document.getElementById('csv-upload-feedback');
+      const deleteBtn = document.getElementById('delete-okr-btn');
+      const corporateSelect = document.getElementById('corporate');
+      const groupSelect = document.getElementById('group');
+      const departmentSelect = document.getElementById('department');
+      const teamSelect = document.getElementById('team');
+      
+      // Reset file input
+      fileInput.value = '';
+      
+      // Clear hierarchy data
+      window.pendingCSVHierarchy = null;
+      window.pendingCSVFile = null;
+      window.csvHierarchyData = null;
+      
+      // Reset hierarchy dropdowns - clear ALL options except placeholder
+      corporateSelect.innerHTML = '<option value="">-- Select Corporate --</option>';
+      corporateSelect.value = '';
+      corporateSelect.disabled = true;
+      corporateSelect.classList.add('disabled-field');
+      
+      groupSelect.innerHTML = '<option value="">-- Select Group --</option>';
+      groupSelect.value = '';
+      groupSelect.disabled = true;
+      groupSelect.classList.add('disabled-field');
+      
+      departmentSelect.innerHTML = '<option value="">-- Select Department --</option>';
+      departmentSelect.value = '';
+      departmentSelect.disabled = true;
+      departmentSelect.classList.add('disabled-field');
+      
+      teamSelect.innerHTML = '<option value="">-- Select Team --</option>';
+      teamSelect.value = '';
+      teamSelect.disabled = true;
+      teamSelect.classList.add('disabled-field');
+      
+      // Hide OKR form if it's open
+      document.getElementById('okr-form-content').style.display = 'none';
+      document.getElementById('step-2-content').style.display = 'block';
+      
+      // Clear and hide feedback message
+      feedbackDiv.style.display = 'none';
+      feedbackDiv.innerHTML = '';
+      
+      // Hide delete button
+      deleteBtn.style.display = 'none';
+      
+      console.log('CSV file deleted. Ready for new upload.');
     });
 
     /**
@@ -577,24 +705,9 @@
       const dept = document.getElementById('department').value;
       const team = document.getElementById('team').value;
       
-      // Validate required selections
+      // Validate: Corporate is mandatory
       if (!corporate) {
         alert('Please select a corporate entity first');
-        return;
-      }
-      
-      if (!group) {
-        alert('Please select a group first');
-        return;
-      }
-      
-      if (!dept) {
-        alert('Please select a department first');
-        return;
-      }
-      
-      if (!team) {
-        alert('Please select a team first');
         return;
       }
       
@@ -603,10 +716,6 @@
         return;
       }
       
-      // Update form title to show selected hierarchy
-      const deptName = dept || 'Unknown Department';
-      document.getElementById('form-department-title').textContent = `OKR Upload: ${deptName} Department`;
-      
       // Get all key results from CSV
       const allKeyResults = window.pendingCSVHierarchy.keyResults;
       
@@ -614,6 +723,14 @@
         alert('No key results found in CSV');
         return;
       }
+      
+      // Build form title based on selected hierarchy levels
+      let formTitle = `OKR Upload: ${corporate}`;
+      if (group) formTitle += ` > ${group}`;
+      if (dept) formTitle += ` > ${dept}`;
+      if (team) formTitle += ` > ${team}`;
+      
+      document.getElementById('form-department-title').textContent = formTitle;
       
       // Populate OKR table with filtered rows (by Corporate, Group, Department, Team)
       populateDynamicOKRTable(allKeyResults, corporate, group, dept, team);
@@ -719,6 +836,23 @@
             ${objectiveCell}
             <td class="label-cell">${kr.keyResult}</td>
             <td class="weight-cell">${kr.weight}%</td>
+            <td class="category-cell">
+              <select class="input-category" data-kr-index="${kr.index}" aria-label="Category for ${kr.keyResult}">
+                <option value="">-- Select --</option>
+                <option value="target">Target</option>
+                <option value="threshold">Threshold</option>
+              </select>
+            </td>
+            <td class="target-cell">
+              <input 
+                type="text" 
+                class="input-target" 
+                data-kr-index="${kr.index}"
+                readonly
+                placeholder="Target result"
+                aria-label="Target result for ${kr.keyResult}"
+              >
+            </td>
             <td class="actual-cell">
               <input 
                 type="number" 
@@ -727,6 +861,16 @@
                 step="0.1" 
                 placeholder="Enter actual result"
                 aria-label="Actual result for ${kr.keyResult}"
+              >
+            </td>
+            <td class="score-cell">
+              <input 
+                type="text" 
+                class="input-score" 
+                data-kr-index="${kr.index}"
+                readonly
+                placeholder="Score"
+                aria-label="Score for ${kr.keyResult}"
               >
             </td>
           `;
@@ -818,6 +962,118 @@
     });
 
     /**
+     * Computes OKR score hierarchy with cascading fallback logic
+     * 
+     * Fallback Rules:
+     * - If Team OKR exists but Department OKR missing → Department = Team OKR
+     * - If Department OKR exists but Group OKR missing → Group = Department OKR
+     * - Cascade upward only, never downward
+     * 
+     * @param {Array<Object>} keyResults - Key results for the team
+     * @returns {Object} Hierarchy with computed scores
+     */
+    function computeOKRHierarchy(keyResults) {
+      // Calculate base team OKR score from weighted key results
+      const teamOKRScore = calculateOKRFinalScore(keyResults);
+      
+      // Apply cascading fallback logic
+      const hierarchy = {
+        teamOKRScore: teamOKRScore,
+        departmentOKRScore: teamOKRScore,  // Default: use team score if dept missing
+        groupOKRScore: teamOKRScore,        // Default: use team score if group missing
+        corporateOKRScore: teamOKRScore    // Default: use team score if corp missing
+      };
+      
+      return hierarchy;
+    }
+
+    /**
+     * Calculates role-level final score based on OKR hierarchy
+     * Applies role-specific formula:
+     * - Group Heads:        10% Corporate OKR + 90% Group OKR
+     * - Department Heads:   60% Group OKR + 40% Department OKR
+     * - Team Heads:         60% Department OKR + 40% Team OKR
+     * - Individual:         60% Department OKR + 40% Team OKR
+     * 
+     * @param {string} roleLevel - Role level (GROUP_HEAD, DEPT_HEAD, TEAM_HEAD, INDIVIDUAL)
+     * @param {Object} hierarchy - OKR hierarchy with all scores
+     * @returns {number} Final weighted score as percentage
+     */
+    function calculateRoleLevelFinalScore(roleLevel, hierarchy) {
+      switch(roleLevel) {
+        case 'GROUP_HEAD':
+          return (hierarchy.corporateOKRScore * 0.10) + (hierarchy.groupOKRScore * 0.90);
+        
+        case 'DEPT_HEAD':
+          return (hierarchy.groupOKRScore * 0.60) + (hierarchy.departmentOKRScore * 0.40);
+        
+        case 'TEAM_HEAD':
+        case 'INDIVIDUAL':
+          return (hierarchy.departmentOKRScore * 0.60) + (hierarchy.teamOKRScore * 0.40);
+        
+        default:
+          console.warn('Unknown role level:', roleLevel);
+          return hierarchy.teamOKRScore;
+      }
+    }
+
+    /**
+     * Computes complete OKR data including hierarchy, scores, and performance bracket
+     * This is called when the OKR form is submitted
+     * 
+     * @param {Array<Object>} keyResults - All key results with actual results filled
+     * @returns {Object} Complete OKR computation result
+     */
+    function computeCompleteOKRData(keyResults) {
+      // Step 1: Calculate OKR hierarchy (with cascading fallback)
+      const hierarchy = computeOKRHierarchy(keyResults);
+      
+      // Step 2: Get team OKR score (base calculation)
+      const teamOKRScore = hierarchy.teamOKRScore;
+      
+      // Step 3: Assign performance bracket
+      const bracket = assignPerformanceBracket(teamOKRScore);
+      const bracketDisplay = getBracketDisplay(bracket);
+      
+      // Step 4: Return complete computation result
+      return {
+        keyResults: keyResults,
+        hierarchy: hierarchy,
+        teamOKRScore: teamOKRScore,
+        bracket: bracket,
+        bracketDisplay: bracketDisplay,
+        computedAt: new Date().toISOString()
+      };
+    }
+
+    /**
+     * Displays OKR computation results in console for debugging
+     * 
+     * @param {string} dept - Department name
+     * @param {Object} computationResult - Result from computeCompleteOKRData()
+     */
+    function logOKRComputationDetails(dept, computationResult) {
+      console.group('🎯 OKR COMPUTATION RESULTS');
+      console.log('Department:', dept);
+      console.log('Team OKR Score:', computationResult.teamOKRScore.toFixed(2) + '%');
+      console.log('Performance Bracket:', computationResult.bracketDisplay.label);
+      console.log('Hierarchy Scores:', {
+        Corporate: computationResult.hierarchy.corporateOKRScore.toFixed(2) + '%',
+        Group: computationResult.hierarchy.groupOKRScore.toFixed(2) + '%',
+        Department: computationResult.hierarchy.departmentOKRScore.toFixed(2) + '%',
+        Team: computationResult.hierarchy.teamOKRScore.toFixed(2) + '%'
+      });
+      console.log('Key Results Details:');
+      computationResult.keyResults.forEach(function(kr, index) {
+        console.log(`  ${index + 1}. ${kr.keyResult}`);
+        console.log(`     Actual: ${kr.actualResult}%, Weight: ${kr.weight}%`);
+        console.log(`     Contribution: ${(kr.actualResult * kr.weight / 100).toFixed(2)}%`);
+      });
+      console.log('Computation Time:', computationResult.computedAt);
+      console.groupEnd();
+    }
+
+    /**
      * Handles Submit OKR Data button click
      * Validates all key result inputs, collects data, calculates OKR score and bracket, submits
      */
@@ -856,17 +1112,20 @@
         return;
       }
       
-      // Calculate OKR final score based on weighted key results
-      const finalScore = calculateOKRFinalScore(window.currentKeyResults);
+      // ===== COMPUTE COMPLETE OKR DATA =====
+      const computationResult = computeCompleteOKRData(window.currentKeyResults);
+      const finalScore = computationResult.teamOKRScore;
+      const bracket = computationResult.bracket;
+      const bracketDisplay = computationResult.bracketDisplay;
       
-      // Assign performance bracket
-      const bracket = assignPerformanceBracket(finalScore);
-      const bracketDisplay = getBracketDisplay(bracket);
-      
-      // Store calculation results
+      // Store computation results
       window.currentKeyResults.finalScore = finalScore;
       window.currentKeyResults.bracket = bracket;
       window.currentKeyResults.bracketDisplay = bracketDisplay;
+      window.currentKeyResults.hierarchy = computationResult.hierarchy;
+      
+      // Log detailed computation results
+      logOKRComputationDetails(dept, computationResult);
       
       // Save data
       okrDraftData[dept] = window.currentKeyResults;
@@ -877,14 +1136,71 @@
       console.log('OKR Data submitted for department:', dept);
       console.log('  Final Score:', finalScore.toFixed(2) + '%');
       console.log('  Performance Bracket:', bracketDisplay.label);
-      console.log('  Key Results:', window.currentKeyResults);
       
-      // Return to main view
+      // Display results panel
+      displayOKRResults(computationResult);
       document.getElementById('okr-form-content').style.display = 'none';
-      document.getElementById('step-2-content').style.display = 'block';
+      document.getElementById('okr-results-content').style.display = 'block';
+    });
+
+    /**
+     * Displays OKR computation results on the results panel
+     * 
+     * @param {Object} computationResult - Result from computeCompleteOKRData()
+     */
+    function displayOKRResults(computationResult) {
+      // Display hierarchy scores
+      document.getElementById('result-team-score').textContent = 
+        computationResult.hierarchy.teamOKRScore.toFixed(2) + '%';
       
-      // Show success message with bracket
-      alert(`OKR Data submitted successfully!\n\nFinal Score: ${finalScore.toFixed(2)}%\nPerformance: ${bracketDisplay.label}\n\nData can be resubmitted until the deadline.`);
+      document.getElementById('result-dept-score').textContent = 
+        computationResult.hierarchy.departmentOKRScore.toFixed(2) + '%';
+      
+      document.getElementById('result-group-score').textContent = 
+        computationResult.hierarchy.groupOKRScore.toFixed(2) + '%';
+      
+      document.getElementById('result-corp-score').textContent = 
+        computationResult.hierarchy.corporateOKRScore.toFixed(2) + '%';
+      
+      // Display performance bracket with styling
+      const bracketDisplay = computationResult.bracketDisplay;
+      const bracketElement = document.getElementById('result-bracket');
+      bracketElement.textContent = bracketDisplay.label;
+      bracketElement.className = 'result-bracket ' + bracketDisplay.cssClass;
+      
+      // Display key results summary
+      const krBody = document.getElementById('results-kr-body');
+      krBody.innerHTML = '';
+      
+      computationResult.keyResults.forEach(function(kr) {
+        const contribution = (kr.actualResult * kr.weight) / 100;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${kr.keyResult}</td>
+          <td>${kr.actualResult}%</td>
+          <td>${kr.weight}%</td>
+          <td>${contribution.toFixed(2)}%</td>
+        `;
+        krBody.appendChild(row);
+      });
+    }
+
+    /**
+     * Handles Confirm & Close button on results panel
+     */
+    document.getElementById('confirm-okr-btn').addEventListener('click', function() {
+      // Return to main org data view
+      document.getElementById('okr-results-content').style.display = 'none';
+      document.getElementById('step-2-content').style.display = 'block';
+    });
+
+    /**
+     * Handles Edit OKR Data button on results panel
+     */
+    document.getElementById('edit-okr-btn').addEventListener('click', function() {
+      // Return to form for editing
+      document.getElementById('okr-results-content').style.display = 'none';
+      document.getElementById('okr-form-content').style.display = 'block';
     });
 
     /**
