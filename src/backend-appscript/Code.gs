@@ -9,6 +9,203 @@
  */
 
 /* -------------------------------------------------------------------------- */
+/*                         PHASE 1C: AUTHENTICATION                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Authenticates a user via email + role allowlist.
+ * Phase 1C Implementation for Google Apps Script
+ * 
+ * Development Mode (Phase 1C):
+ * - Accepts test emails: manager@, employee@, dataspoc@, admin@example.com
+ * - Skips Google credential verification (testing only)
+ * - Generates mock JWT token
+ * 
+ * Production Mode (Future):
+ * - Verify Google ID token signature
+ * - Check email + role against allowlist in Google Sheets
+ * - Only @converge.com.ph emails allowed
+ * 
+ * @param {string} email - User email address
+ * @param {string} role - User role (MANAGER, EMPLOYEE, DATA_SPOC, ADMIN)
+ * @param {string} googleCredential - Google ID token (unused in Phase 1C)
+ * @returns {Object} { success: boolean, token: string, user: Object, message: string }
+ */
+function authenticateUser(email, role, googleCredential) {
+  try {
+    console.log('[Code.authenticateUser] Login attempt:', { email, role });
+    
+    // Phase 1C: Development mode (testing with mock users)
+    const isDevMode = true; // TODO: Switch to environment check in production
+    
+    if (isDevMode) {
+      // Phase 1C Testing Mode: Accept predefined test users
+      const testAllowlist = [
+        { email: 'manager@example.com', role: 'MANAGER', name: 'Manager Test', department: 'Engineering' },
+        { email: 'employee@example.com', role: 'EMPLOYEE', name: 'Employee Test', department: 'Product' },
+        { email: 'dataspoc@example.com', role: 'DATA_SPOC', name: 'Data SPOC Test', department: 'Data' },
+        { email: 'admin@example.com', role: 'ADMIN', name: 'Admin Test', department: 'Admin' }
+      ];
+      
+      // Find user in test allowlist
+      const user = testAllowlist.find(u => u.email === email && u.role === role);
+      
+      if (!user) {
+        console.warn('[Code.authenticateUser] Invalid credentials:', { email, role });
+        logAccessAttempt(email, role, 'DENIED', 'Invalid email or role');
+        return {
+          success: false,
+          message: 'Invalid email or role. Test users: manager@, employee@, dataspoc@, admin@example.com'
+        };
+      }
+      
+      // Generate mock JWT token for AppScript
+      const token = generateMockJWT(user);
+      
+      console.log('[Code.authenticateUser] Authentication successful:', { email, role });
+      logAccessAttempt(email, role, 'ALLOWED', 'Phase 1C Testing Mode');
+      
+      return {
+        success: true,
+        token: token,
+        user: {
+          email: user.email,
+          role: user.role,
+          name: user.name,
+          department: user.department
+        },
+        message: 'Authentication successful (Phase 1C Testing Mode)'
+      };
+    } else {
+      // Production mode (TODO: implement in Phase 2+)
+      return {
+        success: false,
+        message: 'Production mode not yet implemented'
+      };
+    }
+  } catch (error) {
+    console.error('[Code.authenticateUser] Error:', error.message);
+    return {
+      success: false,
+      message: `Authentication error: ${error.message}`
+    };
+  }
+}
+
+/**
+ * Logs out a user (clears session on server side).
+ * Phase 1C Implementation for Google Apps Script
+ * 
+ * Note: In AppScript, sessions are per-user by default.
+ * This is mainly for frontend cleanup confirmation.
+ * 
+ * @returns {Object} { success: boolean, message: string }
+ */
+function logoutUser() {
+  try {
+    console.log('[Code.logoutUser] User logout');
+    
+    // In AppScript, sessions are handled by Google
+    // This is mainly a confirmation endpoint for the frontend
+    
+    return {
+      success: true,
+      message: 'Logout successful'
+    };
+  } catch (error) {
+    console.error('[Code.logoutUser] Error:', error.message);
+    return {
+      success: false,
+      message: `Logout error: ${error.message}`
+    };
+  }
+}
+
+/**
+ * Generates a mock JWT token for AppScript (Phase 1C).
+ * Format: base64-encoded JSON with payload + expiry
+ * Real JWT library not available in AppScript, so using simplified format.
+ * 
+ * @param {Object} user - User object { email, role, name, department }
+ * @returns {string} Base64-encoded token
+ */
+function generateMockJWT(user) {
+  try {
+    const now = new Date();
+    const expiryTime = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
+    
+    const payload = {
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      department: user.department,
+      iat: Math.floor(now.getTime() / 1000),
+      exp: Math.floor(expiryTime.getTime() / 1000)
+    };
+    
+    // Encode as base64 (AppScript-compatible format)
+    const token = Utilities.base64Encode(JSON.stringify(payload));
+    
+    console.log('[Code.generateMockJWT] Token generated for:', user.email);
+    return token;
+  } catch (error) {
+    console.error('[Code.generateMockJWT] Error:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Verifies a token server-side (used for protected endpoints).
+ * @param {string} token - Base64-encoded token
+ * @returns {Object|null} Decoded user object or null if invalid
+ */
+function verifyTokenServerSide(token) {
+  try {
+    if (!token) return null;
+    
+    // Decode base64 token
+    const decoded = JSON.parse(Utilities.base64Decode(token));
+    
+    // Check expiry
+    const now = Math.floor(Date.now() / 1000);
+    if (decoded.exp <= now) {
+      console.warn('[Code.verifyTokenServerSide] Token expired');
+      return null;
+    }
+    
+    return decoded;
+  } catch (error) {
+    console.error('[Code.verifyTokenServerSide] Invalid token:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Logs an authentication access attempt for audit trail.
+ * @param {string} email - User email
+ * @param {string} role - User role
+ * @param {string} result - 'ALLOWED' or 'DENIED'
+ * @param {string} reason - Reason for the result
+ */
+function logAccessAttempt(email, role, result, reason) {
+  try {
+    const now = new Date().toISOString();
+    console.log(JSON.stringify({
+      timestamp: now,
+      event: 'auth_attempt',
+      email,
+      role,
+      result,
+      reason
+    }));
+    
+    // TODO: Store in audit log sheet for production
+  } catch (error) {
+    console.error('[Code.logAccessAttempt] Error:', error.message);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*                           AUTHORIZATION HELPERS                            */
 /* -------------------------------------------------------------------------- */
 
