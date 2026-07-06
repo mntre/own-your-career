@@ -210,13 +210,21 @@ function parseCSVFile(file) {
           'Group',
           'Group_Objective',
           'Group_KeyResult',
+          'Group_Category',
+          'Group_TargetResult',
+          'Group_Weight',
           'Department',
           'Department_Objective',
           'Department_KeyResult',
+          'Department_Category',
+          'Department_TargetResult',
+          'Department_Weight',
           'Team',
           'Team_Objective',
           'Team_KeyResult',
-          'Weight'
+          'Team_Category',
+          'Team_TargetResult',
+          'Team_Weight'
         ];
 
         // Validate headers
@@ -267,13 +275,21 @@ function parseCSVFile(file) {
           const group = row[1];
           const groupObjective = row[2];
           const groupKeyResult = row[3];
-          const department = row[4];
-          const departmentObjective = row[5];
-          const departmentKeyResult = row[6];
-          const team = row[7];
-          const teamObjective = row[8];
-          const teamKeyResult = row[9];
-          const weight = parseFloat(row[10]);
+          const groupCategory = row[4];
+          const groupTargetResult = row[5];
+          const groupWeight = parseFloat(row[6]);
+          const department = row[7];
+          const departmentObjective = row[8];
+          const departmentKeyResult = row[9];
+          const departmentCategory = row[10];
+          const departmentTargetResult = row[11];
+          const departmentWeight = parseFloat(row[12]);
+          const team = row[13];
+          const teamObjective = row[14];
+          const teamKeyResult = row[15];
+          const teamCategory = row[16];
+          const teamTargetResult = row[17];
+          const teamWeight = parseFloat(row[18]);
 
           // Skip row if corporate is empty
           if (!corporate || corporate.length === 0) {
@@ -283,8 +299,8 @@ function parseCSVFile(file) {
           }
 
           // Validate weight is numeric
-          if (isNaN(weight)) {
-            throw new Error(`Row ${i + 1}: Weight "${row[10]}" is not a valid number.`);
+          if (isNaN(teamWeight)) {
+            throw new Error(`Row ${i + 1}: Team Weight "${row[18]}" is not a valid number.`);
           }
 
           // ===== FALLBACK LOGIC: Fill in missing objectives/key results =====
@@ -343,16 +359,25 @@ function parseCSVFile(file) {
             group: group,
             groupObjective: groupObjective,
             groupKeyResult: groupKeyResult,
+            groupCategory: groupCategory,
+            groupTargetResult: groupTargetResult,
+            groupWeight: groupWeight,
             department: department,
             departmentObjective: departmentObjective,
             departmentKeyResult: departmentKeyResult,
+            departmentCategory: departmentCategory,
+            departmentTargetResult: departmentTargetResult,
+            departmentWeight: departmentWeight,
             team: team,
             teamObjective: teamObjective,
             teamKeyResult: teamKeyResult,
+            teamCategory: teamCategory,
+            teamTargetResult: teamTargetResult,
+            teamWeight: teamWeight,
             // Final computed values after fallback
             objective: finalTeamObjective,
             keyResult: finalTeamKeyResult,
-            weight: weight,
+            weight: teamWeight,
             actualResult: ''
           };
 

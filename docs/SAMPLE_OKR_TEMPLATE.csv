@@ -1,15 +1,22 @@
-Corporate,Group,Group_Objective,Group_KeyResult,Department,Department_Objective,Department_KeyResult,Team,Team_Objective,Team_KeyResult,Weight
-Converge,People Platforms,Drive data-driven decision making,Increase data dashboard adoption to 80%,People Platforms & Analytics,,,Data Analytics,,,15
-Converge,People Platforms,Drive data-driven decision making,Increase data dashboard adoption to 80%,People Platforms & Analytics,,,Data Analytics,,,20
-Converge,People Platforms,Improve reporting efficiency,Reduce report generation time by 50%,People Platforms & Analytics,Improve reporting quality,Deliver 12+ ad-hoc reports,Data Analytics,,,25
-Converge,People Platforms,Improve reporting efficiency,Reduce report generation time by 50%,People Platforms & Analytics,Improve reporting quality,Deliver 12+ ad-hoc reports,Platforms,,,25
-Converge,People Platforms,Build scalable systems,Deploy new portal infrastructure by Q2,People Platforms & Analytics,,,Platforms,,,20
-Converge,People Platforms,Build scalable systems,Deploy new portal infrastructure by Q2,People Platforms & Analytics,,,Platforms,Enhance user experience,Achieve 95% user satisfaction,20
-Converge,People Platforms,Build scalable systems,Deploy new portal infrastructure by Q2,People Platforms & Analytics,,,Platforms,Enhance user experience,Implement accessibility standards,30
-Converge,People Platforms,Improve data quality,Achieve 99.5% data accuracy,People Platforms & Analytics,Improve reporting quality,Achieve 99.5% data accuracy,Data Analytics,Optimize team performance,Complete 100% of data projects,25
-Converge,People Platforms,Streamline hiring process,Reduce time-to-hire by 20%,Recruitment,,,Recruitment Operations,,,35
-Converge,People Platforms,Streamline hiring process,Reduce time-to-hire by 20%,Recruitment,,,Recruitment Operations,,,35
-Converge,People Platforms,Improve candidate experience,Implement candidate portal,Recruitment,,,Recruitment Operations,Build feedback system,Collect 90% feedback rate,30
-Converge,People Platforms,Ensure compliance and governance,Maintain 100% audit compliance,Compensation & Benefits,,,Compensation Strategy,,,40
-Converge,People Platforms,Ensure compliance and governance,Maintain 100% audit compliance,Compensation & Benefits,,,Compensation Strategy,,,30
-Converge,People Platforms,Ensure compliance and governance,Maintain 100% audit compliance,Compensation & Benefits,,,Compensation Strategy,Optimize rewards,Achieve 85% benefits satisfaction,30
+Corporate,Group,Group_Objective,Group_KeyResult,Group_Category,Group_TargetResult,Group_Weight,Department,Department_Objective,Department_KeyResult,Department_Category,Department_TargetResult,Department_Weight,Team,Team_Objective,Team_KeyResult,Team_Category,Team_TargetResult,Team_Weight
+Converge ICT Solutions,People & Culture,Revenue Optimization,Revenue per Employee Cost,Threshold,18.91,25%,People Platforms & Analytics,Deliver HR tech products that drive cost efficiency gains,Project Optimization Rate = 85%,Threshold,85%,30%,Platforms,Deliver HR tech products that drive cost efficiency gains,Project Optimization Rate = 85%,Threshold,85%,30%
+Converge ICT Solutions,People & Culture,Talent Acquisition,Tracks effectiveness of recruitment and Converge’s reputation as an employer of choice,Target,70.00%,25%,People Platforms & Analytics,"Build data foundation and governace that ensure data is clean, accessible and trusted ","Data Quality Rate = 85%
+
+Relevance Score: Analytics are designed to help drive revenue and cost optimization (i.e Talent Density, OT, etc.)
+Integrity Score: Data is updated, accurate and trusted 
+Accessibility Score: Defined access, Automated and Released on Time 
+
+Note: Glidepath to 95% in 2027 and 99% in 2028",Target,85%,20%,Platforms,"Deliver high-performance & reliable People Platforms that significantly contribute to ""ease of working"" efforts",System Uptime: 99.5% ,Threshold,99.50%,20%
+Converge ICT Solutions,People & Culture,Employee Net Promoter Score,Establish an organizational advocacy benchmark to drive employee sentiment and retention across the company.,Target,25,20%,People Platforms & Analytics,"Deliver high-performance & reliable People Platforms that significantly contribute to ""ease of working"" efforts",System Uptime: 99.5% ,Target,99.50%,10%,Platforms,"Deliver high-performance & reliable People Platforms that significantly contribute to ""ease of working"" efforts",First Time Resolution: 90%,Threshold,90%,15%
+Converge ICT Solutions,People & Culture,Talent Management,Build a comprehensive talent baseline to enable data-driven succession planning across the organization.,Target,100.00%,20%,People Platforms & Analytics,"Deliver high-performance & reliable People Platforms that significantly contribute to ""ease of working"" efforts",Platforms Capability Rate: 90%,Target,90%,15%,Platforms,Ensure seamless and frictionless project delivery,Project CSat = 85%,Target,85%,15%
+Converge ICT Solutions,People & Culture,Department Efficiency,How much company EBITDA is generated for every peso spent on total group headcount cost.,Threshold,306,10%,People Platforms & Analytics,Ensure seamless and frictionless project delivery,Project CSat = 85%,Threshold,85%,10%,Platforms,"Enforce people adoption to HR platforms to help promote ""automation first"" and ""do more with less"" culture",Standardized Adoption Score (SAS) = 90%,Threshold,90%,20%
+Converge ICT Solutions,People & Culture,,,,,,People Platforms & Analytics,"Enforce people adoption to HR platforms to help promote ""automation first"" and ""do more with less"" culture",Standardized Adoption Score (SAS) = 90%,Threshold,90%,15%,Analytics,"Build data foundation and governace that ensure data is clean, accessible and trusted ","Relevance Score: 85%
+
+Analytics are designed to help drive revenue and cost optimization (i.e Talent Density, OT, etc.)",Target,85%,30%
+Converge ICT Solutions,People & Culture,,,,,,People Platforms & Analytics,,,,,,Analytics,"Build data foundation and governace that ensure data is clean, accessible and trusted ","Integrity Score: 95%
+
+Data is updated, accurate and trusted ",Threshold,95%,30%
+Converge ICT Solutions,People & Culture,,,,,,People Platforms & Analytics,,,,,,Analytics,"Build data foundation and governace that ensure data is clean, accessible and trusted ","Accessibility Score: 75% 
+
+Defined access, Automated and Released on Time",Target,75%,30%
+Converge ICT Solutions,People & Culture,,,,,,People Platforms & Analytics,,,,,,Analytics,Ensure seamless and frictionless project delivery,Project CSat = 85%,Target,85%,10%
