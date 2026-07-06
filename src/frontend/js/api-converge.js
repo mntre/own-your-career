@@ -20,6 +20,12 @@ const APIConverge = {
    * In production: 'https://yourdomain.com/api'
    */
   BASE_URL: 'http://localhost:3000/api',
+  
+  /**
+   * Alternative base URL for local testing without backend
+   * Set to null to use default BASE_URL
+   */
+  TEST_BASE_URL: null,
 
   /**
    * Login function (HTTP-based for Converge)
@@ -173,6 +179,84 @@ const APIConverge = {
         message: error.message
       };
     }
+  },
+
+  /* --------------------------------------------------------------------------
+     ADMIN API METHODS
+     -------------------------------------------------------------------------- */
+
+  /**
+   * Get system configuration
+   * @returns {Promise<Object>} {success, config}
+   */
+  getSystemConfig: async function() {
+    return this.request('GET', '/admin/system-config');
+  },
+
+  /**
+   * Save system configuration
+   * @param {Object} config - Configuration object
+   * @returns {Promise<Object>} {success, message}
+   */
+  saveSystemConfig: async function(config) {
+    return this.request('POST', '/admin/system-config', config);
+  },
+
+  /**
+   * Get admin dashboard statistics
+   * @returns {Promise<Object>} {success, stats}
+   */
+  getAdminStats: async function() {
+    return this.request('GET', '/admin/stats');
+  },
+
+  /**
+   * Send email reminders to incomplete employees
+   * @returns {Promise<Object>} {success, message}
+   */
+  sendReminders: async function() {
+    return this.request('POST', '/admin/send-reminders');
+  },
+
+  /**
+   * Lock the system immediately
+   * @returns {Promise<Object>} {success, message}
+   */
+  lockSystem: async function() {
+    return this.request('POST', '/admin/lock-system');
+  },
+
+  /**
+   * Export progress report as CSV
+   * @returns {Promise<Object>} {success, data (CSV content)}
+   */
+  exportProgressReport: async function() {
+    return this.request('GET', '/admin/export-progress-report');
+  },
+
+  /**
+   * Get export history
+   * @returns {Promise<Object>} {success, history}
+   */
+  getExportHistory: async function() {
+    return this.request('GET', '/admin/export-history');
+  },
+
+  /**
+   * Trigger SFTP export to SuccessFactors
+   * @param {Object} options - Export options {format}
+   * @returns {Promise<Object>} {success, message, exportRecord}
+   */
+  triggerSFTPExport: async function(options = {}) {
+    return this.request('POST', '/admin/trigger-sftp-export', options);
+  },
+
+  /**
+   * Get system audit log
+   * @returns {Promise<Object>} {success, logs}
+   */
+  getAuditLog: async function() {
+    return this.request('GET', '/admin/audit-log');
   }
 };
 

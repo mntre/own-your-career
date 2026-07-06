@@ -153,6 +153,84 @@ const APIAppScript = {
         });
       }
     });
+  },
+
+  /* --------------------------------------------------------------------------
+     ADMIN API METHODS
+     -------------------------------------------------------------------------- */
+
+  /**
+   * Get system configuration
+   * @returns {Promise<Object>} {success, config}
+   */
+  getSystemConfig: async function() {
+    return this.request('getSystemConfig');
+  },
+
+  /**
+   * Save system configuration
+   * @param {Object} config - Configuration object
+   * @returns {Promise<Object>} {success, message}
+   */
+  saveSystemConfig: async function(config) {
+    return this.request('saveSystemConfig', [config]);
+  },
+
+  /**
+   * Get admin dashboard statistics
+   * @returns {Promise<Object>} {success, stats}
+   */
+  getAdminStats: async function() {
+    return this.request('getAdminStats');
+  },
+
+  /**
+   * Send email reminders to incomplete employees
+   * @returns {Promise<Object>} {success, message}
+   */
+  sendReminders: async function() {
+    return this.request('sendReminders');
+  },
+
+  /**
+   * Lock the system immediately
+   * @returns {Promise<Object>} {success, message}
+   */
+  lockSystem: async function() {
+    return this.request('lockSystem');
+  },
+
+  /**
+   * Export progress report as CSV
+   * @returns {Promise<Object>} {success, data (CSV content)}
+   */
+  exportProgressReport: async function() {
+    return this.request('exportProgressReport');
+  },
+
+  /**
+   * Get export history
+   * @returns {Promise<Object>} {success, history}
+   */
+  getExportHistory: async function() {
+    return this.request('getExportHistory');
+  },
+
+  /**
+   * Trigger SFTP export to SuccessFactors
+   * @param {Object} options - Export options {format}
+   * @returns {Promise<Object>} {success, message, exportRecord}
+   */
+  triggerSFTPExport: async function(options = {}) {
+    return this.request('triggerSFTPExport', [options]);
+  },
+
+  /**
+   * Get system audit log
+   * @returns {Promise<Object>} {success, logs}
+   */
+  getAuditLog: async function() {
+    return this.request('getAuditLog');
   }
 };
 

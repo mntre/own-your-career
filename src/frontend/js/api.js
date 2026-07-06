@@ -164,6 +164,141 @@ const API = {
     } catch (e) {
       return null;
     }
+  },
+
+  /* --------------------------------------------------------------------------
+     ADMIN API METHODS (Mock — for local testing)
+     -------------------------------------------------------------------------- */
+
+  /**
+   * Get system configuration (mock)
+   * @returns {Promise<Object>} {success, config}
+   */
+  getSystemConfig: async function() {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return {
+      success: true,
+      config: {
+        hardLockDate: null,
+        reviewPeriodStart: '2026-01-01',
+        reviewPeriodEnd: '2026-06-30',
+        exceededThreshold: 101
+      }
+    };
+  },
+
+  /**
+   * Save system configuration (mock)
+   * @param {Object} config - Configuration object
+   * @returns {Promise<Object>} {success, message}
+   */
+  saveSystemConfig: async function(config) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    console.log('[API Mock] Saving config:', config);
+    return {
+      success: true,
+      message: 'Configuration saved successfully (mock)'
+    };
+  },
+
+  /**
+   * Get admin dashboard statistics (mock)
+   * @returns {Promise<Object>} {success, stats}
+   */
+  getAdminStats: async function() {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return {
+      success: true,
+      stats: {
+        totalEmployees: 25,
+        stepsCompleted: 42,
+        completionRate: 24,
+        pendingEmployees: 19,
+        stepProgress: [60, 48, 32, 20, 12, 8, 4]
+      }
+    };
+  },
+
+  /**
+   * Send email reminders (mock)
+   * @returns {Promise<Object>} {success, message}
+   */
+  sendReminders: async function() {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return {
+      success: true,
+      message: '19 reminder emails sent successfully (mock)'
+    };
+  },
+
+  /**
+   * Lock the system (mock)
+   * @returns {Promise<Object>} {success, message}
+   */
+  lockSystem: async function() {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return {
+      success: true,
+      message: 'System locked successfully (mock)'
+    };
+  },
+
+  /**
+   * Export progress report (mock)
+   * @returns {Promise<Object>} {success, data}
+   */
+  exportProgressReport: async function() {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return {
+      success: true,
+      data: 'Step,Completed,Total,Percentage\nStep 1,15,25,60%\nStep 2,12,25,48%\nStep 3,8,25,32%\nStep 4,5,25,20%\nStep 5,3,25,12%\nStep 6,2,25,8%\nStep 7,1,25,4%'
+    };
+  },
+
+  /**
+   * Get export history (mock)
+   * @returns {Promise<Object>} {success, history}
+   */
+  getExportHistory: async function() {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return {
+      success: true,
+      history: []
+    };
+  },
+
+  /**
+   * Trigger SFTP export (mock)
+   * @param {Object} options - Export options
+   * @returns {Promise<Object>} {success, message, exportRecord}
+   */
+  triggerSFTPExport: async function(options) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return {
+      success: true,
+      message: 'SFTP export triggered successfully (mock)',
+      exportRecord: {
+        timestamp: new Date().toISOString(),
+        status: 'SUCCESS',
+        records: 25,
+        details: 'Exported to SuccessFactors (mock)'
+      }
+    };
+  },
+
+  /**
+   * Get audit log (mock)
+   * @returns {Promise<Object>} {success, logs}
+   */
+  getAuditLog: async function() {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return {
+      success: true,
+      logs: [
+        { timestamp: '2026-07-06 09:00:00', event: 'LOGIN', user: 'admin@example.com', action: 'Admin login', status: 'SUCCESS' },
+        { timestamp: '2026-07-06 08:45:00', event: 'CONFIG_CHANGE', user: 'admin@example.com', action: 'Updated hard lock date', status: 'SUCCESS' }
+      ]
+    };
   }
 };
 
