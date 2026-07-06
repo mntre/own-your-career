@@ -34,7 +34,7 @@ router.post('/api/login', async (req, res) => {
     }
 
     // If Google credential is provided, verify it
-    if (googleCredential) {
+    if (googleCredential && googleCredential.trim() !== '') {
       try {
         // Decode the JWT credential
         const payload = JSON.parse(Buffer.from(googleCredential.split('.')[1], 'base64').toString('utf8'));
