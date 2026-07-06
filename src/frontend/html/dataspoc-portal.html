@@ -994,6 +994,16 @@
 
       // Store filtered Department key results
       window.currentDeptKeyResults = filteredResults;
+      
+      // Add event listeners for real-time score calculation
+      document.querySelectorAll('#okr-table-body-dept .input-actual-dept').forEach(function(input) {
+        input.addEventListener('change', function() {
+          calculateAndDisplayScores('department');
+        });
+        input.addEventListener('input', function() {
+          calculateAndDisplayScores('department');
+        });
+      });
     }
 
     /**
@@ -1095,6 +1105,16 @@
 
       // Store filtered Team key results
       window.currentTeamKeyResults = filteredResults;
+      
+      // Add event listeners for real-time score calculation
+      document.querySelectorAll('#okr-table-body-team .input-actual-team').forEach(function(input) {
+        input.addEventListener('change', function() {
+          calculateAndDisplayScores('team');
+        });
+        input.addEventListener('input', function() {
+          calculateAndDisplayScores('team');
+        });
+      });
     }
 
     /**
@@ -1189,6 +1209,16 @@
 
       // Store filtered key results for later validation
       window.currentGroupKeyResults = filteredResults;
+      
+      // Add event listeners for real-time score calculation
+      document.querySelectorAll('#okr-table-body-group .input-actual-group').forEach(function(input) {
+        input.addEventListener('change', function() {
+          calculateAndDisplayScores('group');
+        });
+        input.addEventListener('input', function() {
+          calculateAndDisplayScores('group');
+        });
+      });
     }
 
     /**
@@ -1458,6 +1488,77 @@
     }
 
     /**
+     * Calculates and displays OKR scores in real-time as user enters actual results
+     * Uses formula: Score = (Actual Result / Target Result) * Weight
+     * 
+     * @param {string} level - OKR level ('group', 'department', or 'team')
+     */
+    function calculateAndDisplayScores(level) {
+      let tableBodyId, inputClass, keyResultsArray;
+      
+      if (level === 'group') {
+        tableBodyId = 'okr-table-body-group';
+        inputClass = '.input-actual-group';
+        keyResultsArray = window.currentGroupKeyResults;
+      } else if (level === 'department') {
+        tableBodyId = 'okr-table-body-dept';
+        inputClass = '.input-actual-dept';
+        keyResultsArray = window.currentDeptKeyResults;
+      } else if (level === 'team') {
+        tableBodyId = 'okr-table-body-team';
+        inputClass = '.input-actual-team';
+        keyResultsArray = window.currentTeamKeyResults;
+      } else {
+        return;
+      }
+      
+      if (!Array.isArray(keyResultsArray) || keyResultsArray.length === 0) {
+        return;
+      }
+      
+      // Update each key result row with calculated score
+      const inputs = document.querySelectorAll(`#${tableBodyId} ${inputClass}`);
+      inputs.forEach(function(input, index) {
+        if (index < keyResultsArray.length) {
+          const kr = keyResultsArray[index];
+          const actualResult = parseFloat(input.value) || 0;
+          
+          // Calculate score: (Actual Result / Target Result) * Weight
+          const targetResult = parseFloat(kr.targetResult) || 1;
+          const weight = parseFloat(kr.weight) || 0;
+          
+          // Individual KR achievement: (Actual / Target) * 100
+          const achievement = (actualResult / targetResult) * 100;
+          
+          // Individual KR contribution to total: (Achievement * Weight) / 100
+          const contribution = (achievement * weight) / 100;
+          
+          // Find and update the score cell for this row
+          const row = input.closest('tr');
+          if (row) {
+            const scoreInput = row.querySelector('.input-score');
+            if (scoreInput) {
+              scoreInput.value = contribution.toFixed(2) + '%';
+            }
+          }
+        }
+      });
+      
+      // Calculate and display total score for this level
+      const updatedKeyResults = [];
+      inputs.forEach(function(input, index) {
+        if (index < keyResultsArray.length) {
+          const kr = { ...keyResultsArray[index] };
+          kr.actualResult = parseFloat(input.value) || 0;
+          updatedKeyResults.push(kr);
+        }
+      });
+      
+      const totalScore = calculateOKRFinalScore(updatedKeyResults);
+      console.log(`${level.charAt(0).toUpperCase() + level.slice(1)} OKR Score:`, totalScore.toFixed(2) + '%');
+    }
+
+    /**
      * Handles Submit OKR Data button click
      * Validates all key result inputs from BOTH Department and Team OKR tables,
      * collects data, calculates scores and bracket, submits
@@ -1484,12 +1585,9 @@
       
       if (window.currentDeptKeyResults && window.currentDeptKeyResults.length > 0) {
         deptInputs.forEach(function(input, idx) {
-          const krIndex = parseInt(input.getAttribute('data-kr-index'));
-          const actualResult = parseFloat(input.value);
-          
           if (window.currentDeptKeyResults[idx]) {
             const kr = { ...window.currentDeptKeyResults[idx] };
-            kr.actualResult = isNaN(actualResult) ? 0 : actualResult;
+            kr.actualResult = parseFloat(input.value) || 0;
             updatedDeptKeyResults.push(kr);
           }
         });
@@ -1501,101 +1599,155 @@
       
       if (window.currentTeamKeyResults && window.currentTeamKeyResults.length > 0) {
         teamInputs.forEach(function(input, idx) {
-          const krIndex = parseInt(input.getAttribute('data-kr-index'));
-          const actualResult = parseFloat(input.value);
-          
           if (window.currentTeamKeyResults[idx]) {
             const kr = { ...window.currentTeamKeyResults[idx] };
-            kr.actualResult = isNaN(actualResult) ? 0 : actualResult;
+            kr.actualResult = parseFloat(input.value) || 0;
             updatedTeamKeyResults.push(kr);
           }
         });
       }
 
-      // Validate Department OKR
+      // Validate Department OKR — all actual results must be filled
+      if (updatedDeptKeyResults.length === 0) {
+        alert('No Department OKR data found. Please enter actual results.');
+        return;
+      }
+      
       const deptValidation = validateOKRForm(updatedDeptKeyResults);
       if (!deptValidation.valid) {
         alert('Department OKR validation failed:\n\n' + deptValidation.errors.join('\n'));
         return;
       }
       
-      // Validate Team OKR
+      // Validate Team OKR — all actual results must be filled
+      if (updatedTeamKeyResults.length === 0) {
+        alert('No Team OKR data found. Please enter actual results.');
+        return;
+      }
+      
       const teamValidation = validateOKRForm(updatedTeamKeyResults);
       if (!teamValidation.valid) {
         alert('Team OKR validation failed:\n\n' + teamValidation.errors.join('\n'));
         return;
       }
       
-      // ===== COMPUTE COMPLETE OKR DATA FOR BOTH LEVELS =====
-      const deptComputationResult = computeCompleteOKRData(updatedDeptKeyResults);
-      const teamComputationResult = computeCompleteOKRData(updatedTeamKeyResults);
+      // ===== COMPUTE OKR SCORES USING NEW FORMULA =====
+      // Formula: Score = (Actual Result / Target Result) * Weight, summed for all KRs
+      const departmentOKRScore = calculateOKRFinalScore(updatedDeptKeyResults);
+      const teamOKRScore = calculateOKRFinalScore(updatedTeamKeyResults);
       
-      console.log('Department OKR Score:', deptComputationResult.teamOKRScore.toFixed(2) + '%');
-      console.log('Team OKR Score:', teamComputationResult.teamOKRScore.toFixed(2) + '%');
+      // Assign performance brackets based on scores
+      const deptBracket = assignPerformanceBracket(departmentOKRScore);
+      const deptBracketDisplay = getBracketDisplay(deptBracket);
+      
+      const teamBracket = assignPerformanceBracket(teamOKRScore);
+      const teamBracketDisplay = getBracketDisplay(teamBracket);
+      
+      // Compute OKR hierarchy (with cascading fallback)
+      const hierarchy = computeOKRHierarchy([], updatedDeptKeyResults, updatedTeamKeyResults);
+      
+      console.log('=== OKR COMPUTATION RESULTS ===');
+      console.log('Department OKR Score:', departmentOKRScore.toFixed(2) + '%', '(' + deptBracketDisplay.label + ')');
+      console.log('Team OKR Score:', teamOKRScore.toFixed(2) + '%', '(' + teamBracketDisplay.label + ')');
+      console.log('Hierarchy:', hierarchy);
       
       // Save data for both levels
       if (!okrDraftData[dept]) {
         okrDraftData[dept] = {};
       }
-      okrDraftData[dept].department = updatedDeptKeyResults;
-      okrDraftData[dept].departmentResult = deptComputationResult;
+      okrDraftData[dept].department = {
+        keyResults: updatedDeptKeyResults,
+        score: departmentOKRScore,
+        bracket: deptBracket,
+        bracketDisplay: deptBracketDisplay
+      };
       
       if (!okrDraftData[team]) {
         okrDraftData[team] = {};
       }
-      okrDraftData[team].team = updatedTeamKeyResults;
-      okrDraftData[team].teamResult = teamComputationResult;
+      okrDraftData[team].team = {
+        keyResults: updatedTeamKeyResults,
+        score: teamOKRScore,
+        bracket: teamBracket,
+        bracketDisplay: teamBracketDisplay
+      };
       
       // Update uploading status and timestamp for all members
       updateUploadingStatusForAllMembers(dept, 'Uploaded');
       
       console.log('OKR Data submitted for Department:', dept, ' and Team:', team);
       
-      // Display results panel - show both Department and Team results
-      displayOKRResults(deptComputationResult, teamComputationResult);
+      // Display results panel with calculated scores
+      displayOKRResults(
+        updatedDeptKeyResults,
+        departmentOKRScore,
+        deptBracketDisplay,
+        updatedTeamKeyResults,
+        teamOKRScore,
+        teamBracketDisplay,
+        hierarchy
+      );
       document.getElementById('okr-form-content').style.display = 'none';
       document.getElementById('okr-results-content').style.display = 'block';
     });
 
     /**
      * Displays OKR computation results on the results panel for both Department and Team
+     * Shows scores, brackets, and detailed key results breakdown with contribution calculations
      * 
-     * @param {Object} deptComputationResult - Department OKR computation result
-     * @param {Object} teamComputationResult - Team OKR computation result
+     * @param {Array<Object>} deptKeyResults - Department key results
+     * @param {number} deptScore - Department OKR score
+     * @param {Object} deptBracketDisplay - Department performance bracket display info
+     * @param {Array<Object>} teamKeyResults - Team key results
+     * @param {number} teamScore - Team OKR score
+     * @param {Object} teamBracketDisplay - Team performance bracket display info
+     * @param {Object} hierarchy - OKR hierarchy with all scores
      */
-    function displayOKRResults(deptComputationResult, teamComputationResult) {
+    function displayOKRResults(
+      deptKeyResults,
+      deptScore,
+      deptBracketDisplay,
+      teamKeyResults,
+      teamScore,
+      teamBracketDisplay,
+      hierarchy
+    ) {
       // Display Department results
-      document.getElementById('result-dept-score').textContent = 
-        deptComputationResult.hierarchy.teamOKRScore.toFixed(2) + '%';
+      document.getElementById('result-dept-score').textContent = deptScore.toFixed(2) + '%';
       
       // Display Team results
-      document.getElementById('result-team-score').textContent = 
-        teamComputationResult.hierarchy.teamOKRScore.toFixed(2) + '%';
+      document.getElementById('result-team-score').textContent = teamScore.toFixed(2) + '%';
       
-      // Display Group and Corporate scores (using Team results as reference)
+      // Display Group and Corporate scores (using hierarchy)
       document.getElementById('result-group-score').textContent = 
-        teamComputationResult.hierarchy.groupOKRScore.toFixed(2) + '%';
+        hierarchy.groupOKRScore.toFixed(2) + '%';
       
       document.getElementById('result-corp-score').textContent = 
-        teamComputationResult.hierarchy.corporateOKRScore.toFixed(2) + '%';
+        hierarchy.corporateOKRScore.toFixed(2) + '%';
       
       // Display performance bracket for Team OKR
-      const bracketDisplay = teamComputationResult.bracketDisplay;
       const bracketElement = document.getElementById('result-bracket');
-      bracketElement.textContent = bracketDisplay.label;
-      bracketElement.className = 'result-bracket ' + bracketDisplay.cssClass;
+      bracketElement.textContent = teamBracketDisplay.label;
+      bracketElement.className = 'result-bracket ' + teamBracketDisplay.cssClass;
       
-      // Display key results summary (Team OKR)
+      // Display key results summary (Team OKR) with contribution breakdown
       const krBody = document.getElementById('results-kr-body');
       krBody.innerHTML = '';
       
-      teamComputationResult.keyResults.forEach(function(kr) {
-        const contribution = (kr.actualResult * kr.weight) / 100;
+      teamKeyResults.forEach(function(kr) {
+        const actualResult = parseFloat(kr.actualResult) || 0;
+        const targetResult = parseFloat(kr.targetResult) || 1;
+        const weight = parseFloat(kr.weight) || 0;
+        
+        // Calculate achievement and contribution
+        const achievement = (actualResult / targetResult) * 100;
+        const contribution = (achievement * weight) / 100;
+        
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td>${kr.keyResult}</td>
-          <td>${kr.actualResult}%</td>
-          <td>${kr.weight}%</td>
+          <td>${kr.keyResult || kr.teamKeyResult}</td>
+          <td>${achievement.toFixed(2)}%</td>
+          <td>${weight}%</td>
           <td>${contribution.toFixed(2)}%</td>
         `;
         krBody.appendChild(row);
