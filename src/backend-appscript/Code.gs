@@ -266,3 +266,114 @@ function getOrgData(spocId) {
     return { success: false, message: e.message };
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                  CONFLICT RESOLUTION FUNCTIONS (Frontend Bridge)           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Handles conflict resolution when frontend detects a conflict.
+ * Frontend can choose to use portal data, sheets data, or merge.
+ * 
+ * @param {string} employeeId - The employee ID
+ * @param {string} step - Which step (e.g., 'skills', 'feedforward')
+ * @param {string} resolution - Resolution strategy ('PORTAL_WINS' | 'SHEETS_WINS' | 'MERGE')
+ * @param {Object} resolvedData - The resolved data to save
+ * @returns {Object} { success: boolean, message: string }
+ */
+function resolveDataConflict(employeeId, step, resolution, resolvedData) {
+  try {
+    const sheetMap = {
+      'skills': 'SKILLS_ASSESSMENT',
+      'okr': 'OKR_UPLOAD',
+      'selfAssessment': 'SELF_ASSESSMENT',
+      'feedForward': 'FEED_FORWARD',
+      'managerAck': 'MANAGER_ACK'
+    };
+    
+    const sheetName = sheetMap[step];
+    if (!sheetName) {
+      return { success: false, message: `Unknown step: ${step}` };
+    }
+    
+    // Log the conflict resolution
+    console.log(`[Code] Resolving conflict for ${employeeId} (${step}) using ${resolution} strategy`);
+    
+    // Save the resolved data
+    switch (step) {
+      case 'skills':
+        return Database.saveSkillsAssessment(employeeId, resolvedData);
+      case 'okr':
+        return Database.saveOKRUpload(employeeId, resolvedData);
+      case 'selfAssessment':
+        return Database.saveSelfAssessment(employeeId, resolvedData);
+      case 'feedForward':
+        return Database.saveFeedForward(employeeId, resolvedData.managerId, resolvedData);
+      default:
+        return { success: false, message: `Unhandled step: ${step}` };
+    }
+  } catch (e) {
+    console.error(`[Code] Error resolving conflict: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Gets sync status for all assessments of an employee.
+ * @param {string} employeeId - The employee ID
+ * @returns {Object} { success: boolean, data: Object }
+ */
+function getSyncStatusForEmployee(employeeId) {
+  try {
+    const syncStatus = Database.getSyncStatusForEmployee(employeeId);
+    return { success: true, data: syncStatus };
+  } catch (e) {
+    console.error(`[Code] Error getting sync status: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Gets the current Sheets modification time.
+ * @returns {Object} { success: boolean, lastEdited: string, timestamp: string }
+ */
+function getSheetsModificationTime() {
+  try {
+    const modTime = Database.getSheetsModificationTime();
+    return { success: modTime.success, data: modTime };
+  } catch (e) {
+    console.error(`[Code] Error getting Sheets modification time: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Checks for external changes in Sheets since a given timestamp.
+ * @param {string} lastChecked - ISO timestamp of last check
+ * @returns {Object} { success: boolean, data: { hasChanges, lastModified, ... } }
+ */
+function checkForExternalChanges(lastChecked) {
+  try {
+    const changes = Database.checkForExternalChanges(lastChecked);
+    return { success: true, data: changes };
+  } catch (e) {
+    console.error(`[Code] Error checking for external changes: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Detects changes in a specific sheet.
+ * @param {string} sheetName - Name of the sheet to check
+ * @param {number} lastRowCount - Last known row count
+ * @returns {Object} { success: boolean, data: { hasChanges, changedRows, ... } }
+ */
+function detectSheetChanges(sheetName, lastRowCount) {
+  try {
+    const changes = Database.detectSheetChanges(sheetName, lastRowCount);
+    return { success: true, data: changes };
+  } catch (e) {
+    console.error(`[Code] Error detecting sheet changes: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
