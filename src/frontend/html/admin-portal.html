@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal — Own Your Career</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* Admin Portal Specific Styles */
+    .admin-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid var(--color-teal-soft);
+    }
+
+    .admin-header h1 {
+      font-size: 24px;
+      color: var(--color-black);
+      margin: 0;
+    }
+
+    .admin-controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .admin-controls button {
+      padding: 8px 16px;
+      background-color: var(--color-violet);
+      color: var(--color-white);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .admin-controls button:hover {
+      background-color: var(--color-primary);
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 992px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Dashboard Card */
+    .dashboard-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .dashboard-card__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--color-teal-soft);
+    }
+
+    .dashboard-card__header h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--color-teal-dark);
+      margin: 0;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .stat-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-card__value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin: 8px 0;
+    }
+
+    .stat-card__label {
+      font-size: 14px;
+      color: #666;
+    }
+
+    /* Progress Bar */
+    .progress-bar {
+      height: 8px;
+      background: var(--color-teal-soft);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--color-primary);
+      transition: width 0.3s ease;
+    }
+
+    /* Configuration Form */
+    .config-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-group label {
+      font-weight: 500;
+      color: var(--color-black);
+      font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 12px 16px;
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      font-size: 16px;
+      font-family: var(--font-body);
+      background: var(--color-white);
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-body);
+    }
+
+    .btn--primary {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+    }
+
+    .btn--primary:hover {
+      background-color: var(--color-teal-mid);
+    }
+
+    .btn--secondary {
+      background-color: var(--color-teal-soft);
+      color: var(--color-black);
+    }
+
+    .btn--secondary:hover {
+      background-color: var(--color-aquamarine);
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-action {
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-body);
+    }
+
+    .btn-action--primary {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+    }
+
+    .btn-action--primary:hover {
+      background-color: var(--color-teal-mid);
+    }
+
+    .btn-action--success {
+      background-color: var(--color-green);
+      color: var(--color-white);
+    }
+
+    .btn-action--success:hover {
+      background-color: var(--color-teal-mid);
+    }
+
+    /* Hard Lock Info */
+    .hard-lock-info {
+      background: var(--color-white);
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .hard-lock-info__status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--color-teal-soft);
+    }
+
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .status-indicator--locked {
+      background-color: var(--color-violet);
+    }
+
+    .status-indicator--unlocked {
+      background-color: var(--color-primary);
+    }
+
+    .hard-lock-info__details {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .hard-lock-info__details {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .detail-item__label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .detail-item__value {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--color-black);
+    }
+
+    /* Audit Log */
+    .audit-log {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .audit-log__table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .audit-log__table th,
+    .audit-log__table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--color-teal-soft);
+    }
+
+    .audit-log__table th {
+      background-color: var(--color-teal-dark);
+      color: var(--color-white);
+      font-weight: 600;
+    }
+
+    .audit-log__table tr:hover {
+      background-color: rgba(3, 143, 141, 0.05);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge--success {
+      background-color: #e6f9f0;
+      color: #0a7c42;
+    }
+
+    .badge--warning {
+      background-color: #fff3e0;
+      color: #e65100;
+    }
+
+    .badge--locked {
+      background-color: var(--color-violet);
+      color: var(--color-white);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--color-teal-soft);
+      padding-bottom: 8px;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: #666;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: var(--font-body);
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: var(--color-primary);
+    }
+
+    .tab.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+
+    .notification-area {
+      margin-bottom: 24px;
+      padding: 16px;
+      border-radius: var(--radius-md);
+      display: none;
+    }
+
+    .notification-area--success {
+      background-color: #e6f9f0;
+      border: 1px solid #0a7c42;
+      color: #0a7c42;
+    }
+
+    .notification-area--error {
+      background-color: #fde8e8;
+      border: 1px solid #c62828;
+      color: #c62828;
+    }
+
+    .notification-area.visible {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <!-- Header -->
+    <div class="admin-header">
+      <div>
+        <h1>Admin Portal</h1>
+        <p id="current-user" style="color: #666; margin: 4px 0 0;">Loading...</p>
+      </div>
+      <div class="admin-controls">
+        <button data-action="logout">Sign Out</button>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div id="notification-area" class="notification-area"></div>
+
+    <!-- Dashboard Stats -->
+    <div class="dashboard-card">
+      <div class="dashboard-card__header">
+        <h2>Overview</h2>
+        <span id="last-updated" style="font-size: 12px; color: #666;">Last updated: Never</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card__value" id="total-employees">0</div>
+          <div class="stat-card__label">Total Employees</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__value" id="steps-completed">0</div>
+          <div class="stat-card__label">Steps Completed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__value" id="completion-rate">0%</div>
+          <div class="stat-card__label">Completion Rate</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__value" id="pending-employees">0</div>
+          <div class="stat-card__label">Pending Reviews</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hard Lock Status -->
+    <div class="dashboard-card">
+      <div class="dashboard-card__header">
+        <h2>System Configuration</h2>
+      </div>
+      <div class="hard-lock-info">
+        <div class="hard-lock-info__status">
+          <div id="lock-status" class="status-indicator status-indicator--unlocked"></div>
+          <div>
+            <h3 id="lock-status-text" style="margin: 0; font-size: 16px; color: var(--color-primary);">System Unlocked</h3>
+            <p style="margin: 4px 0 0; font-size: 14px; color: #666;">Forms are editable</p>
+          </div>
+        </div>
+        <div class="hard-lock-info__details">
+          <div class="detail-item">
+            <span class="detail-item__label">Hard Lock Date</span>
+            <span class="detail-item__value" id="hard-lock-date">Not set</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Performance Thresholds</span>
+            <span class="detail-item__value" id="performance-thresholds">Exceeded ≥101%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="system-config">System Configuration</button>
+      <button class="tab" data-tab="progress-monitor">Progress Monitoring</button>
+      <button class="tab" data-tab="sftp-export">SFTP Export</button>
+      <button class="tab" data-tab="audit-log">Audit Log</button>
+    </div>
+
+    <!-- System Configuration Tab -->
+    <div id="tab-system-config" class="tab-content active">
+      <div class="dashboard-card">
+        <div class="dashboard-card__header">
+          <h2>System Settings</h2>
+        </div>
+        <form class="config-form" id="system-config-form">
+          <div class="form-group">
+            <label for="hard-lock-date-input">Hard Lock Date</label>
+            <input type="date" id="hard-lock-date-input" required>
+            <p style="font-size: 12px; color: #666;">After this date, ALL forms become non-editable</p>
+          </div>
+          <div class="form-group">
+            <label for="review-period-start">Review Period Start</label>
+            <input type="date" id="review-period-start" required>
+          </div>
+          <div class="form-group">
+            <label for="review-period-end">Review Period End</label>
+            <input type="date" id="review-period-end" required>
+          </div>
+          <div class="form-group">
+            <label for="performance-bracket-exceeded">Exceeded Threshold (%)</label>
+            <input type="number" id="performance-bracket-exceeded" value="101" min="0" max="200" step="0.01" required>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Save Configuration</button>
+            <button type="button" class="btn btn--secondary" id="reset-config-btn">Reset to Defaults</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Progress Monitoring Tab -->
+    <div id="tab-progress-monitor" class="tab-content">
+      <div class="dashboard-card">
+        <div class="dashboard-card__header">
+          <h2>Step Completion Progress</h2>
+        </div>
+        <div class="progress-summary">
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>Step 1: Skills Assessment</span>
+              <span id="step1-progress">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="step1-bar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>Step 2: OKR Upload</span>
+              <span id="step2-progress">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="step2-bar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>Step 3: Self-Assessment</span>
+              <span id="step3-progress">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="step3-bar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>Step 4: Feed Forward</span>
+              <span id="step4-progress">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="step4-bar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>Step 5: Manager Acknowledgement</span>
+              <span id="step5-progress">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="step5-bar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>Step 6: View Scores</span>
+              <span id="step6-progress">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="step6-bar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>Step 7: Employee Acknowledgement</span>
+              <span id="step7-progress">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="step7-bar" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-card">
+        <div class="dashboard-card__header">
+          <h2>Quick Actions</h2>
+        </div>
+        <div class="action-buttons">
+          <button class="btn-action btn-action--primary" id="send-reminders-btn">Send Email Reminders</button>
+          <button class="btn-action btn-action--success" id="lock-system-btn">Lock System Now</button>
+          <button class="btn-action btn-action--secondary" id="export-report-btn">Export Progress Report</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SFTP Export Tab -->
+    <div id="tab-sftp-export" class="tab-content">
+      <div class="dashboard-card">
+        <div class="dashboard-card__header">
+          <h2>SFTP Export to SuccessFactors</h2>
+        </div>
+        <div style="margin-bottom: 24px;">
+          <p style="color: #666; margin-bottom: 16px;">
+            After all employees complete Steps 1-7, export finalized review data to SAP SuccessFactors via SFTP.
+          </p>
+          <div class="notification-area notification-area--success visible">
+            <strong>Ready for Export:</strong> All employees have completed the mid-year review process.
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="sftp-server">SFTP Server</label>
+          <input type="text" id="sftp-server" value="sftp.successfactors.com" readonly>
+        </div>
+        <div class="form-group">
+          <label for="sftp-port">Port</label>
+          <input type="text" id="sftp-port" value="22" readonly>
+        </div>
+        <div class="form-group">
+          <label for="sftp-directory">Export Directory</label>
+          <input type="text" id="sftp-directory" value="/export/pmgm-2026" readonly>
+        </div>
+        <div class="form-group">
+          <label for="sftp-format">Export Format</label>
+          <select id="sftp-format">
+            <option value="csv">CSV</option>
+            <option value="json">JSON</option>
+            <option value="xml">XML</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--primary" id="trigger-export-btn">Trigger SFTP Export</button>
+        </div>
+      </div>
+
+      <div class="dashboard-card">
+        <div class="dashboard-card__header">
+          <h2>Export History</h2>
+        </div>
+        <table class="audit-log__table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Status</th>
+              <th>Records</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="export-history-body">
+            <tr>
+              <td colspan="4" style="text-align: center; color: #666;">No exports yet</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Audit Log Tab -->
+    <div id="tab-audit-log" class="tab-content">
+      <div class="dashboard-card">
+        <div class="dashboard-card__header">
+          <h2>System Audit Log</h2>
+        </div>
+        <div class="audit-log">
+          <table class="audit-log__table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Event</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="audit-log-body">
+              <tr>
+                <td colspan="5" style="text-align: center; color: #666;">No audit logs yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../js/platform.js"></script>
+  <script src="../js/api-converge.js"></script>
+  <script src="../js/api-appscript.js"></script>
+  <script src="../js/api-adapter.js"></script>
+  
+  <!-- Legacy api.js fallback for local testing (Live Server) -->
+  <script>
+    if (typeof API === 'undefined') {
+      console.log('[Admin] API not created by adapter, loading legacy api.js for local testing');
+      const script = document.createElement('script');
+      script.src = '../js/api.js';
+      document.head.appendChild(script);
+    }
+  </script>
+  
+  <script src="../js/app.js"></script>
+  <script src="../js/admin.js"></script>
+</body>
+</html>

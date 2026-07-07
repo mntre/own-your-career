@@ -10,7 +10,8 @@ own-your-career/
 │   │   │   ├── login.html           # Google SSO login page
 │   │   │   ├── manager-portal.html  # Steps 1, 4, 5
 │   │   │   ├── dataspoc-portal.html # Step 2
-│   │   │   └── employee-portal.html # Steps 3, 6, 7
+│   │   │   ├── employee-portal.html # Steps 3, 6, 7
+│   │   │   └── admin-portal.html    # Admin dashboard (Phase 1)
 │   │   ├── css/
 │   │   │   └── styles.css           # All styles (Converge brand)
 │   │   └── js/
