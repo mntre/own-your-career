@@ -804,18 +804,18 @@
         document.getElementById('okr-section-team').style.display = 'none';
         document.getElementById('okr-section-group').style.display = 'none';
       }
-      // If both Department AND Team are selected → Show Department + Team OKR tables
+      // If both Department AND Team are selected → Show Team OKR table only
       else if (dept && team) {
-        // Build form title for Department and Team OKR
+        // Build form title for Team OKR
         let formTitle = `OKR Upload: ${corporate} > ${group} > ${dept} > ${team}`;
         document.getElementById('form-department-title').textContent = formTitle;
         
-        // Populate BOTH Department and Team OKR tables
-        populateDynamicOKRTable(allKeyResults, corporate, group, dept, team);
+        // Populate Team OKR table only
+        populateTeamOKRTable(allKeyResults, corporate, group, dept, team);
         
-        // Show both sections
-        document.getElementById('okr-section-dept').style.display = 'block';
+        // Show team section only
         document.getElementById('okr-section-team').style.display = 'block';
+        document.getElementById('okr-section-dept').style.display = 'none';
         document.getElementById('okr-section-group').style.display = 'none';
       }
       // If only Corporate and Group are selected → Show Group OKR table
@@ -837,7 +837,7 @@
         alert('Please complete the hierarchy selection:\n\n' +
               '• Corporate + Group → Group OKR Form\n' +
               '• Corporate + Group + Department → Department OKR Form\n' +
-              '• Corporate + Group + Department + Team → Department & Team OKR Form');
+              '• Corporate + Group + Department + Team → Team OKR Form');
         return;
       }
       
@@ -966,11 +966,7 @@
             <td class="label-cell">${kr.departmentKeyResult}</td>
             <td class="weight-cell">${kr.departmentWeight}%</td>
             <td class="category-cell">
-              <select class="input-category" data-kr-index="${kr.index}" aria-label="Category for ${kr.departmentKeyResult}">
-                <option value="">-- Select --</option>
-                <option value="target">Target</option>
-                <option value="threshold">Threshold</option>
-              </select>
+              <span class="category-readonly">${kr.departmentCategory}</span>
             </td>
             <td class="target-cell">
               <input 
@@ -1076,11 +1072,7 @@
             <td class="label-cell">${kr.teamKeyResult}</td>
             <td class="weight-cell">${kr.teamWeight}%</td>
             <td class="category-cell">
-              <select class="input-category" data-kr-index="${kr.index}" aria-label="Category for ${kr.teamKeyResult}">
-                <option value="">-- Select --</option>
-                <option value="target">Target</option>
-                <option value="threshold">Threshold</option>
-              </select>
+              <span class="category-readonly">${kr.teamCategory}</span>
             </td>
             <td class="target-cell">
               <input 
@@ -1546,7 +1538,9 @@
 
     /**
      * Calculates and displays OKR scores in real-time as user enters actual results
-     * Uses formula: Score = ((Actual Result / Target Result) × Weight) × 100
+     * Uses category-based formula:
+     * - Target: Score = ((Actual Result / Target Result) × Weight)
+     * - Threshold: Score = ((Target Result / Actual Result) × Weight)
      * 
      * @param {string} level - OKR level ('group', 'department', or 'team')
      */
@@ -1581,28 +1575,33 @@
           const actualResult = parseActualResult(input.value);
           
           // Get level-specific property names
-          let targetResultProp, weightProp;
+          let targetResultProp, weightProp, categoryProp;
           
           if (level === 'group') {
             targetResultProp = 'groupTargetResult';
             weightProp = 'groupWeight';
+            categoryProp = 'groupCategory';
           } else if (level === 'department') {
             targetResultProp = 'departmentTargetResult';
             weightProp = 'departmentWeight';
+            categoryProp = 'departmentCategory';
           } else if (level === 'team') {
             targetResultProp = 'teamTargetResult';
             weightProp = 'teamWeight';
+            categoryProp = 'teamCategory';
           }
           
           // Calculate score: (Actual Result / Target Result) × Weight
           let targetResult = parseFloat(String(kr[targetResultProp]).replace('%', '')) || 1;
           let weight = parseFloat(String(kr[weightProp]).replace('%', '')) || 0;
+          let category = String(kr[categoryProp]).trim().toLowerCase();
           
           // DEBUG: Log raw values before conversion
           console.log(`[${level}] KR #${index + 1}:`);
           console.log(`  actualResult: ${actualResult}`);
           console.log(`  targetResult: ${targetResult} (from ${targetResultProp})`);
           console.log(`  weight (before conversion): ${weight} (from ${weightProp})`);
+          console.log(`  category: ${category}`);
           
           // Convert weight from percentage to decimal
           weight = weight / 100;
@@ -1610,8 +1609,19 @@
           // DEBUG: Log after conversion
           console.log(`  weight (after /100): ${weight}`);
           
-          // Individual KR contribution: (Actual / Target) × Weight
-          const contribution = (actualResult / targetResult) * weight;
+          // Individual KR contribution based on category
+          let contribution;
+          if (actualResult === 0 || isNaN(actualResult)) {
+            // If actual result is empty or 0, contribution is 0
+            contribution = 0;
+            console.log(`  formula: Actual Result is empty/0 → contribution = 0`);
+          } else if (category === 'threshold') {
+            contribution = (targetResult / actualResult) * weight;
+            console.log(`  formula: (Target / Actual) × Weight = (${targetResult} / ${actualResult}) × ${weight}`);
+          } else {
+            contribution = (actualResult / targetResult) * weight;
+            console.log(`  formula: (Actual / Target) × Weight = (${actualResult} / ${targetResult}) × ${weight}`);
+          }
           
           // DEBUG: Log contribution before display
           console.log(`  contribution: ${contribution}`);
@@ -1826,6 +1836,96 @@
         return;
       }
       
+      // ===== TEAM OKR ONLY SUBMISSION =====
+      if (!groupSectionVisible && !deptSectionVisible && teamSectionVisible) {
+        if (!corporate) {
+          alert('Please select a corporate entity first');
+          return;
+        }
+        
+        if (!group) {
+          alert('Please select a group first');
+          return;
+        }
+        
+        if (!dept) {
+          alert('Please select a department first');
+          return;
+        }
+        
+        if (!team) {
+          alert('Please select a team first');
+          return;
+        }
+
+        // ===== COLLECT TEAM OKR DATA =====
+        const teamInputs = document.querySelectorAll('#okr-table-body-team .input-actual-team');
+        const updatedTeamKeyResults = [];
+        
+        if (window.currentTeamKeyResults && window.currentTeamKeyResults.length > 0) {
+          teamInputs.forEach(function(input, idx) {
+            if (window.currentTeamKeyResults[idx]) {
+              const kr = { ...window.currentTeamKeyResults[idx] };
+              kr.actualResult = parseActualResult(input.value);
+              updatedTeamKeyResults.push(kr);
+            }
+          });
+        }
+
+        // Validate Team OKR — all actual results must be filled
+        if (updatedTeamKeyResults.length === 0) {
+          alert('No Team OKR data found. Please enter actual results.');
+          return;
+        }
+        
+        const teamValidation = validateOKRForm(updatedTeamKeyResults);
+        if (!teamValidation.valid) {
+          alert('Team OKR validation failed:\n\n' + teamValidation.errors.join('\n'));
+          return;
+        }
+        
+        // ===== COMPUTE TEAM OKR SCORE =====
+        const teamOKRScore = calculateOKRFinalScore(updatedTeamKeyResults);
+        const teamBracket = assignPerformanceBracket(teamOKRScore);
+        const teamBracketDisplay = getBracketDisplay(teamBracket);
+        
+        console.log('=== TEAM OKR SUBMISSION ===');
+        console.log('Team OKR Score:', teamOKRScore.toFixed(2) + '%', '(' + teamBracketDisplay.label + ')');
+        console.log('Key Results:', updatedTeamKeyResults);
+        
+        // Save Team OKR data
+        if (!okrDraftData[team]) {
+          okrDraftData[team] = {};
+        }
+        okrDraftData[team].team = {
+          keyResults: updatedTeamKeyResults,
+          score: teamOKRScore,
+          bracket: teamBracket,
+          bracketDisplay: teamBracketDisplay
+        };
+        
+        // Update uploading status
+        updateUploadingStatusForAllMembers(team, 'Uploaded');
+        
+        // Display results panel - show Team as primary (like Group and Department OKR)
+        displayOKRResults(
+          updatedTeamKeyResults,  // Team key results
+          teamOKRScore,           // Team score
+          teamBracketDisplay,     // Team bracket
+          updatedTeamKeyResults,  // Also pass as "teamKeyResults" for display
+          teamOKRScore,           // Also pass as "teamScore" for display
+          teamBracketDisplay,     // Also pass as "teamBracketDisplay" for display
+          { groupOKRScore: 0, departmentOKRScore: 0, teamOKRScore: teamOKRScore, corporateOKRScore: 0 },
+          false,  // isGroupOKR = false
+          false,  // isDepartmentOKROnly = false
+          true    // isTeamOKROnly = true (new flag)
+        );
+        
+        document.getElementById('okr-form-content').style.display = 'none';
+        document.getElementById('okr-results-content').style.display = 'block';
+        return;
+      }
+      
       // ===== DEPARTMENT + TEAM OKR SUBMISSION =====
       if (deptSectionVisible && teamSectionVisible) {
         if (!dept) {
@@ -1952,18 +2052,19 @@
     });
 
     /**
-     * Displays OKR computation results on the results panel for both Department and Team
-     * Shows scores, brackets, and detailed key results breakdown with contribution calculations
+     * Displays OKR computation results on the results panel
+     * Shows scores, brackets, and detailed key results breakdown
      * 
-     * @param {Array<Object>} deptKeyResults - Department key results (empty for Group OKR)
-     * @param {number} deptScore - Department OKR score (0 for Group OKR)
+     * @param {Array<Object>} deptKeyResults - Department key results (empty for non-Department forms)
+     * @param {number} deptScore - Department OKR score
      * @param {Object} deptBracketDisplay - Department performance bracket display info
-     * @param {Array<Object>} teamKeyResults - Team key results (or Group key results for Group OKR)
-     * @param {number} teamScore - Team OKR score (or Group OKR score for Group OKR)
+     * @param {Array<Object>} teamKeyResults - Team key results (or Group/Department/Team for single-level forms)
+     * @param {number} teamScore - Team OKR score (or Group/Department/Team score for single-level forms)
      * @param {Object} teamBracketDisplay - Team performance bracket display info
      * @param {Object} hierarchy - OKR hierarchy with all scores
-     * @param {boolean} isGroupOKR - If true, displays as Group OKR only (removes other hierarchy levels)
+     * @param {boolean} isGroupOKR - If true, displays as Group OKR only
      * @param {boolean} isDepartmentOKROnly - If true, displays as Department OKR only
+     * @param {boolean} isTeamOKROnly - If true, displays as Team OKR only
      */
     function displayOKRResults(
       deptKeyResults,
@@ -1974,11 +2075,13 @@
       teamBracketDisplay,
       hierarchy,
       isGroupOKR,
-      isDepartmentOKROnly
+      isDepartmentOKROnly,
+      isTeamOKROnly
     ) {
-      // Determine if this is Group OKR (when deptKeyResults is empty)
+      // Determine which OKR level is being displayed
       const showingGroupOKROnly = isGroupOKR || deptKeyResults.length === 0;
       const showingDeptOKROnly = isDepartmentOKROnly === true;
+      const showingTeamOKROnly = isTeamOKROnly === true;
 
       if (showingGroupOKROnly) {
         // GROUP OKR ONLY - Show only Group score
@@ -2023,6 +2126,29 @@
         }
         
         // Display performance bracket for Department OKR
+        const bracketElement = document.getElementById('result-bracket');
+        bracketElement.textContent = teamBracketDisplay.label;
+        bracketElement.className = 'result-bracket ' + teamBracketDisplay.cssClass;
+      } else if (showingTeamOKROnly) {
+        // TEAM OKR ONLY - Show only Team score
+        
+        // Update the label to say "Team OKR Score"
+        const scoreLabel = document.querySelector('.result-card--primary .result-label');
+        if (scoreLabel) {
+          scoreLabel.textContent = 'Team OKR Score';
+        }
+        
+        document.getElementById('result-team-score').textContent = teamScore.toFixed(2) + '%';
+        
+        // Hide other hierarchy levels
+        const resultCards = document.querySelectorAll('.result-card');
+        if (resultCards.length >= 4) {
+          resultCards[1].style.display = 'none';  // Department OKR
+          resultCards[2].style.display = 'none';  // Group OKR
+          resultCards[3].style.display = 'none';  // Corporate OKR
+        }
+        
+        // Display performance bracket for Team OKR
         const bracketElement = document.getElementById('result-bracket');
         bracketElement.textContent = teamBracketDisplay.label;
         bracketElement.className = 'result-bracket ' + teamBracketDisplay.cssClass;
@@ -2077,6 +2203,9 @@
         } else if (showingDeptOKROnly) {
           targetResultProp = 'departmentTargetResult';
           weightProp = 'departmentWeight';
+        } else if (showingTeamOKROnly) {
+          targetResultProp = 'teamTargetResult';
+          weightProp = 'teamWeight';
         } else {
           targetResultProp = 'teamTargetResult';
           weightProp = 'teamWeight';

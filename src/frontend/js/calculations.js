@@ -159,7 +159,9 @@ function getRAGStatus(actualLevel, requiredLevel) {
 /**
  * Calculates the weighted OKR final score from key results.
  * 
- * Formula: Sum of ((Actual Result / Target Result) × Weight%)
+ * Formula depends on Category:
+ * - If Category = "Target": Score = ((Actual Result / Target Result) × Weight%)
+ * - If Category = "Threshold": Score = ((Target Result / Actual Result) × Weight%)
  * 
  * Where Weight% from CSV is stored with level-specific names:
  * - Group level: groupWeight (e.g., "25%")
@@ -169,7 +171,7 @@ function getRAGStatus(actualLevel, requiredLevel) {
  * For each key result:
  * 1. Parse Actual Result as float
  * 2. Extract level-specific weight from CSV (e.g., "30%" → 30)
- * 3. Calculate: (Actual / Target) × (Weight / 100)
+ * 3. Apply category-based formula
  * 4. Sum all contributions
  * 5. Multiply by 100 to convert to percentage for display
  * 
@@ -177,11 +179,15 @@ function getRAGStatus(actualLevel, requiredLevel) {
  * @param {number} keyResults[].actualResult - Actual result achieved (numeric or string)
  * @param {number} keyResults[].groupTargetResult|departmentTargetResult|teamTargetResult - Target result expected
  * @param {string} keyResults[].groupWeight|departmentWeight|teamWeight - Weight from CSV as string "30%"
+ * @param {string} keyResults[].groupCategory|departmentCategory|teamCategory - Category ("Target" or "Threshold")
  * @returns {number} Weighted OKR score as a percentage
  * 
  * @example
- * // Single KR: Actual=17.28, Target="18.91", Weight="25%"
+ * // Target KR: Actual=17.28, Target="18.91", Weight="25%", Category="Target"
  * // Score = ((17.28/18.91) × (25/100)) × 100 = 22.85%
+ * 
+ * // Threshold KR: Actual=95, Target="100", Weight="25%", Category="Threshold"
+ * // Score = ((100/95) × (25/100)) × 100 = 26.32%
  */
 function calculateOKRFinalScore(keyResults) {
   if (!Array.isArray(keyResults) || keyResults.length === 0) {
@@ -204,21 +210,25 @@ function calculateOKRFinalScore(keyResults) {
     }
 
     // Get level-specific property names
-    let targetResultProp, weightProp;
+    let targetResultProp, weightProp, categoryProp;
     
     if (levelType === 'group') {
       targetResultProp = 'groupTargetResult';
       weightProp = 'groupWeight';
+      categoryProp = 'groupCategory';
     } else if (levelType === 'department') {
       targetResultProp = 'departmentTargetResult';
       weightProp = 'departmentWeight';
+      categoryProp = 'departmentCategory';
     } else if (levelType === 'team') {
       targetResultProp = 'teamTargetResult';
       weightProp = 'teamWeight';
+      categoryProp = 'teamCategory';
     } else {
       // Fallback to generic properties (for backward compatibility)
       targetResultProp = 'targetResult';
       weightProp = 'weight';
+      categoryProp = 'category';
     }
 
     // Parse actual result (user input, may include %)
@@ -230,11 +240,24 @@ function calculateOKRFinalScore(keyResults) {
     // Parse weight (from CSV as "30%")
     let weight = parseFloat(String(kr[weightProp]).replace('%', '')) || 0;
     
+    // Get category (Target or Threshold)
+    let category = String(kr[categoryProp]).trim().toLowerCase();
+    
     // Convert weight from percentage to decimal
     weight = weight / 100;
     
-    // Calculate contribution: (Actual / Target) × Weight
-    const contribution = (actualResult / targetResult) * weight;
+    // Calculate contribution based on category
+    let contribution;
+    if (actualResult === 0 || isNaN(actualResult)) {
+      // If actual result is empty or 0, contribution is 0 (avoid Infinity)
+      contribution = 0;
+    } else if (category === 'threshold') {
+      // Threshold formula: (Target / Actual) × Weight
+      contribution = (targetResult / actualResult) * weight;
+    } else {
+      // Target formula (default): (Actual / Target) × Weight
+      contribution = (actualResult / targetResult) * weight;
+    }
     
     totalContribution += contribution;
   });
