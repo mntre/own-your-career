@@ -153,6 +153,45 @@ const API = (() => {
       uploadEmployeeDatabase: async function(data) {
         console.log('[Mock API] uploadEmployeeDatabase:', data.rows.length, 'records,', data.headers.length, 'columns');
         return { success: true, message: data.rows.length + ' employees uploaded successfully (mock)' };
+      },
+
+      deriveRolesFromHierarchy: async function() {
+        console.log('[Mock API] deriveRolesFromHierarchy');
+        return {
+          success: true,
+          message: 'Roles derived from employee hierarchy',
+          managersAutoDetected: 5,
+          roles: { MANAGER: 5, DATA_SPOC: 2, EMPLOYEE: 93 }
+        };
+      },
+
+      getRoleAssignmentData: async function() {
+        console.log('[Mock API] getRoleAssignmentData');
+        return {
+          success: true,
+          employees: [],
+          roleCount: { MANAGER: 5, DATA_SPOC: 2, EMPLOYEE: 93, ADMIN: 1 }
+        };
+      },
+
+      updateEmployeeRole: async function(employeeNo, newRole) {
+        console.log('[Mock API] updateEmployeeRole:', employeeNo, '→', newRole);
+        return {
+          success: true,
+          message: `Role updated to ${newRole}`,
+          employeeNo,
+          newRole
+        };
+      },
+
+      updateRolesBulk: async function(data) {
+        console.log('[Mock API] updateRolesBulk:', data.rows.length, 'rows');
+        return {
+          success: true,
+          message: `${data.rows.length} roles updated successfully (mock)`,
+          updated: data.rows.length,
+          errors: []
+        };
       }
     };
   }
