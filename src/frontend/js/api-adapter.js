@@ -38,15 +38,21 @@ const API = (() => {
     return APIAppScript;
   }
   
-  // Converge Cloud platform — check if we're in local testing mode
-  const isLocalTesting = (
+  // Converge Cloud platform — check if we're in local/testing mode
+  // Phase 1: Use mock API everywhere until backend is fully wired
+  const isTestingMode = (
     window.location.protocol === 'file:' ||
     window.location.port === '5500' ||
-    window.location.port === '5501'
+    window.location.port === '5501' ||
+    window.location.port === '3000' ||
+    window.location.port === '3001' ||
+    !window.location.port ||
+    window.location.port === '443' ||
+    window.location.port === '80'
   );
   
-  if (isLocalTesting) {
-    console.log('[API Adapter] Local testing detected (Live Server). Using mock API.');
+  if (isTestingMode) {
+    console.log('[API Adapter] Testing/Phase 1 mode. Using mock API.');
     // Return inline mock API (same as api.js but guaranteed available)
     return {
       login: async function(email, role, googleCredential) {
