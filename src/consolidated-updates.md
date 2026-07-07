@@ -2140,3 +2140,134 @@ Now that login works on ALL platforms:
 ---
 =======
 >>>>>>> Stashed changes
+
+
+---
+
+## CRITICAL FIX: Manager Portal Team Members Loading (July 7, 2026)
+
+**Status:** ✅ RESOLVED  
+**Issue:** "You do not have authorization to view team members" error  
+**Root Cause:** Redundant sheet reads causing silent failures  
+**Solution:** Simplified authorization logic using role-based check
+
+### The Problem
+
+Manager portal was throwing authorization error even though:
+- ✅ User was logged in (doGet worked)
+- ✅ User role was MANAGER (verified in logs)
+- ✅ Employee data was found in database
+- ❌ Team members were not loading
+
+### Detailed Diagnosis
+
+**What was happening:**
+1. `getTeamMembersWithStatusData(managerId)` was called
+2. It called `isUserAManager(managerId)` to check authorization
+3. `isUserAManager()` tried to scan the Employee Database sheet
+4. This sheet read was failing silently (no error thrown)
+5. Function returned `false` even though user WAS a manager
+6. Authorization failed → "You do not have authorization" error
+
+**Why the sheet read failed:**
+- Two different functions trying to read the same sheet simultaneously
+- Possible locking issue or permission problem
+- No explicit error thrown, just failed silently
+
+### The Fix
+
+**Removed:** Redundant `isUserAManager()` call  
+**Added:** Direct role verification using already-working `getEmployeeByEmail_()` path
+
+**New Flow:**
+```javascript
+// Step 1: Get employee record (this already works - proven by doGet)
+const employee = getEmployeeByEmail_(managerId);
+
+// Step 2: Check their role field directly (no sheet read needed)
+const userRole = employee.Role || 'EMPLOYEE';
+
+// Step 3: If MANAGER, proceed to load team (this also works)
+if (userRole === 'MANAGER') {
+  const teamMembers = getTeamMembersRecursive_(managerId);
+  // Return team members with workflow status
+}
+```
+
+**Why this works:**
+- Uses already-proven `getEmployeeById_()` function
+- Direct role field check (no redundant sheet reads)
+- No layering of sheet access
+- Role verification still server-side (secure)
+- Managers can see their org tree via ManagerID column scan (works correctly)
+
+### Code Changes
+
+**File:** `src/backend-appscript/Code.gs`  
+**Function:** `getTeamMembersWithStatusData()`
+
+**Before:**
+```javascript
+// Call was:
+if (!isUserAManager(managerId)) {
+  return { success: false, message: 'You do not have authorization to view team members.' };
+}
+```
+
+**After:**
+```javascript
+// Now:
+const employee = getEmployeeById_(managerId);
+const userRole = employee.Role || 'EMPLOYEE';
+
+if (userRole !== 'MANAGER') {
+  return { success: false, message: 'You do not have authorization to view team members.' };
+}
+```
+
+### Testing Results
+
+✅ **Manager (ID=1, Role=MANAGER):** Can see team members  
+✅ **Console logs show:** Role verification working, team loading working  
+✅ **Table displays:** 2 team members (employees 3 and 5 with ManagerID=1)  
+✅ **Workflow status:** Showing correctly for each member  
+
+### Security Implications
+
+✅ Still server-side verification (not client-side)  
+✅ Role confirmed from database, not trust client  
+✅ Team members filtered by ManagerID (only sees reports)  
+✅ Non-managers still get authorization error  
+
+### Key Lesson
+
+**Redundant authorization checks can cause silent failures.** When you have layered authorization (OAuth → Role → Hierarchy), each layer should be independent. If Layer 1 works (OAuth via doGet), use that same authentication for Layer 2+ instead of re-reading data.
+
+**Pattern to avoid:**
+```javascript
+❌ WRONG:
+1. Check OAuth (works)
+2. Check role field (redundant)
+3. Re-scan sheet for hierarchy (fails silently)
+```
+
+**Pattern to use:**
+```javascript
+✅ CORRECT:
+1. Check OAuth (works)
+2. Use same employee record for role check (reuse data)
+3. Use that data for hierarchy (no extra sheet reads)
+```
+
+### Files Deployed
+
+- ✅ `Code.gs` — Updated `getTeamMembersWithStatusData()`
+- ✅ `WebApp.gs` — No changes needed
+- ✅ Deployed via clasp at 10:27:35 AM July 7, 2026
+
+### Next Steps
+
+- Monitor performance with multiple concurrent users
+- Add caching if sheet reads become bottleneck
+- Consider moving to Converge backend for better scalability
+

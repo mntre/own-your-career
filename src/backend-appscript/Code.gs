@@ -9,88 +9,6 @@
  */
 
 /* -------------------------------------------------------------------------- */
-<<<<<<< Updated upstream
-/*                         PHASE 1C: AUTHENTICATION                           */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Authenticates a user via email + role allowlist.
- * Phase 1C Implementation for Google Apps Script
- * 
- * Development Mode (Phase 1C):
- * - Accepts test emails: manager@, employee@, dataspoc@, admin@example.com
- * - Skips Google credential verification (testing only)
- * - Generates mock JWT token
- * 
- * Production Mode (Future):
- * - Verify Google ID token signature
- * - Check email + role against allowlist in Google Sheets
- * - Only @converge.com.ph emails allowed
- * 
- * @param {string} email - User email address
- * @param {string} role - User role (MANAGER, EMPLOYEE, DATA_SPOC, ADMIN)
- * @param {string} googleCredential - Google ID token (unused in Phase 1C)
- * @returns {Object} { success: boolean, token: string, user: Object, message: string }
- */
-function authenticateUser(email, role, googleCredential) {
-  try {
-    console.log('[Code.authenticateUser] Login attempt:', { email, role });
-    
-    // Phase 1C: Development mode (testing with mock users)
-    const isDevMode = true; // TODO: Switch to environment check in production
-    
-    if (isDevMode) {
-      // Phase 1C Testing Mode: Accept predefined test users
-      const testAllowlist = [
-        { email: 'manager@example.com', role: 'MANAGER', name: 'Manager Test', department: 'Engineering' },
-        { email: 'employee@example.com', role: 'EMPLOYEE', name: 'Employee Test', department: 'Product' },
-        { email: 'dataspoc@example.com', role: 'DATA_SPOC', name: 'Data SPOC Test', department: 'Data' },
-        { email: 'admin@example.com', role: 'ADMIN', name: 'Admin Test', department: 'Admin' }
-      ];
-      
-      // Find user in test allowlist
-      const user = testAllowlist.find(u => u.email === email && u.role === role);
-      
-      if (!user) {
-        console.warn('[Code.authenticateUser] Invalid credentials:', { email, role });
-        logAccessAttempt(email, role, 'DENIED', 'Invalid email or role');
-        return {
-          success: false,
-          message: 'Invalid email or role. Test users: manager@, employee@, dataspoc@, admin@example.com'
-        };
-      }
-      
-      // Generate mock JWT token for AppScript
-      const token = generateMockJWT(user);
-      
-      console.log('[Code.authenticateUser] Authentication successful:', { email, role });
-      logAccessAttempt(email, role, 'ALLOWED', 'Phase 1C Testing Mode');
-      
-      return {
-        success: true,
-        token: token,
-        user: {
-          email: user.email,
-          role: user.role,
-          name: user.name,
-          department: user.department
-        },
-        message: 'Authentication successful (Phase 1C Testing Mode)'
-      };
-    } else {
-      // Production mode (TODO: implement in Phase 2+)
-      return {
-        success: false,
-        message: 'Production mode not yet implemented'
-      };
-    }
-  } catch (error) {
-    console.error('[Code.authenticateUser] Error:', error.message);
-    return {
-      success: false,
-      message: `Authentication error: ${error.message}`
-    };
-=======
 /*                         SHARED LOGGING FUNCTION                            */
 /* -------------------------------------------------------------------------- */
 
@@ -105,7 +23,6 @@ function logAccessAttempt(user, role, result, details) {
   try {
     const timestamp = new Date().toISOString();
     console.log(`[Access] ${timestamp} | User: ${user} | Role: ${role} | Result: ${result} | Details: ${details}`);
-    // TODO: Store in audit log sheet for persistent logging
   } catch (e) {
     console.error(`[Code] Error logging access attempt: ${e.message}`);
   }
@@ -114,6 +31,38 @@ function logAccessAttempt(user, role, result, details) {
 /* -------------------------------------------------------------------------- */
 /*                     SHARED HELPER FUNCTIONS (for all files)                */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * TASK 1: Normalizes employee/manager IDs to a consistent numeric format.
+ * Handles type coercion for both strings and numbers.
+ * This fixes type mismatches like 1 vs "1" in ID comparisons.
+ * 
+ * @param {string|number|null|undefined} id - The ID to normalize
+ * @returns {number|null} Normalized numeric ID or null if invalid
+ */
+function normalizeId(id) {
+  try {
+    // Handle null/undefined
+    if (id === null || id === undefined) {
+      return null;
+    }
+    
+    // Convert to string, trim whitespace, then parse as integer
+    const trimmed = String(id).trim();
+    const parsed = parseInt(trimmed, 10);
+    
+    // Return parsed number if valid, otherwise null
+    if (isNaN(parsed)) {
+      console.warn(`[normalizeId] Invalid ID: "${id}" (type: ${typeof id}) - could not parse as number`);
+      return null;
+    }
+    
+    return parsed;
+  } catch (e) {
+    console.error(`[normalizeId] Error normalizing ID "${id}": ${e.message}`);
+    return null;
+  }
+}
 
 /**
  * Gets a sheet by name from Google Sheets.
@@ -138,38 +87,10 @@ function getSheet_(sheetName) {
   } catch (e) {
     console.error(`[Code] Error getting sheet "${sheetName}": ${e.message}`);
     throw e;
->>>>>>> Stashed changes
   }
 }
 
 /**
-<<<<<<< Updated upstream
- * Logs out a user (clears session on server side).
- * Phase 1C Implementation for Google Apps Script
- * 
- * Note: In AppScript, sessions are per-user by default.
- * This is mainly for frontend cleanup confirmation.
- * 
- * @returns {Object} { success: boolean, message: string }
- */
-function logoutUser() {
-  try {
-    console.log('[Code.logoutUser] User logout');
-    
-    // In AppScript, sessions are handled by Google
-    // This is mainly a confirmation endpoint for the frontend
-    
-    return {
-      success: true,
-      message: 'Logout successful'
-    };
-  } catch (error) {
-    console.error('[Code.logoutUser] Error:', error.message);
-    return {
-      success: false,
-      message: `Logout error: ${error.message}`
-    };
-=======
  * Gets the header row and creates a column name → index map.
  * @param {Sheet} sheet - Google Sheets sheet object
  * @returns {Object} Map of column names to indices (0-indexed)
@@ -185,78 +106,17 @@ function getHeaderMap_(sheet) {
   } catch (e) {
     console.error(`[Code] Error getting header map: ${e.message}`);
     throw e;
->>>>>>> Stashed changes
   }
 }
 
 /**
-<<<<<<< Updated upstream
- * Generates a mock JWT token for AppScript (Phase 1C).
- * Format: base64-encoded JSON with payload + expiry
- * Real JWT library not available in AppScript, so using simplified format.
- * 
- * @param {Object} user - User object { email, role, name, department }
- * @returns {string} Base64-encoded token
- */
-function generateMockJWT(user) {
-  try {
-    const now = new Date();
-    const expiryTime = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
-    
-    const payload = {
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      department: user.department,
-      iat: Math.floor(now.getTime() / 1000),
-      exp: Math.floor(expiryTime.getTime() / 1000)
-    };
-    
-    // Encode as base64 (AppScript-compatible format)
-    const token = Utilities.base64Encode(JSON.stringify(payload));
-    
-    console.log('[Code.generateMockJWT] Token generated for:', user.email);
-    return token;
-  } catch (error) {
-    console.error('[Code.generateMockJWT] Error:', error.message);
-    throw error;
-  }
-}
-
-/**
- * Verifies a token server-side (used for protected endpoints).
- * @param {string} token - Base64-encoded token
- * @returns {Object|null} Decoded user object or null if invalid
- */
-function verifyTokenServerSide(token) {
-  try {
-    if (!token) return null;
-    
-    // Decode base64 token
-    const decoded = JSON.parse(Utilities.base64Decode(token));
-    
-    // Check expiry
-    const now = Math.floor(Date.now() / 1000);
-    if (decoded.exp <= now) {
-      console.warn('[Code.verifyTokenServerSide] Token expired');
-      return null;
-    }
-    
-    return decoded;
-  } catch (error) {
-    console.error('[Code.verifyTokenServerSide] Invalid token:', error.message);
-=======
  * Gets an employee by ID from the Employees sheet.
- * @param {string} employeeId - Employee ID
- * @returns {Object} Employee object or null if not found
+ * @param {string|number} employeeId - Employee ID
+ * @returns {Object|null} Employee object or null if not found
  */
 function getEmployeeById_(employeeId) {
   try {
-    const SHEETS = {
-      EMPLOYEES: 'Employee Database'
-    };
-    
-    const sheet = getSheet_(SHEETS.EMPLOYEES);
+    const sheet = getSheet_('Employee Database');
     const headerMap = getHeaderMap_(sheet);
     const employeeIdCol = headerMap['EmployeeID'];
     
@@ -268,9 +128,11 @@ function getEmployeeById_(employeeId) {
     const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
     const values = dataRange.getValues();
     
+    const normalizedSearchId = normalizeId(employeeId);
+    
     for (let i = 0; i < values.length; i++) {
-      if (values[i][employeeIdCol] === employeeId) {
-        // Convert row to object using headers
+      const normalizedRowId = normalizeId(values[i][employeeIdCol]);
+      if (normalizedRowId === normalizedSearchId) {
         const row = values[i];
         const employee = {};
         Object.entries(headerMap).forEach(([colName, colIndex]) => {
@@ -283,46 +145,18 @@ function getEmployeeById_(employeeId) {
     return null;
   } catch (e) {
     console.error(`[Code] Error getting employee by ID: ${e.message}`);
->>>>>>> Stashed changes
     return null;
   }
 }
 
 /**
-<<<<<<< Updated upstream
- * Logs an authentication access attempt for audit trail.
- * @param {string} email - User email
- * @param {string} role - User role
- * @param {string} result - 'ALLOWED' or 'DENIED'
- * @param {string} reason - Reason for the result
- */
-function logAccessAttempt(email, role, result, reason) {
-  try {
-    const now = new Date().toISOString();
-    console.log(JSON.stringify({
-      timestamp: now,
-      event: 'auth_attempt',
-      email,
-      role,
-      result,
-      reason
-    }));
-    
-    // TODO: Store in audit log sheet for production
-  } catch (error) {
-    console.error('[Code.logAccessAttempt] Error:', error.message);
-=======
  * Gets an employee by email from the Employees sheet.
  * @param {string} email - Employee email address
- * @returns {Object} Employee object or null if not found
+ * @returns {Object|null} Employee object or null if not found
  */
 function getEmployeeByEmail_(email) {
   try {
-    const SHEETS = {
-      EMPLOYEES: 'Employee Database'
-    };
-    
-    const sheet = getSheet_(SHEETS.EMPLOYEES);
+    const sheet = getSheet_('Employee Database');
     const headerMap = getHeaderMap_(sheet);
     const emailCol = headerMap['Email'];
     
@@ -336,7 +170,6 @@ function getEmployeeByEmail_(email) {
     
     for (let i = 0; i < values.length; i++) {
       if (values[i][emailCol] === email) {
-        // Convert row to object using headers
         const row = values[i];
         const employee = {};
         Object.entries(headerMap).forEach(([colName, colIndex]) => {
@@ -350,7 +183,6 @@ function getEmployeeByEmail_(email) {
   } catch (e) {
     console.error(`[Code] Error getting employee by email: ${e.message}`);
     return null;
->>>>>>> Stashed changes
   }
 }
 
@@ -359,15 +191,17 @@ function getEmployeeByEmail_(email) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * CRITICAL FIX: Checks if employeeId appears in ANY row's ManagerID column.
- * This function MUST return true for employee 1 (has reports: 3, 5).
+ * TASK 2: Checks if employeeId appears in ANY row's ManagerID column.
+ * Uses normalizeId() for type-safe comparison.
+ * @param {string|number} employeeId - Employee ID to check
+ * @returns {boolean} True if employee is a manager
  */
 function isUserAManager(employeeId) {
   try {
     const sheet = getSheet_('Employee Database');
     const headerMap = getHeaderMap_(sheet);
     
-    // Get ManagerID column using case-insensitive lookup
+    // Get ManagerID column (handle case-insensitive)
     let mgrCol = -1;
     for (const [name, idx] of Object.entries(headerMap)) {
       if (name.toLowerCase() === 'managerid') {
@@ -375,50 +209,140 @@ function isUserAManager(employeeId) {
         break;
       }
     }
-    if (mgrCol < 0) return false;
+    if (mgrCol < 0) {
+      console.error('[isUserAManager] ManagerID column not found');
+      return false;
+    }
     
-    // Scan ALL rows for a match
+    // Normalize the search ID
+    const normalizedSearchId = normalizeId(employeeId);
+    if (normalizedSearchId === null) {
+      console.warn(`[isUserAManager] Invalid employeeId: ${employeeId}`);
+      return false;
+    }
+    
+    console.log(`[isUserAManager] Checking if ${employeeId} (normalized: ${normalizedSearchId}) is a manager...`);
+    
+    // Scan ALL rows for a match using normalized IDs
     const data = sheet.getRange(2, 1, Math.max(1, sheet.getLastRow() - 1), sheet.getLastColumn()).getValues();
-    for (const row of data) {
-      if (row[mgrCol] === employeeId) {
-        console.log(`[isUserAManager FIXED] YES: ${employeeId} is a manager`);
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const normalizedRowManagerId = normalizeId(row[mgrCol]);
+      
+      // Debug logging for first 5 rows
+      if (i < 5) {
+        console.log(`[isUserAManager] Row ${i + 2}: ManagerID=${row[mgrCol]} (normalized: ${normalizedRowManagerId})`);
+      }
+      
+      if (normalizedRowManagerId === normalizedSearchId) {
+        console.log(`[isUserAManager] YES: ${employeeId} is a manager (matched at row ${i + 2})`);
         return true;
       }
     }
     
-    console.log(`[isUserAManager FIXED] NO: ${employeeId} is NOT a manager`);
+    console.log(`[isUserAManager] NO: ${employeeId} is NOT a manager`);
     return false;
   } catch (e) {
-    console.error(`[isUserAManager] Error: ${e}`);
+    console.error(`[isUserAManager] Error: ${e.message}`);
     return false;
   }
 }
 
 /**
  * Checks if a manager can access a specific employee.
- * Manager can access direct reports and all indirect reports in their org tree.
- * 
- * @param {string} managerId - The manager's employee ID
- * @param {string} employeeId - The employee being accessed
+ * @param {string|number} managerId - The manager's employee ID
+ * @param {string|number} employeeId - The employee being accessed
  * @returns {boolean} True if manager has authority over this employee
  */
 function canManagerAccessEmployee_(managerId, employeeId) {
   try {
+    const normalizedManagerId = normalizeId(managerId);
+    const normalizedEmployeeId = normalizeId(employeeId);
+    
     // Manager cannot access their own reviews through team portal
-    if (managerId === employeeId) {
+    if (normalizedManagerId === normalizedEmployeeId) {
       return false;
     }
     
     // Get all team members (direct + indirect reports)
     const teamMembers = getTeamMembersRecursive_(managerId);
     
-    // Check if employee is in manager's org tree
-    const hasAccess = teamMembers.some(member => member.employeeId === employeeId);
+    // Check if employee is in manager's org tree using normalized IDs
+    const hasAccess = teamMembers.some(member => {
+      const memberId = normalizeId(member.EmployeeID || member.employeeId);
+      return memberId === normalizedEmployeeId;
+    });
     
     return hasAccess;
   } catch (e) {
     console.error(`[Code] Error checking manager access: ${e.message}`);
     return false;
+  }
+}
+
+/**
+ * TASK 4: Verifies user role from database (server-side RBAC).
+ * This is the key workaround for OAuth limitations in AppScript.
+ * OAuth only confirms identity; this confirms role + permissions.
+ * 
+ * @param {string} email - User email address (verified by OAuth)
+ * @param {string} expectedRole - Expected role (optional, for validation)
+ * @returns {Object} { success: boolean, role: string|null, employeeId: number|null, message: string }
+ */
+function verifyUserRoleFromDatabase(email, expectedRole) {
+  try {
+    console.log(`[verifyUserRoleFromDatabase] Verifying role for email: ${email}, expected role: ${expectedRole || 'any'}`);
+    
+    // Step 1: Look up employee by email
+    const employee = getEmployeeByEmail_(email);
+    
+    if (!employee) {
+      console.warn(`[verifyUserRoleFromDatabase] Employee not found for email: ${email}`);
+      logAccessAttempt(email, 'UNAUTHENTICATED', 'DENIED', 'Employee not found in database');
+      return {
+        success: false,
+        role: null,
+        employeeId: null,
+        message: `Employee record not found for ${email}. Please contact HR.`
+      };
+    }
+    
+    // Step 2: Extract role and employee ID from database
+    const role = employee.Role || employee.role || 'EMPLOYEE';
+    const employeeId = normalizeId(employee.EmployeeID || employee.employeeId);
+    
+    console.log(`[verifyUserRoleFromDatabase] Found employee: ID=${employeeId}, Role=${role}`);
+    
+    // Step 3: If expectedRole provided, validate it matches
+    if (expectedRole && expectedRole !== role) {
+      console.warn(`[verifyUserRoleFromDatabase] Role mismatch: expected=${expectedRole}, actual=${role}`);
+      logAccessAttempt(email, role, 'DENIED', `Role mismatch: expected ${expectedRole} but got ${role}`);
+      return {
+        success: false,
+        role: role,
+        employeeId: employeeId,
+        message: `Role mismatch. Your role is ${role}, but ${expectedRole} is required.`
+      };
+    }
+    
+    console.log(`[verifyUserRoleFromDatabase] Role verification successful for ${email} with role ${role}`);
+    logAccessAttempt(email, role, 'GRANTED', 'Role verified from database');
+    
+    return {
+      success: true,
+      role: role,
+      employeeId: employeeId,
+      message: `Role verified: ${role}`
+    };
+  } catch (e) {
+    console.error(`[verifyUserRoleFromDatabase] Error: ${e.message}`);
+    logAccessAttempt(email, 'UNKNOWN', 'ERROR', `Exception: ${e.message}`);
+    return {
+      success: false,
+      role: null,
+      employeeId: null,
+      message: `Error verifying role: ${e.message}`
+    };
   }
 }
 
@@ -428,7 +352,7 @@ function canManagerAccessEmployee_(managerId, employeeId) {
 
 /**
  * Saves skills assessment data for an employee (Step 1).
- * @param {string} employeeId - The employee being assessed
+ * @param {string|number} employeeId - The employee being assessed
  * @param {Object} assessmentData - Skills assessment form data
  * @returns {Object} { success: boolean, message: string }
  */
@@ -447,8 +371,8 @@ function saveSkillsAssessment(employeeId, assessmentData) {
 
 /**
  * Saves OKR upload data (Step 2).
- * @param {string} employeeId - The employee whose OKR is being uploaded
- * @param {Object} okrData - OKR form data (corporateOKR, teamOKR, targets, weight)
+ * @param {string|number} employeeId - The employee whose OKR is being uploaded
+ * @param {Object} okrData - OKR form data
  * @returns {Object} { success: boolean, message: string }
  */
 function saveOKRUpload(employeeId, okrData) {
@@ -466,7 +390,7 @@ function saveOKRUpload(employeeId, okrData) {
 
 /**
  * Saves self-assessment responses (Step 3).
- * @param {string} employeeId - The employee submitting self-assessment
+ * @param {string|number} employeeId - The employee submitting self-assessment
  * @param {Object} selfAssessmentData - 4 mandatory question responses
  * @returns {Object} { success: boolean, message: string }
  */
@@ -485,16 +409,13 @@ function saveSelfAssessment(employeeId, selfAssessmentData) {
 
 /**
  * Saves Feed Forward / Manager Assessment (Step 4).
- * Authorization: Manager must have authority over the employee.
- * 
- * @param {string} employeeId - The employee being assessed
- * @param {string} managerId - The manager providing assessment
+ * @param {string|number} employeeId - The employee being assessed
+ * @param {string|number} managerId - The manager providing assessment
  * @param {Object} feedForwardData - Feed Forward form data
  * @returns {Object} { success: boolean, message: string }
  */
 function saveFeedForward(employeeId, managerId, feedForwardData) {
   try {
-    // Authorization: Verify manager can access this employee
     if (!canManagerAccessEmployee_(managerId, employeeId)) {
       logAccessAttempt(
         `[Manager: ${managerId}]`,
@@ -502,10 +423,7 @@ function saveFeedForward(employeeId, managerId, feedForwardData) {
         'DENIED',
         `Unauthorized attempt to save Feed Forward for employee ${employeeId}`
       );
-      return { 
-        success: false, 
-        message: 'You do not have authorization to assess this employee.' 
-      };
+      return { success: false, message: 'You do not have authorization to assess this employee.' };
     }
     
     const success = Database.saveFeedForward(employeeId, managerId, feedForwardData);
@@ -521,19 +439,15 @@ function saveFeedForward(employeeId, managerId, feedForwardData) {
 
 /**
  * Saves acknowledgement (Steps 5 & 7).
- * Authorization: For Step 5 (MANAGER ack), manager must have authority over employee.
- * For Step 7 (EMPLOYEE ack), no additional authorization needed (already logged in).
- * 
- * @param {string} employeeId - The employee whose review is being acknowledged
- * @param {string} userId - The user submitting (manager for Step 5, employee for Step 7)
- * @param {Object} ackData - { confirmed: boolean, comment: string }
- * @param {'MANAGER' | 'EMPLOYEE'} type - Type of acknowledgement
+ * @param {string|number} employeeId - The employee whose review is being acknowledged
+ * @param {string|number} userId - The user submitting
+ * @param {Object} ackData - Acknowledgement data
+ * @param {'MANAGER'|'EMPLOYEE'} type - Type of acknowledgement
  * @returns {Object} { success: boolean, message: string }
  */
 function saveAcknowledgement(employeeId, userId, ackData, type) {
   try {
     if (type === 'MANAGER') {
-      // Authorization: Verify manager can access this employee
       if (!canManagerAccessEmployee_(userId, employeeId)) {
         logAccessAttempt(
           `[Manager: ${userId}]`,
@@ -541,10 +455,7 @@ function saveAcknowledgement(employeeId, userId, ackData, type) {
           'DENIED',
           `Unauthorized attempt to acknowledge for employee ${employeeId}`
         );
-        return { 
-          success: false, 
-          message: 'You do not have authorization to acknowledge this employee\'s review.' 
-        };
+        return { success: false, message: 'You do not have authorization to acknowledge this employee\'s review.' };
       }
       const success = Database.saveManagerAcknowledgement(employeeId, userId, ackData);
       if (success) {
@@ -552,7 +463,6 @@ function saveAcknowledgement(employeeId, userId, ackData, type) {
       }
       return { success: false, message: 'Failed to save acknowledgement' };
     } else {
-      // Employee acknowledgement (Step 7) - no additional authorization needed
       const success = Database.saveEmployeeAcknowledgement(employeeId, ackData);
       if (success) {
         return { success: true, message: 'Acknowledgement saved successfully' };
@@ -567,8 +477,8 @@ function saveAcknowledgement(employeeId, userId, ackData, type) {
 
 /**
  * Retrieves the workflow status for an employee.
- * @param {string} employeeId - The employee to check
- * @returns {Object} WorkflowStatus object
+ * @param {string|number} employeeId - The employee to check
+ * @returns {Object} { success: boolean, data: Object|null }
  */
 function getWorkflowStatus(employeeId) {
   try {
@@ -585,8 +495,8 @@ function getWorkflowStatus(employeeId) {
 
 /**
  * Retrieves all scores and feedback for an employee (Step 6 - read-only view).
- * @param {string} employeeId - The employee to retrieve scores for
- * @returns {Object} All accumulated scores and feedback
+ * @param {string|number} employeeId - The employee to retrieve scores for
+ * @returns {Object} { success: boolean, data: Object|null }
  */
 function getAllScores(employeeId) {
   try {
@@ -601,164 +511,64 @@ function getAllScores(employeeId) {
   }
 }
 
-/**
- * Retrieves team members for a manager with full details and workflow status.
- * This is used by the Manager Portal to display the team overview.
- * 
- * @param {string} managerId - The manager's employee ID
- * @returns {Object} { success: boolean, data: Object[] }
- */
-function getTeamMembersWithStatusData(managerId) {
-  try {
-    console.log(`[Code] getTeamMembersWithStatusData called with managerId: ${managerId}`);
-    
-    // Authorization: Verify user is actually a manager
-    if (!isUserAManager(managerId)) {
-      console.log(`[Code] User ${managerId} is not a manager`);
-      logAccessAttempt(
-        `[User: ${managerId}]`,
-        'MANAGER',
-        'DENIED',
-        `Unauthorized attempt to retrieve team members (not a manager)`
-      );
-      return { 
-        success: false, 
-        message: 'You do not have authorization to view team members.' 
-      };
-    }
-    
-    console.log(`[Code] User ${managerId} is a manager, loading team members...`);
-    
-    // Get all team members (direct + indirect reports)
-    const teamMembers = getTeamMembersRecursive_(managerId);
-    
-    console.log(`[Code] Retrieved ${teamMembers.length} team members`);
-    
-    if (teamMembers.length === 0) {
-      console.warn(`[Code] WARNING: No team members found for manager ${managerId}`);
-      console.log(`[Code] This manager may have no direct reports or the manager ID may not match the data`);
-    }
-    
-    // Enhance with workflow status and Data SPOC details for each team member
-    const enhancedTeamMembers = teamMembers.map(member => {
-      // Find the employee ID column (handle case variations)
-      let employeeId = null;
-      if (member.EmployeeID) {
-        employeeId = member.EmployeeID;
-      } else if (member.employeeId) {
-        employeeId = member.employeeId;
-      } else {
-        // Try to find it by checking all keys
-        for (const key of Object.keys(member)) {
-          if (key.toLowerCase() === 'employeeid') {
-            employeeId = member[key];
-            break;
-          }
-        }
-      }
-      
-      const workflowStatus = getWorkflowStatusForTeam_(employeeId);
-      
-      // Lookup Data SPOC details if DataSpocID is provided
-      let dataSPOCName = null;
-      const dataSPOCId = member.DataSpocID || member.dataSPOCId || member.DataSPOCId;
-      if (dataSPOCId) {
-        const dataSPOC = getEmployeeById_(dataSPOCId);
-        if (dataSPOC) {
-          dataSPOCName = dataSPOC.Name || dataSPOC.name;
-        }
-      }
-      
-      console.log(`[Code] Team member enriched: ID=${employeeId}, Name=${member.Name || member.name}, DataSPOC=${dataSPOCName || 'None'}`);
-      
-      return {
-        employeeId: employeeId,
-        name: member.Name || member.name,
-        email: member.Email || member.email,
-        department: member.Department || member.department,
-        band: member.Band || member.band,
-        group: member.Group || member.group,
-        team: member.Team || member.team,
-        corporation: member.Corporation || member.corporation,
-        managerEmployeeId: member.ManagerID || member.managerId,
-        dataSPOCID: dataSPOCId || null,
-        dataSPOCName: dataSPOCName || null,
-        workflowStatus: workflowStatus
-      };
-    });
-    
-    console.log(`[Code] Returning ${enhancedTeamMembers.length} enhanced team members`);
-    return { success: true, data: enhancedTeamMembers };
-  } catch (e) {
-    console.error(`[Code] Error getting team members with status: ${e.message}`);
-    console.error(`[Code] Stack: ${e.stack}`);
-    return { success: false, message: e.message };
-  }
-}
+/* -------------------------------------------------------------------------- */
+/*              TEAM MEMBER RETRIEVAL WITH TYPE NORMALIZATION                 */
+/* -------------------------------------------------------------------------- */
 
 /**
- * Gets recursive team members (direct + indirect reports).
- * Helper function for getTeamMembersWithStatusData.
- * 
- * @param {string} managerId - The manager's employee ID
+ * TASK 3: Gets recursive team members (direct + indirect reports).
+ * Uses normalizeId() to fix type mismatches during comparison.
+ * @param {string|number} managerId - The manager's employee ID
  * @returns {Object[]} Array of team members
  */
 function getTeamMembersRecursive_(managerId) {
   try {
-    const SHEETS = { EMPLOYEES: 'Employee Database' };
-    const sheet = getSheet_(SHEETS.EMPLOYEES);
+    const sheet = getSheet_('Employee Database');
     const headerMap = getHeaderMap_(sheet);
     
-    console.log(`[Code] getTeamMembersRecursive_ called with managerId: ${managerId}`);
-    console.log(`[Code] managerId type: ${typeof managerId}`);
-    console.log(`[Code] Header map keys:`, Object.keys(headerMap));
+    const normalizedManagerId = normalizeId(managerId);
+    console.log(`[getTeamMembersRecursive_] Called with managerId: ${managerId} (normalized: ${normalizedManagerId})`);
+    
+    // Find column names (case-insensitive)
+    let managerIdColName = null;
+    let employeeIdColName = null;
+    
+    for (const colName of Object.keys(headerMap)) {
+      if (colName.toLowerCase() === 'managerid') {
+        managerIdColName = colName;
+      }
+      if (colName.toLowerCase() === 'employeeid') {
+        employeeIdColName = colName;
+      }
+    }
+    
+    if (!managerIdColName || !employeeIdColName) {
+      console.error(`[getTeamMembersRecursive_] Missing columns. ManagerID: ${managerIdColName}, EmployeeID: ${employeeIdColName}`);
+      return [];
+    }
+    
+    console.log(`[getTeamMembersRecursive_] Using columns: ManagerID="${managerIdColName}", EmployeeID="${employeeIdColName}"`);
     
     const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
     const values = dataRange.getValues();
     
-    console.log(`[Code] Total employee records: ${values.length}`);
+    console.log(`[getTeamMembersRecursive_] Total employee records: ${values.length}`);
     
-    // Find the exact manager ID column name (handle case variations)
-    let managerIdColName = null;
-    for (const colName of Object.keys(headerMap)) {
-      if (colName.toLowerCase() === 'managerid') {
-        managerIdColName = colName;
-        break;
-      }
-    }
-    
-    if (!managerIdColName) {
-      console.error(`[Code] ManagerID column not found. Available columns: ${Object.keys(headerMap).join(', ')}`);
-      return [];
-    }
-    
-    console.log(`[Code] Using manager ID column: "${managerIdColName}"`);
-    
-    // Find the exact employee ID column name (handle case variations)
-    let employeeIdColName = null;
-    for (const colName of Object.keys(headerMap)) {
-      if (colName.toLowerCase() === 'employeeid') {
-        employeeIdColName = colName;
-        break;
-      }
-    }
-    
-    if (!employeeIdColName) {
-      console.error(`[Code] EmployeeID column not found. Available columns: ${Object.keys(headerMap).join(', ')}`);
-      return [];
-    }
-    
-    console.log(`[Code] Using employee ID column: "${employeeIdColName}"`);
-    
-    // Convert rows to objects
+    // Convert rows to objects with normalized IDs
     const employees = values.map((row, rowIndex) => {
       const employee = {};
       Object.entries(headerMap).forEach(([colName, colIndex]) => {
         employee[colName] = row[colIndex];
       });
       
+      const rawId = employee[employeeIdColName];
+      const rawMgrId = employee[managerIdColName];
+      const normId = normalizeId(rawId);
+      const normMgrId = normalizeId(rawMgrId);
+      
+      // Debug first 10 rows
       if (rowIndex < 10) {
-        console.log(`[Code] Row ${rowIndex + 2}: ID=${employee[employeeIdColName]} (type: ${typeof employee[employeeIdColName]}), ManagerID=${employee[managerIdColName]} (type: ${typeof employee[managerIdColName]}), Name=${employee.Name}`);
+        console.log(`[getTeamMembersRecursive_] Row ${rowIndex + 2}: ID=${rawId}→${normId}, ManagerID=${rawMgrId}→${normMgrId}, Name=${employee.Name || 'N/A'}`);
       }
       
       return employee;
@@ -767,35 +577,38 @@ function getTeamMembersRecursive_(managerId) {
     const result = [];
     const visited = new Set();
     
-    const collectTeamMembers = (currentManagerId) => {
-      if (visited.has(currentManagerId)) {
-        console.log(`[Code] Already visited manager ${currentManagerId}, skipping`);
+    const collectTeamMembers = (currentManagerIdParam) => {
+      const currentNormalizedId = normalizeId(currentManagerIdParam);
+      
+      if (visited.has(currentNormalizedId)) {
+        console.log(`[getTeamMembersRecursive_] Already visited ${currentNormalizedId}, skipping`);
         return;
       }
-      visited.add(currentManagerId);
+      visited.add(currentNormalizedId);
       
-      console.log(`[Code] Looking for direct reports of manager: ${currentManagerId} (type: ${typeof currentManagerId})`);
+      console.log(`[getTeamMembersRecursive_] Looking for direct reports of manager: ${currentManagerIdParam} (normalized: ${currentNormalizedId})`);
       
-      // Find all direct reports of this manager
+      // Find all direct reports using normalized IDs
       const directReports = employees.filter(emp => {
-        const empManagerId = emp[managerIdColName];
-        const match = empManagerId === currentManagerId;
+        const empRawMgrId = emp[managerIdColName];
+        const empNormalizedMgrId = normalizeId(empRawMgrId);
+        const match = empNormalizedMgrId === currentNormalizedId;
         
         // Debug first 3 comparisons
-        if (directReports.length < 3 || result.length < 3) {
-          console.log(`[Code]   Comparing: ${empManagerId} (type: ${typeof empManagerId}) === ${currentManagerId} (type: ${typeof currentManagerId}) => ${match}`);
+        if (result.length < 3) {
+          console.log(`[getTeamMembersRecursive_]   Comparing ${empRawMgrId}→${empNormalizedMgrId} === ${currentManagerIdParam}→${currentNormalizedId} => ${match}`);
         }
         
         return match;
       });
       
-      console.log(`[Code] Found ${directReports.length} direct reports for manager ${currentManagerId}`);
+      console.log(`[getTeamMembersRecursive_] Found ${directReports.length} direct reports for manager ${currentNormalizedId}`);
       
       directReports.forEach(member => {
-        const memberId = member[employeeIdColName];
+        const memberId = normalizeId(member[employeeIdColName]);
         if (!visited.has(memberId)) {
           result.push(member);
-          console.log(`[Code] Added team member: ID=${memberId}, Name=${member.Name}`);
+          console.log(`[getTeamMembersRecursive_] Added team member: ID=${memberId}, Name=${member.Name || 'N/A'}`);
           // Recursively get their team members
           collectTeamMembers(memberId);
         }
@@ -804,302 +617,93 @@ function getTeamMembersRecursive_(managerId) {
     
     collectTeamMembers(managerId);
     
-    console.log(`[Code] Total team members found (direct + indirect): ${result.length}`);
+    console.log(`[getTeamMembersRecursive_] Total team members (direct + indirect): ${result.length}`);
     
     if (result.length === 0) {
-      console.warn(`[Code] WARNING: No team members found. Possible causes:`);
-      console.warn(`[Code] 1. Manager ${managerId} has no direct reports in the database`);
-      console.warn(`[Code] 2. Employee IDs or ManagerID values don't match (check data types - number vs string)`);
-      console.warn(`[Code] 3. All employees in database have blank ManagerID`);
-      console.warn(`[Code] Debug: First employee's ManagerID value: ${employees[0] ? employees[0][managerIdColName] : 'NO EMPLOYEES'}`);
+      console.warn(`[getTeamMembersRecursive_] WARNING: No team members found`);
+      console.warn(`[getTeamMembersRecursive_] Possible causes:`);
+      console.warn(`[getTeamMembersRecursive_] 1. Manager ${managerId} has no direct reports`);
+      console.warn(`[getTeamMembersRecursive_] 2. ID type mismatch (check if IDs are numbers vs strings)`);
+      console.warn(`[getTeamMembersRecursive_] 3. First employee ManagerID: ${employees[0] ? employees[0][managerIdColName] : 'N/A'}`);
     }
     
     return result;
   } catch (e) {
-    console.error(`[Code] Error getting recursive team members: ${e.message}`);
-    console.error(`[Code] Stack: ${e.stack}`);
+    console.error(`[getTeamMembersRecursive_] Error: ${e.message}`);
+    console.error(`[getTeamMembersRecursive_] Stack: ${e.stack}`);
     return [];
   }
 }
 
 /**
- * Gets workflow status for a team member.
- * Helper function that enriches team member data with status info.
- * 
- * @param {string} employeeId - The employee ID
- * @returns {Object} Workflow status object
+ * Gets workflow status for a team member (helper).
+ * @param {string|number} employeeId - Employee ID
+ * @returns {Object} Workflow status
  */
 function getWorkflowStatusForTeam_(employeeId) {
   try {
-    const SHEETS = {
-      WORKFLOW_STATUS: 'WorkflowStatus',
-      SKILLS_ASSESSMENT: 'SkillsAssessment',
-      OKR_UPLOAD: 'OKRUpload',
-      SELF_ASSESSMENT: 'SelfAssessment',
-      FEED_FORWARD: 'FeedForward',
-      MANAGER_ACK: 'ManagerAcknowledgement'
-    };
-    
-    // Try to read workflow status from sheet
-    try {
-      const sheet = getSheet_(SHEETS.WORKFLOW_STATUS);
-      const headerMap = getHeaderMap_(sheet);
-      
-      // Find the employee ID column (handle case variations)
-      let employeeIdColName = null;
-      for (const colName of Object.keys(headerMap)) {
-        if (colName.toLowerCase() === 'employeeid') {
-          employeeIdColName = colName;
-          break;
-        }
-      }
-      
-      if (!employeeIdColName) {
-        throw new Error('EmployeeID column not found in WorkflowStatus sheet');
-      }
-      
-      const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
-      const values = dataRange.getValues();
-      
-      const employeeIdColIndex = headerMap[employeeIdColName];
-      
-      for (let i = 0; i < values.length; i++) {
-        if (values[i][employeeIdColIndex] === employeeId) {
-          // Found the status row
-          const statusRow = {};
-          Object.entries(headerMap).forEach(([colName, colIndex]) => {
-            statusRow[colName] = values[i][colIndex];
-          });
-          return statusRow;
-        }
-      }
-    } catch (e) {
-      console.log(`[Code] WorkflowStatus sheet not accessible or employee not found, calculating from assessment sheets: ${e.message}`);
-    }
-    
-    // Calculate status from assessment sheets if WorkflowStatus sheet unavailable or employee not found
-    const status = {
-      employeeId: employeeId,
-      step1Complete: hasAssessmentData(SHEETS.SKILLS_ASSESSMENT, employeeId),
-      step2Complete: hasAssessmentData(SHEETS.OKR_UPLOAD, employeeId),
-      step3Complete: hasAssessmentData(SHEETS.SELF_ASSESSMENT, employeeId),
-      step4Complete: hasAssessmentData(SHEETS.FEED_FORWARD, employeeId),
-      step5Complete: hasAssessmentData(SHEETS.MANAGER_ACK, employeeId)
-    };
-    
-    return status;
-  } catch (e) {
-    console.error(`[Code] Error getting workflow status for ${employeeId}: ${e.message}`);
-    return {
+    const status = Database.getWorkflowStatus(employeeId);
+    return status || {
       employeeId: employeeId,
       step1Complete: false,
       step2Complete: false,
       step3Complete: false,
       step4Complete: false,
-      step5Complete: false
+      step5Complete: false,
+      step6Unlocked: false,
+      step7Complete: false
     };
+  } catch (e) {
+    console.error(`[getWorkflowStatusForTeam_] Error: ${e.message}`);
+    return {};
   }
 }
 
 /**
- * Checks if an employee has submitted data for a specific sheet.
- * Helper function for workflow status calculation.
+ * TASK 5: Retrieves team members for a manager with full details and workflow status.
+ * FIX: Skip redundant isUserAManager() check. Instead:
+ * 1. Get user's role from database via verifyUserRoleFromDatabase()
+ * 2. If role != MANAGER, deny access
+ * 3. If role == MANAGER, load team via getTeamMembersRecursive_()
+ * 4. Return team members (even if empty - manager might have no reports)
  * 
- * @param {string} sheetName - Name of the sheet to check
- * @param {string} employeeId - The employee ID
- * @returns {boolean} True if employee has data in that sheet
- */
-function hasAssessmentData(sheetName, employeeId) {
-  try {
-    const sheet = getSheet_(sheetName);
-    const headerMap = getHeaderMap_(sheet);
-    
-    // Find the employee ID column (handle case variations)
-    let employeeIdColName = null;
-    for (const colName of Object.keys(headerMap)) {
-      if (colName.toLowerCase() === 'employeeid') {
-        employeeIdColName = colName;
-        break;
-      }
-    }
-    
-    if (!employeeIdColName) {
-      console.warn(`[Code] EmployeeID column not found in ${sheetName}. Available columns: ${Object.keys(headerMap).join(', ')}`);
-      return false;
-    }
-    
-    const employeeIdColIndex = headerMap[employeeIdColName];
-    
-    if (employeeIdColIndex === undefined) {
-      return false;
-    }
-    
-    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
-    const values = dataRange.getValues();
-    
-    for (let i = 0; i < values.length; i++) {
-      if (values[i][employeeIdColIndex] === employeeId) {
-        return true;
-      }
-    }
-    
-    return false;
-  } catch (e) {
-    console.error(`[Code] Error checking assessment data in ${sheetName}: ${e.message}`);
-    return false;
-  }
-}
-
-/**
- * Retrieves organization data for Data SPOC portal.
- * @param {string} spocId - The Data SPOC's employee ID
- * @returns {Object} { success: boolean, data: Object[] }
- */
-function getOrgData(spocId) {
-  try {
-    const employees = Database.getAllEmployees();
-    return { success: true, data: employees };
-  } catch (e) {
-    console.error(`[Code] Error getting organization data: ${e.message}`);
-    return { success: false, message: e.message };
-  }
-}
-
-/* -------------------------------------------------------------------------- */
-/*                  CONFLICT RESOLUTION FUNCTIONS (Frontend Bridge)           */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Handles conflict resolution when frontend detects a conflict.
- * Frontend can choose to use portal data, sheets data, or merge.
+ * This avoids double sheet reads and uses the working getTeamMembersRecursive_() logic.
  * 
- * @param {string} employeeId - The employee ID
- * @param {string} step - Which step (e.g., 'skills', 'feedforward')
- * @param {string} resolution - Resolution strategy ('PORTAL_WINS' | 'SHEETS_WINS' | 'MERGE')
- * @param {Object} resolvedData - The resolved data to save
- * @returns {Object} { success: boolean, message: string }
- */
-function resolveDataConflict(employeeId, step, resolution, resolvedData) {
-  try {
-    const sheetMap = {
-      'skills': 'SKILLS_ASSESSMENT',
-      'okr': 'OKR_UPLOAD',
-      'selfAssessment': 'SELF_ASSESSMENT',
-      'feedForward': 'FEED_FORWARD',
-      'managerAck': 'MANAGER_ACK'
-    };
-    
-    const sheetName = sheetMap[step];
-    if (!sheetName) {
-      return { success: false, message: `Unknown step: ${step}` };
-    }
-    
-    // Log the conflict resolution
-    console.log(`[Code] Resolving conflict for ${employeeId} (${step}) using ${resolution} strategy`);
-    
-    // Save the resolved data
-    switch (step) {
-      case 'skills':
-        return Database.saveSkillsAssessment(employeeId, resolvedData);
-      case 'okr':
-        return Database.saveOKRUpload(employeeId, resolvedData);
-      case 'selfAssessment':
-        return Database.saveSelfAssessment(employeeId, resolvedData);
-      case 'feedForward':
-        return Database.saveFeedForward(employeeId, resolvedData.managerId, resolvedData);
-      default:
-        return { success: false, message: `Unhandled step: ${step}` };
-    }
-  } catch (e) {
-    console.error(`[Code] Error resolving conflict: ${e.message}`);
-    return { success: false, message: e.message };
-  }
-}
-
-/**
- * Gets sync status for all assessments of an employee.
- * @param {string} employeeId - The employee ID
- * @returns {Object} { success: boolean, data: Object }
- */
-function getSyncStatusForEmployee(employeeId) {
-  try {
-    const syncStatus = Database.getSyncStatusForEmployee(employeeId);
-    return { success: true, data: syncStatus };
-  } catch (e) {
-    console.error(`[Code] Error getting sync status: ${e.message}`);
-    return { success: false, message: e.message };
-  }
-}
-
-/**
- * Gets the current Sheets modification time.
- * @returns {Object} { success: boolean, lastEdited: string, timestamp: string }
- */
-function getSheetsModificationTime() {
-  try {
-    const modTime = Database.getSheetsModificationTime();
-    return { success: modTime.success, data: modTime };
-  } catch (e) {
-    console.error(`[Code] Error getting Sheets modification time: ${e.message}`);
-    return { success: false, message: e.message };
-  }
-}
-
-/**
- * Checks for external changes in Sheets since a given timestamp.
- * @param {string} lastChecked - ISO timestamp of last check
- * @returns {Object} { success: boolean, data: { hasChanges, lastModified, ... } }
- */
-function checkForExternalChanges(lastChecked) {
-  try {
-    const changes = Database.checkForExternalChanges(lastChecked);
-    return { success: true, data: changes };
-  } catch (e) {
-    console.error(`[Code] Error checking for external changes: ${e.message}`);
-    return { success: false, message: e.message };
-  }
-}
-
-/**
- * Detects changes in a specific sheet.
- * @param {string} sheetName - Name of the sheet to check
- * @param {number} lastRowCount - Last known row count
- * @returns {Object} { success: boolean, data: { hasChanges, changedRows, ... } }
- */
-function detectSheetChanges(sheetName, lastRowCount) {
-  try {
-    const changes = Database.detectSheetChanges(sheetName, lastRowCount);
-    return { success: true, data: changes };
-  } catch (e) {
-    console.error(`[Code] Error detecting sheet changes: ${e.message}`);
-    return { success: false, message: e.message };
-  }
-}
-
-
-/* -------------------------------------------------------------------------- */
-/*                         MANAGER TEAM FUNCTIONS                             */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Retrieves team members for a manager with full details and workflow status.
- * This is used by the Manager Portal to display the team overview.
- * 
- * @param {string} managerId - The manager's employee ID
- * @returns {Object} { success: boolean, data: Object[] }
+ * @param {string|number} managerId - The manager's employee ID
+ * @returns {Object} { success: boolean, data: Object[], message: string }
  */
 function getTeamMembersWithStatusData(managerId) {
   try {
-    console.log(`[Code] getTeamMembersWithStatusData called with managerId: ${managerId}`);
+    console.log(`[getTeamMembersWithStatusData] Called with managerId: ${managerId}`);
     
-    // Authorization: Verify user is actually a manager
-    if (!isUserAManager(managerId)) {
-      console.log(`[Code] User ${managerId} is not a manager`);
+    // Step 1: Get the employee record to verify role
+    const employee = getEmployeeById_(managerId);
+    
+    if (!employee) {
+      console.log(`[getTeamMembersWithStatusData] Employee not found for ID: ${managerId}`);
       logAccessAttempt(
         `[User: ${managerId}]`,
-        'MANAGER',
+        'UNKNOWN',
         'DENIED',
-        `Unauthorized attempt to retrieve team members (not a manager)`
+        'Employee not found'
+      );
+      return { 
+        success: false, 
+        message: 'Employee record not found.' 
+      };
+    }
+    
+    // Step 2: Check if user has MANAGER role
+    const userRole = employee.Role || employee.role || 'EMPLOYEE';
+    console.log(`[getTeamMembersWithStatusData] User ${managerId} has role: ${userRole}`);
+    
+    if (userRole !== 'MANAGER') {
+      console.log(`[getTeamMembersWithStatusData] Access denied: ${managerId} is not a MANAGER (role=${userRole})`);
+      logAccessAttempt(
+        `[User: ${managerId}]`,
+        userRole,
+        'DENIED',
+        'User role is not MANAGER'
       );
       return { 
         success: false, 
@@ -1107,146 +711,41 @@ function getTeamMembersWithStatusData(managerId) {
       };
     }
     
-    console.log(`[Code] User ${managerId} is a manager, loading team members...`);
+    console.log(`[getTeamMembersWithStatusData] User ${managerId} is a manager, loading team members...`);
     
-    // Get all team members (direct + indirect reports)
+    // Step 3: Get all team members (direct + indirect reports)
     const teamMembers = getTeamMembersRecursive_(managerId);
     
-    console.log(`[Code] Retrieved ${teamMembers.length} team members`);
+    console.log(`[getTeamMembersWithStatusData] Retrieved ${teamMembers.length} team members`);
     
     if (teamMembers.length === 0) {
-      console.warn(`[Code] WARNING: No team members found for manager ${managerId}`);
-      console.log(`[Code] This manager may have no direct reports or the manager ID may not match the data`);
+      console.log(`[getTeamMembersWithStatusData] No team members found for manager ${managerId} (may have no direct reports)`);
     }
     
-    // Enhance with workflow status for each team member
+    // Step 4: Enhance with workflow status
     const enhancedTeamMembers = teamMembers.map(member => {
-      // Find the employee ID column (handle case variations)
-      let employeeId = member.EmployeeID || member.employeeId;
+      const employeeId = member.EmployeeID || member.employeeId;
+      const workflowStatus = getWorkflowStatusForTeam_(employeeId);
       
       return {
         employeeId: employeeId,
-        name: member.Name || member.name,
-        email: member.Email || member.email,
-        department: member.Department || member.department,
-        band: member.Band || member.band,
-        group: member.Group || member.group,
-        team: member.Team || member.team,
-        corporation: member.Corporation || member.corporation,
-        managerEmployeeId: member.ManagerID || member.managerId
+        name: member.Name || member.name || 'N/A',
+        email: member.Email || member.email || 'N/A',
+        department: member.Department || member.department || 'N/A',
+        band: member.Band || member.band || 'N/A',
+        group: member.Group || member.group || 'N/A',
+        team: member.Team || member.team || 'N/A',
+        corporation: member.Corporation || member.corporation || 'N/A',
+        managerEmployeeId: member.ManagerID || member.managerId || null,
+        workflowStatus: workflowStatus
       };
     });
     
-    console.log(`[Code] Returning ${enhancedTeamMembers.length} enhanced team members`);
+    console.log(`[getTeamMembersWithStatusData] Returning ${enhancedTeamMembers.length} enhanced team members`);
     return { success: true, data: enhancedTeamMembers };
   } catch (e) {
-    console.error(`[Code] Error getting team members with status: ${e.message}`);
-    console.error(`[Code] Stack: ${e.stack}`);
+    console.error(`[getTeamMembersWithStatusData] Error: ${e.message}`);
+    console.error(`[getTeamMembersWithStatusData] Stack: ${e.stack}`);
     return { success: false, message: e.message };
-  }
-}
-
-/**
- * Gets recursive team members (direct + indirect reports).
- * Helper function for getTeamMembersWithStatusData.
- * 
- * @param {string} managerId - The manager's employee ID
- * @returns {Object[]} Array of team members
- */
-function getTeamMembersRecursive_(managerId) {
-  try {
-    const SHEETS = { EMPLOYEES: 'Employee Database' };
-    const sheet = getSheet_(SHEETS.EMPLOYEES);
-    const headerMap = getHeaderMap_(sheet);
-    
-    console.log(`[Code] getTeamMembersRecursive_ called with managerId: ${managerId}`);
-    console.log(`[Code] managerId type: ${typeof managerId}`);
-    console.log(`[Code] Available columns:`, Object.keys(headerMap).join(', '));
-    
-    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
-    const values = dataRange.getValues();
-    
-    console.log(`[Code] Total employee records: ${values.length}`);
-    
-    // Find the exact manager ID column name (handle case variations)
-    let managerIdColName = null;
-    for (const colName of Object.keys(headerMap)) {
-      if (colName.toLowerCase() === 'managerid') {
-        managerIdColName = colName;
-        break;
-      }
-    }
-    
-    if (!managerIdColName) {
-      console.error(`[Code] ManagerID column not found. Available columns: ${Object.keys(headerMap).join(', ')}`);
-      return [];
-    }
-    
-    console.log(`[Code] Using manager ID column: "${managerIdColName}"`);
-    
-    // Find the exact employee ID column name (handle case variations)
-    let employeeIdColName = null;
-    for (const colName of Object.keys(headerMap)) {
-      if (colName.toLowerCase() === 'employeeid') {
-        employeeIdColName = colName;
-        break;
-      }
-    }
-    
-    if (!employeeIdColName) {
-      console.error(`[Code] EmployeeID column not found. Available columns: ${Object.keys(headerMap).join(', ')}`);
-      return [];
-    }
-    
-    console.log(`[Code] Using employee ID column: "${employeeIdColName}"`);
-    
-    // Convert rows to objects
-    const employees = values.map((row, rowIndex) => {
-      const employee = {};
-      Object.entries(headerMap).forEach(([colName, colIndex]) => {
-        employee[colName] = row[colIndex];
-      });
-      return employee;
-    });
-    
-    const result = [];
-    const visited = new Set();
-    
-    const collectTeamMembers = (currentManagerId) => {
-      if (visited.has(currentManagerId)) {
-        console.log(`[Code] Already visited manager ${currentManagerId}, skipping`);
-        return;
-      }
-      visited.add(currentManagerId);
-      
-      console.log(`[Code] Looking for direct reports of manager: ${currentManagerId}`);
-      
-      // Find all direct reports of this manager
-      const directReports = employees.filter(emp => {
-        const empManagerId = emp[managerIdColName];
-        return empManagerId === currentManagerId;
-      });
-      
-      console.log(`[Code] Found ${directReports.length} direct reports for manager ${currentManagerId}`);
-      
-      directReports.forEach(member => {
-        const memberId = member[employeeIdColName];
-        if (!visited.has(memberId)) {
-          result.push(member);
-          console.log(`[Code] Added team member: ID=${memberId}, Name=${member.Name}`);
-          // Recursively get their team members
-          collectTeamMembers(memberId);
-        }
-      });
-    };
-    
-    collectTeamMembers(managerId);
-    
-    console.log(`[Code] Total team members found (direct + indirect): ${result.length}`);
-    return result;
-  } catch (e) {
-    console.error(`[Code] Error getting recursive team members: ${e.message}`);
-    console.error(`[Code] Stack: ${e.stack}`);
-    return [];
   }
 }
