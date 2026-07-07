@@ -1180,3 +1180,232 @@ CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(action_timestamp);
 2. Add custom report builder in Admin Portal
 3. Create dashboard visualizations for management
 4. Set up email alerts for critical thresholds
+
+---
+
+## Role Derivation Design: Supervisor Lookup + Override Table
+
+### Problem Statement
+The SAP employee export has an "Immediate Supervisor" column that stores the supervisor's name (e.g., `"Luigi Gabriel Espiritu"`), but the employee database stores names split across columns (`Last Name: "Espiritu"`, `First Name: "Luigi Gabriel"`). We need a reliable way to:
+1. Determine who is a MANAGER (has direct reports)
+2. Show a manager their team members
+3. Enforce role-based access (Manager Portal, Employee Portal, etc.)
+4. Handle duplicate names and edge cases gracefully
+
+### Solution: 3-Layer Matching System
+
+**Priority order for resolving `Immediate Supervisor` → `Employee No.`:**
+
+```
+Layer 1: Override Table (HIGHEST PRIORITY — admin-set exceptions always win)
+  ↓ If no override found...
+Layer 2: Lookup Match (First Name + Last Name = Immediate Supervisor)
+  ↓ If duplicate or no match...
+Layer 3: Flag for Admin (show unresolved list in Admin Portal)
+```
+
+### How It Works (Step by Step)
+
+**On every employee CSV upload:**
+
+```
+Admin uploads employee CSV
+  ↓
+Step 1: Insert all employees into `employees` table (existing logic)
+  ↓
+Step 2: Build lookup (inline, no separate table needed)
+        → For each employee: lookup_name = First Name + " " + Last Name
+        → Store in `lookup_name` column on employees table
+  ↓
+Step 3: Check override table FIRST
+        → If supervisor name exists in overrides → use that employee_no
+  ↓
+Step 4: Automatic matching (for non-overridden)
+        → Match Immediate Supervisor against lookup_name
+        → If EXACTLY 1 match → resolve to that employee_no ✅
+        → If 0 matches → flag as "external/unmatched" ⚠️
+        → If 2+ matches → flag as "duplicate — needs override" ⚠️
+  ↓
+Step 5: Store resolved supervisor_employee_no on each employee
+  ↓
+Step 6: Derive roles
+        → If employee_no appears as someone's supervisor_employee_no → MANAGER
+        → Otherwise → EMPLOYEE (default)
+        → DATA_SPOC → Manually assigned by admin only
+        → ADMIN → Manually assigned by admin only
+  ↓
+Step 7: Show results to admin
+        → X managers auto-detected
+        → X unresolved supervisors (need attention)
+        → X duplicates (need override)
+```
+
+### Real Example (Your Team Data)
+
+```
+UPLOAD — Build Lookup:
+┌──────────────────────────────────────────────────────────────────────┐
+│ Emp No. │ First Name        │ Last Name   │ lookup_name               │
+│──────────────────────────────────────────────────────────────────────│
+│ 13534   │ Luigi Gabriel     │ Espiritu    │ Luigi Gabriel Espiritu    │
+│ 13743   │ Ma. Zaira Rodelle │ Bajar       │ Ma. Zaira Rodelle Bajar   │
+│ 14131   │ Juan Carlo        │ Claudio     │ Juan Carlo Claudio        │
+│ 13105   │ Michael Ryan      │ Escobilla   │ Michael Ryan Escobilla    │
+│ 14088   │ Charvin Kale      │ Peñaverde   │ Charvin Kale Peñaverde    │
+│ 14480   │ Jeremy Louise     │ Cariño      │ Jeremy Louise Cariño      │
+│ 14481   │ Ernica            │ Castronero  │ Ernica Castronero         │
+└──────────────────────────────────────────────────────────────────────┘
+
+RESOLVE — Match Immediate Supervisor:
+┌────────────────────────────────────────────────────────────────────────┐
+│ Emp No. │ Immediate Supervisor (raw)  │ Result                         │
+│────────────────────────────────────────────────────────────────────────│
+│ 13743   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
+│ 14480   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
+│ 14481   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
+│ 14131   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
+│ 13105   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
+│ 14088   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
+│ 13534   │ Mylene Sardinia             │ → ⚠️ NOT FOUND (external)     │
+└────────────────────────────────────────────────────────────────────────┘
+
+ROLE DERIVATION:
+│ 13534 (Luigi) → has 6 direct reports → role = MANAGER ✅
+│ Others        → no reports          → role = EMPLOYEE (default)
+│ Mylene        → not in system       → flagged as external supervisor
+```
+
+### Override Table (For Duplicates & Exceptions)
+
+**Purpose:** Admin manually resolves cases where automatic matching fails or produces ambiguity.
+
+**When is it needed?**
+- Two employees have same First + Last name (duplicate)
+- Supervisor name doesn't match any employee (typo, nickname, external)
+- Admin wants to force a specific mapping regardless of auto-match
+
+**Schema:**
+```sql
+CREATE TABLE IF NOT EXISTS supervisor_overrides (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  supervisor_name TEXT NOT NULL UNIQUE,   -- The name as it appears in "Immediate Supervisor" column
+  resolved_employee_no TEXT NOT NULL,     -- The employee number to use
+  reason TEXT,                            -- Admin's note (e.g., "Duplicate name — this is the Finance one")
+  created_by TEXT,                        -- Admin who set the override
+  created_at TEXT DEFAULT (datetime('now'))
+);
+```
+
+**Example override entries:**
+```
+| supervisor_name    | resolved_employee_no | reason                           |
+|--------------------|---------------------|----------------------------------|
+| Juan Carlo Cruz    | 14131               | People Transformation, not Finance |
+| Mylene Sardinia    | 10001               | VP not in team upload             |
+| Mike Santos        | 15200               | Goes by "Mike" not "Michael"      |
+```
+
+**Admin Portal UI (Override Management):**
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ⚠️ UNRESOLVED SUPERVISORS (3)                                           │
+│                                                                          │
+│ Supervisor Name      │ Employees Affected │ Action                       │
+│──────────────────────────────────────────────────────────────────────────│
+│ Mylene Sardinia      │ 1 (Luigi Espiritu) │ [Assign Employee No.] [Skip] │
+│ Juan Carlo Cruz      │ 4 (ambiguous)      │ [Pick: 14131 or 15002]       │
+│ Mike Santos          │ 2                  │ [Assign Employee No.] [Skip] │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Modified Employees Table
+
+```sql
+-- Add these columns to existing employees table
+ALTER TABLE employees ADD COLUMN lookup_name TEXT;              -- "First Name" + " " + "Last Name"
+ALTER TABLE employees ADD COLUMN supervisor_employee_no TEXT;   -- Resolved supervisor emp no.
+ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT;  -- "matched" | "override" | "unresolved" | "external"
+```
+
+### Login & Access Flow (After Roles Derived)
+
+### Role Assignment Rules
+
+| Role | How Assigned | Who Assigns | Logic |
+|------|-------------|-------------|-------|
+| `EMPLOYEE` | **Automatic (default)** | System | Everyone starts as EMPLOYEE on upload |
+| `MANAGER` | **Auto-derived** | System | If employee_no appears as someone's supervisor_employee_no |
+| `DATA_SPOC` | **Manual only** | Admin / Superadmin | Admin assigns via Role Assignment UI (1-2 per group) |
+| `ADMIN` | **Manual only** | Superadmin | Superadmin assigns — highest privilege, never auto-assigned |
+
+**Key rules:**
+- Upload CSV → all employees default to `EMPLOYEE`
+- Auto-derive runs → detects managers from hierarchy → upgrades to `MANAGER`
+- `DATA_SPOC` and `ADMIN` are **never auto-assigned** — always manual admin decision
+- If admin removes someone's `DATA_SPOC` or `ADMIN` role, they revert to whatever the system derives (MANAGER or EMPLOYEE)
+- Re-uploading CSV does NOT overwrite manually assigned `DATA_SPOC` or `ADMIN` roles
+
+### Login & Access Flow (After Roles Derived)
+
+```
+User logs in with Google SSO (email: luigi.espiritu@convergeict.com)
+  ↓
+System: SELECT * FROM employees WHERE email = 'luigi.espiritu@convergeict.com'
+  ↓
+Found: employee_no = 13534, role = MANAGER
+  ↓
+Redirect to Manager Portal
+  ↓
+Manager Portal loads "My Team":
+  SELECT * FROM employees WHERE supervisor_employee_no = '13534'
+  → Returns: Zaira, Jeremy, Ernica, JC, Mike, Charvin (6 direct reports)
+```
+
+### Risk Assessment (Updated)
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|-----------|
+| Duplicate First+Last names | Low-Medium | Role misassignment | Override table resolves it permanently |
+| Supervisor not in upload (external) | High | No match found | Flag as "external" — admin skips or assigns |
+| SAP typo in supervisor name | Low | No match found | Override table with correct mapping |
+| Nicknames (Mike vs Michael) | Low | No match found | Override table handles it |
+| Special characters (ñ, accents) | None | N/A | Exact string match — SAP is consistent |
+
+### Smart Move Assessment
+
+**YES — this is the smartest approach because:**
+
+1. ✅ **Zero manual work for 99% of cases** — SAP data is consistent
+2. ✅ **Override table handles the 1%** — set once, persists across uploads
+3. ✅ **No separate lookup table needed** — just a computed column on employees
+4. ✅ **Employee number is the final reference** — no name queries at runtime
+5. ✅ **Self-healing** — re-runs on every upload, picks up new employees
+6. ✅ **Admin visibility** — unresolved cases are flagged, not silently ignored
+7. ✅ **Scales** — works for 7 employees or 3000+
+8. ✅ **Audit trail** — override table records who set what and why
+
+**Why not a separate lookup table?**
+- Adding `lookup_name` directly to the `employees` table is simpler
+- One fewer table to manage
+- Query joins are cleaner
+- Same result, less complexity
+
+**Why override table instead of just flagging?**
+- Flags require re-resolution every upload
+- Overrides persist — set once, never worry again
+- Admin doesn't have to re-fix the same issue every time they upload
+
+### Implementation Status
+
+| Component | Status |
+|-----------|--------|
+| `lookup_name` column on employees | 📋 DESIGNED |
+| `supervisor_employee_no` column | 📋 DESIGNED |
+| `supervisor_match_status` column | 📋 DESIGNED |
+| `supervisor_overrides` table | 📋 DESIGNED |
+| Auto-match logic (on upload) | 📋 DESIGNED |
+| Override check (priority 1) | 📋 DESIGNED |
+| Duplicate detection & flagging | 📋 DESIGNED |
+| Unresolved supervisor UI (admin) | 📋 DESIGNED |
+| Role derivation from resolved hierarchy | 📋 DESIGNED |
+| Login → role → portal routing | ✅ EXISTS (needs wiring to real DB) |

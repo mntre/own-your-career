@@ -185,6 +185,12 @@ const Admin = {
 
     // Data Management Cards
     this.setupDataMgmtCards();
+
+    // Employee Database Viewer (A2)
+    this.initDatabaseViewer();
+
+    // Role Assignment (A5)
+    this.initRoleAssignment();
   },
 
   /**
@@ -219,8 +225,28 @@ const Admin = {
       // Add back button if not already present
       this.addBackToGridButton(sectionEl, section);
       
+      // Initialize section-specific data
+      this.initSectionData(section);
+
       // Scroll to section
       sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  },
+
+  /**
+   * Initialize section-specific data when section is shown
+   * @param {string} section - Section name
+   */
+  initSectionData: function(section) {
+    switch (section) {
+      case 'employee-database':
+        this.loadDatabaseViewer();
+        break;
+      case 'role-assignment':
+        this.loadRoleAssignmentData();
+        break;
+      default:
+        break;
     }
   },
 
@@ -248,13 +274,8 @@ const Admin = {
         this.hideDataMgmtSection(sectionName);
       });
 
-      // Insert after the title span or at the end of header
-      const titleSpan = dashboardCardHeader.querySelector('span');
-      if (titleSpan) {
-        titleSpan.insertAdjacentElement('afterend', backButton);
-      } else {
-        dashboardCardHeader.appendChild(backButton);
-      }
+      // Add to the header
+      dashboardCardHeader.appendChild(backButton);
     }
   },
 
@@ -706,6 +727,18 @@ const Admin = {
     if (templateBtn) {
       templateBtn.addEventListener('click', () => this.downloadEmployeeTemplate());
     }
+
+    // Role derivation button
+    const deriveRolesBtn = document.getElementById('derive-roles-btn');
+    if (deriveRolesBtn) {
+      deriveRolesBtn.addEventListener('click', () => this.deriveRoles());
+    }
+
+    // Role assignment button
+    const assignRolesBtn = document.getElementById('assign-roles-btn');
+    if (assignRolesBtn) {
+      assignRolesBtn.addEventListener('click', () => this.showRoleAssignmentModal());
+    }
   },
 
   /**
@@ -983,11 +1016,17 @@ const Admin = {
 
           this.showNotification(`${this.employeeData.length} employees uploaded successfully`, 'success');
 
+          // Show role derivation section
+          document.getElementById('role-derivation-section').style.display = 'block';
+
           // Update stats
           if (this.stats) {
             this.stats.totalEmployees = this.employeeData.length;
             this.updateStatsUI();
           }
+
+          // Fetch and display current role counts
+          this.loadRoleCounts();
         } else {
           this.showNotification(response.message || 'Upload failed', 'error');
           uploadBtn.disabled = false;
@@ -1000,6 +1039,587 @@ const Admin = {
         uploadBtn.disabled = false;
         uploadBtn.textContent = 'Upload to System';
       });
+  },
+
+  /**
+   * Load and display current role counts
+   */
+  loadRoleCounts: function() {
+    API.getRoleAssignmentData()
+      .then(response => {
+        if (response.success) {
+          const counts = response.roleCount;
+          document.getElementById('role-count-manager').textContent = counts.MANAGER || 0;
+          document.getElementById('role-count-spoc').textContent = counts.DATA_SPOC || 0;
+          document.getElementById('role-count-employee').textContent = counts.EMPLOYEE || 0;
+        }
+      })
+      .catch(error => {
+        console.error('[Admin] Error loading role counts:', error);
+      });
+  },
+
+  /**
+   * Derive roles automatically from immediate_supervisor field
+   */
+  deriveRoles: function() {
+    const deriveBtn = document.getElementById('derive-roles-btn');
+    deriveBtn.disabled = true;
+    deriveBtn.textContent = 'Deriving roles...';
+
+    API.deriveRolesFromHierarchy()
+      .then(response => {
+        if (response.success) {
+          const resultDiv = document.getElementById('role-derivation-result');
+          resultDiv.style.display = 'block';
+          resultDiv.style.background = '#e6f9f0';
+          resultDiv.style.borderColor = '#0a7c42';
+          resultDiv.style.color = '#0a7c42';
+          resultDiv.innerHTML = `
+            <strong>✓ Roles Derived!</strong><br>
+            ${response.message || 'Role assignment complete.'}<br>
+            <small style="margin-top: 8px; display: block;">
+              Managers: ${response.managersAutoDetected} | 
+              Data SPOCs: ${response.roles.DATA_SPOC} | 
+              Team Members: ${response.roles.EMPLOYEE}
+            </small>
+          `;
+
+          this.showNotification(`${response.managersAutoDetected} managers auto-detected`, 'success');
+          this.loadRoleCounts();
+        } else {
+          const resultDiv = document.getElementById('role-derivation-result');
+          resultDiv.style.display = 'block';
+          resultDiv.style.background = '#ffebee';
+          resultDiv.style.borderColor = '#c62828';
+          resultDiv.style.color = '#c62828';
+          resultDiv.innerHTML = `<strong>✗ Error:</strong> ${response.message}`;
+          this.showNotification(response.message || 'Failed to derive roles', 'error');
+        }
+        deriveBtn.disabled = false;
+        deriveBtn.textContent = 'Auto-Derive Roles from Hierarchy';
+      })
+      .catch(error => {
+        console.error('[Admin] Role derivation error:', error);
+        const resultDiv = document.getElementById('role-derivation-result');
+        resultDiv.style.display = 'block';
+        resultDiv.style.background = '#ffebee';
+        resultDiv.style.borderColor = '#c62828';
+        resultDiv.style.color = '#c62828';
+        resultDiv.innerHTML = `<strong>✗ Error:</strong> ${error.message}`;
+        this.showNotification('Error deriving roles: ' + error.message, 'error');
+        deriveBtn.disabled = false;
+        deriveBtn.textContent = 'Auto-Derive Roles from Hierarchy';
+      });
+  },
+
+  /**
+   * Show role assignment modal for manual role changes
+   */
+  showRoleAssignmentModal: function() {
+    // Navigate to the Role Assignment card section
+    const cards = document.querySelectorAll('.data-mgmt-card');
+    const sections = document.querySelectorAll('.data-mgmt-section');
+    const grid = document.querySelector('.data-mgmt-grid');
+
+    // Hide grid and other sections
+    if (grid) grid.style.display = 'none';
+    sections.forEach(s => s.style.display = 'none');
+
+    // Show role assignment section
+    const raSection = document.getElementById('section-role-assignment');
+    if (raSection) {
+      raSection.style.display = 'block';
+      this.loadRoleAssignmentData();
+    }
+  },
+
+  /* --------------------------------------------------------------------------
+     A2: EMPLOYEE DATABASE VIEWER
+     -------------------------------------------------------------------------- */
+
+  /** Database viewer state */
+  dbViewerState: {
+    employees: [],
+    filtered: [],
+    page: 1,
+    pageSize: 25,
+    search: '',
+    filterDept: '',
+    filterRole: '',
+    filterGroup: ''
+  },
+
+  /**
+   * Initialize Employee Database Viewer
+   */
+  initDatabaseViewer: function() {
+    const searchInput = document.getElementById('db-search-input');
+    const filterDept = document.getElementById('db-filter-department');
+    const filterRole = document.getElementById('db-filter-role');
+    const filterGroup = document.getElementById('db-filter-group');
+    const prevBtn = document.getElementById('db-prev-btn');
+    const nextBtn = document.getElementById('db-next-btn');
+    const exportBtn = document.getElementById('db-export-csv-btn');
+
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        this.dbViewerState.search = searchInput.value.trim().toLowerCase();
+        this.dbViewerState.page = 1;
+        this.filterDatabaseView();
+      });
+    }
+
+    if (filterDept) {
+      filterDept.addEventListener('change', () => {
+        this.dbViewerState.filterDept = filterDept.value;
+        this.dbViewerState.page = 1;
+        this.filterDatabaseView();
+      });
+    }
+
+    if (filterRole) {
+      filterRole.addEventListener('change', () => {
+        this.dbViewerState.filterRole = filterRole.value;
+        this.dbViewerState.page = 1;
+        this.filterDatabaseView();
+      });
+    }
+
+    if (filterGroup) {
+      filterGroup.addEventListener('change', () => {
+        this.dbViewerState.filterGroup = filterGroup.value;
+        this.dbViewerState.page = 1;
+        this.filterDatabaseView();
+      });
+    }
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (this.dbViewerState.page > 1) {
+          this.dbViewerState.page--;
+          this.renderDatabaseTable();
+        }
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        const maxPage = Math.ceil(this.dbViewerState.filtered.length / this.dbViewerState.pageSize);
+        if (this.dbViewerState.page < maxPage) {
+          this.dbViewerState.page++;
+          this.renderDatabaseTable();
+        }
+      });
+    }
+
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => this.exportDatabaseCSV());
+    }
+  },
+
+  /**
+   * Load employee database data from API
+   */
+  loadDatabaseViewer: function() {
+    API.getRoleAssignmentData()
+      .then(response => {
+        if (response.success && Array.isArray(response.employees)) {
+          this.dbViewerState.employees = response.employees;
+          this.dbViewerState.filtered = response.employees;
+          this.dbViewerState.page = 1;
+
+          // Populate department and group filters
+          this.populateDBFilters(response.employees);
+
+          // Update stats
+          this.updateDBStats(response.roleCount || {});
+
+          // Render table
+          this.renderDatabaseTable();
+        }
+      })
+      .catch(error => {
+        console.error('[Admin] Error loading database viewer:', error);
+      });
+  },
+
+  /**
+   * Populate department and group filter dropdowns
+   * @param {Object[]} employees
+   */
+  populateDBFilters: function(employees) {
+    const departments = [...new Set(employees.map(e => e.department).filter(Boolean))].sort();
+    const groups = [...new Set(employees.map(e => e.group || e.business_group_label).filter(Boolean))].sort();
+
+    const deptSelect = document.getElementById('db-filter-department');
+    const groupSelect = document.getElementById('db-filter-group');
+
+    if (deptSelect) {
+      deptSelect.innerHTML = '<option value="">All Departments</option>' +
+        departments.map(d => `<option value="${this.escapeHTML(d)}">${this.escapeHTML(d)}</option>`).join('');
+    }
+
+    if (groupSelect) {
+      groupSelect.innerHTML = '<option value="">All Groups</option>' +
+        groups.map(g => `<option value="${this.escapeHTML(g)}">${this.escapeHTML(g)}</option>`).join('');
+    }
+  },
+
+  /**
+   * Update database stats counters
+   * @param {Object} roleCount
+   */
+  updateDBStats: function(roleCount) {
+    const total = (roleCount.MANAGER || 0) + (roleCount.DATA_SPOC || 0) + (roleCount.EMPLOYEE || 0) + (roleCount.ADMIN || 0);
+    document.getElementById('db-total-count').textContent = total;
+    document.getElementById('db-manager-count').textContent = roleCount.MANAGER || 0;
+    document.getElementById('db-spoc-count').textContent = roleCount.DATA_SPOC || 0;
+    document.getElementById('db-employee-count').textContent = roleCount.EMPLOYEE || 0;
+  },
+
+  /**
+   * Filter database view based on search and filters
+   */
+  filterDatabaseView: function() {
+    const state = this.dbViewerState;
+    let filtered = state.employees;
+
+    if (state.search) {
+      filtered = filtered.filter(e =>
+        (e.full_name || '').toLowerCase().includes(state.search) ||
+        (e.email || '').toLowerCase().includes(state.search) ||
+        (e.employee_no || '').toLowerCase().includes(state.search)
+      );
+    }
+
+    if (state.filterDept) {
+      filtered = filtered.filter(e => e.department === state.filterDept);
+    }
+
+    if (state.filterRole) {
+      filtered = filtered.filter(e => e.role === state.filterRole);
+    }
+
+    if (state.filterGroup) {
+      filtered = filtered.filter(e => (e.group || e.business_group_label) === state.filterGroup);
+    }
+
+    state.filtered = filtered;
+    this.renderDatabaseTable();
+  },
+
+  /**
+   * Render database table with pagination
+   */
+  renderDatabaseTable: function() {
+    const state = this.dbViewerState;
+    const tbody = document.getElementById('db-employee-tbody');
+    const pageInfo = document.getElementById('db-page-info');
+    const prevBtn = document.getElementById('db-prev-btn');
+    const nextBtn = document.getElementById('db-next-btn');
+    const resultsInfo = document.getElementById('db-results-count');
+
+    if (!tbody) return;
+
+    const total = state.filtered.length;
+    const maxPage = Math.max(1, Math.ceil(total / state.pageSize));
+    const start = (state.page - 1) * state.pageSize;
+    const end = Math.min(start + state.pageSize, total);
+    const pageData = state.filtered.slice(start, end);
+
+    // Results info
+    if (resultsInfo) {
+      resultsInfo.textContent = total === 0 ? 'No employees found' : `Showing ${start + 1}–${end} of ${total} employees`;
+    }
+
+    // Empty state
+    if (pageData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="db-table__empty">No employees match your search.</td></tr>';
+    } else {
+      tbody.innerHTML = pageData.map(emp => `
+        <tr>
+          <td>${this.escapeHTML(emp.employee_no)}</td>
+          <td>${this.escapeHTML(emp.full_name)}</td>
+          <td>${this.escapeHTML(emp.email)}</td>
+          <td>${this.escapeHTML(emp.department || '')}</td>
+          <td>${this.escapeHTML(emp.band || '')}</td>
+          <td><span class="role-badge role-badge--${(emp.role || 'employee').toLowerCase()}">${this.escapeHTML(emp.role || 'EMPLOYEE')}</span></td>
+          <td>${this.escapeHTML(emp.immediate_supervisor || '')}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Pagination controls
+    if (pageInfo) pageInfo.textContent = `Page ${state.page} of ${maxPage}`;
+    if (prevBtn) prevBtn.disabled = state.page <= 1;
+    if (nextBtn) nextBtn.disabled = state.page >= maxPage;
+  },
+
+  /**
+   * Export filtered database view as CSV
+   */
+  exportDatabaseCSV: function() {
+    const data = this.dbViewerState.filtered;
+    if (data.length === 0) {
+      this.showNotification('No data to export', 'error');
+      return;
+    }
+
+    const headers = ['Employee No.', 'Full Name', 'Email', 'Department', 'Band', 'Role', 'Immediate Supervisor'];
+    const rows = data.map(emp => [
+      emp.employee_no || '',
+      emp.full_name || '',
+      emp.email || '',
+      emp.department || '',
+      emp.band || '',
+      emp.role || 'EMPLOYEE',
+      emp.immediate_supervisor || ''
+    ]);
+
+    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `employee-database-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    this.showNotification(`Exported ${data.length} employees to CSV`, 'success');
+  },
+
+  /* --------------------------------------------------------------------------
+     A5: ROLE ASSIGNMENT
+     -------------------------------------------------------------------------- */
+
+  /** Role assignment state */
+  raState: {
+    employees: [],
+    filtered: [],
+    page: 1,
+    pageSize: 25,
+    search: ''
+  },
+
+  /**
+   * Initialize Role Assignment section
+   */
+  initRoleAssignment: function() {
+    const searchInput = document.getElementById('ra-search-input');
+    const prevBtn = document.getElementById('ra-prev-btn');
+    const nextBtn = document.getElementById('ra-next-btn');
+    const bulkInput = document.getElementById('ra-bulk-csv-input');
+    const bulkBtn = document.getElementById('ra-bulk-upload-btn');
+
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        this.raState.search = searchInput.value.trim().toLowerCase();
+        this.raState.page = 1;
+        this.filterRoleAssignment();
+      });
+    }
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (this.raState.page > 1) {
+          this.raState.page--;
+          this.renderRoleAssignmentTable();
+        }
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        const maxPage = Math.ceil(this.raState.filtered.length / this.raState.pageSize);
+        if (this.raState.page < maxPage) {
+          this.raState.page++;
+          this.renderRoleAssignmentTable();
+        }
+      });
+    }
+
+    if (bulkInput) {
+      bulkInput.addEventListener('change', (e) => {
+        if (bulkBtn) bulkBtn.disabled = !e.target.files.length;
+      });
+    }
+
+    if (bulkBtn) {
+      bulkBtn.addEventListener('click', () => this.handleBulkRoleUpload());
+    }
+  },
+
+  /**
+   * Load role assignment data from API
+   */
+  loadRoleAssignmentData: function() {
+    API.getRoleAssignmentData()
+      .then(response => {
+        if (response.success && Array.isArray(response.employees)) {
+          this.raState.employees = response.employees;
+          this.raState.filtered = response.employees;
+          this.raState.page = 1;
+
+          // Update role counts
+          const counts = response.roleCount || {};
+          document.getElementById('ra-manager-count').textContent = counts.MANAGER || 0;
+          document.getElementById('ra-spoc-count').textContent = counts.DATA_SPOC || 0;
+          document.getElementById('ra-employee-count').textContent = counts.EMPLOYEE || 0;
+          document.getElementById('ra-admin-count').textContent = counts.ADMIN || 0;
+
+          // Render table
+          this.renderRoleAssignmentTable();
+        }
+      })
+      .catch(error => {
+        console.error('[Admin] Error loading role assignment data:', error);
+      });
+  },
+
+  /**
+   * Filter role assignment list
+   */
+  filterRoleAssignment: function() {
+    const search = this.raState.search;
+    if (!search) {
+      this.raState.filtered = this.raState.employees;
+    } else {
+      this.raState.filtered = this.raState.employees.filter(e =>
+        (e.full_name || '').toLowerCase().includes(search) ||
+        (e.email || '').toLowerCase().includes(search) ||
+        (e.employee_no || '').toLowerCase().includes(search)
+      );
+    }
+    this.renderRoleAssignmentTable();
+  },
+
+  /**
+   * Render role assignment table with dropdown per employee
+   */
+  renderRoleAssignmentTable: function() {
+    const state = this.raState;
+    const tbody = document.getElementById('ra-tbody');
+    const pageInfo = document.getElementById('ra-page-info');
+    const prevBtn = document.getElementById('ra-prev-btn');
+    const nextBtn = document.getElementById('ra-next-btn');
+
+    if (!tbody) return;
+
+    const total = state.filtered.length;
+    const maxPage = Math.max(1, Math.ceil(total / state.pageSize));
+    const start = (state.page - 1) * state.pageSize;
+    const end = Math.min(start + state.pageSize, total);
+    const pageData = state.filtered.slice(start, end);
+
+    if (pageData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="db-table__empty">No employees match your search.</td></tr>';
+    } else {
+      tbody.innerHTML = pageData.map(emp => {
+        const role = emp.role || 'EMPLOYEE';
+        return `
+          <tr>
+            <td>${this.escapeHTML(emp.employee_no)}</td>
+            <td>${this.escapeHTML(emp.full_name)}</td>
+            <td>${this.escapeHTML(emp.email)}</td>
+            <td>${this.escapeHTML(emp.department || '')}</td>
+            <td><span class="role-badge role-badge--${role.toLowerCase()}">${role}</span></td>
+            <td>
+              <select class="role-action-select" data-emp-no="${this.escapeHTML(emp.employee_no)}" aria-label="Change role for ${this.escapeHTML(emp.full_name)}">
+                <option value="EMPLOYEE" ${role === 'EMPLOYEE' ? 'selected' : ''}>Employee</option>
+                <option value="MANAGER" ${role === 'MANAGER' ? 'selected' : ''}>Manager</option>
+                <option value="DATA_SPOC" ${role === 'DATA_SPOC' ? 'selected' : ''}>Data SPOC</option>
+                <option value="ADMIN" ${role === 'ADMIN' ? 'selected' : ''}>Admin</option>
+              </select>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Attach change listeners to dropdowns
+      tbody.querySelectorAll('.role-action-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+          const empNo = e.target.dataset.empNo;
+          const newRole = e.target.value;
+          this.updateSingleRole(empNo, newRole);
+        });
+      });
+    }
+
+    if (pageInfo) pageInfo.textContent = `Page ${state.page} of ${maxPage}`;
+    if (prevBtn) prevBtn.disabled = state.page <= 1;
+    if (nextBtn) nextBtn.disabled = state.page >= maxPage;
+  },
+
+  /**
+   * Update a single employee's role
+   * @param {string} empNo
+   * @param {string} newRole
+   */
+  updateSingleRole: function(empNo, newRole) {
+    API.updateEmployeeRole(empNo, newRole)
+      .then(response => {
+        if (response.success) {
+          this.showNotification(`Role updated: ${empNo} → ${newRole}`, 'success');
+
+          // Update local state
+          const emp = this.raState.employees.find(e => e.employee_no === empNo);
+          if (emp) emp.role = newRole;
+
+          // Refresh counts
+          this.loadRoleCounts();
+        } else {
+          this.showNotification(response.message || 'Failed to update role', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('[Admin] Error updating role:', error);
+        this.showNotification('Error updating role: ' + error.message, 'error');
+      });
+  },
+
+  /**
+   * Handle bulk role CSV upload
+   */
+  handleBulkRoleUpload: function() {
+    const fileInput = document.getElementById('ra-bulk-csv-input');
+    if (!fileInput || !fileInput.files.length) return;
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const csvText = e.target.result;
+      const lines = csvText.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) {
+        this.showNotification('CSV must have a header and at least 1 row', 'error');
+        return;
+      }
+
+      const headers = this.parseCSVLine(lines[0]);
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = this.parseCSVLine(lines[i]);
+        const row = {};
+        headers.forEach((h, idx) => { row[h.trim()] = (values[idx] || '').trim(); });
+        rows.push(row);
+      }
+
+      API.updateRolesBulk({ headers: headers, rows: rows })
+        .then(response => {
+          if (response.success) {
+            this.showNotification(response.message || `${response.updated} roles updated`, 'success');
+            this.loadRoleAssignmentData();
+          } else {
+            this.showNotification(response.message || 'Bulk update failed', 'error');
+          }
+        })
+        .catch(error => {
+          this.showNotification('Error: ' + error.message, 'error');
+        });
+    };
+
+    reader.readAsText(file);
   },
 
   /**
