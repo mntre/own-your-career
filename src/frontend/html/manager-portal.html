@@ -65,14 +65,14 @@
         </div>
 
         <!-- Employee Header Info -->
-        <div class="employee-header">
-          <div class="employee-field">
+        <div class="employee-header" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+          <div class="form-group">
             <label>Employee Name</label>
-            <div class="employee-display" id="assessmentEmployeeName">—</div>
+            <input type="text" id="assessmentEmployeeName" readonly class="disabled-field" value="—" />
           </div>
-          <div class="employee-field">
+          <div class="form-group">
             <label>Band / Grade</label>
-            <div class="employee-display" id="assessmentEmployeeBand">—</div>
+            <input type="text" id="assessmentEmployeeBand" readonly class="disabled-field" value="—" />
           </div>
         </div>
 
@@ -131,62 +131,87 @@
 
     <!-- Step 4: Feed Forward Section -->
     <section class="step-section" id="feedForwardSection" style="display: none;">
-      <div class="card">
-        <div class="card__header">
-          <span class="step-badge">Step 4</span>
-          Feed Forward / Manager Assessment
+      <div class="skills-assessment-card">
+        <div class="skills-header">
+          <h2 class="skills-title">
+            <span class="step-badge">STEP 4</span>
+            Feed Forward / Manager Assessment
+          </h2>
+          <div class="employee-info">
+            <p class="employee-info__subtitle">Provide feedback and development guidance to the employee</p>
+          </div>
         </div>
-        <form id="feedForwardForm" class="feedforward-form">
-          <div class="form-group">
-            <label for="feedForwardEmployeeSelect">Select Employee</label>
-            <select id="feedForwardEmployeeSelect" required aria-label="Select employee for feed forward">
-              <option value="">-- Choose an employee --</option>
-            </select>
-          </div>
 
-          <div class="feedforward-summary">
-            <h3>Employee Summary</h3>
-            <div class="summary-cards">
-              <div class="summary-card">
-                <p class="summary-label">OKR Achievement</p>
-                <p class="summary-value" id="okrAchievementValue">—</p>
-              </div>
-              <div class="summary-card">
-                <p class="summary-label">Skills Assessment</p>
-                <p class="summary-value" id="skillsAssessmentValue">—</p>
-              </div>
-              <div class="summary-card">
-                <p class="summary-label">Employee Self-Assessment</p>
-                <p class="summary-value" id="selfAssessmentStatus">—</p>
-              </div>
-            </div>
+        <!-- Employee Header Info -->
+        <div class="employee-header" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+          <div class="form-group">
+            <label>Employee Name</label>
+            <input type="text" id="feedForwardEmployeeName" readonly class="disabled-field" value="—" />
           </div>
+          <div class="form-group">
+            <label>Band / Grade</label>
+            <input type="text" id="feedForwardEmployeeBand" readonly class="disabled-field" value="—" />
+          </div>
+        </div>
+
+        <!-- Employee Summary Cards -->
+        <div class="feedforward-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; padding: 1.5rem; background-color: #f9fbfb; border-radius: 8px; border: 1px solid var(--color-teal-soft);">
+          <div class="summary-card-item">
+            <p class="summary-label" style="color: #666; font-size: 0.9rem; margin-bottom: 0.5rem;">OKR Achievement</p>
+            <p class="summary-value" id="feedForwardOKRValue" style="font-size: 1.25rem; font-weight: 600; color: var(--color-primary);">—</p>
+          </div>
+          <div class="summary-card-item">
+            <p class="summary-label" style="color: #666; font-size: 0.9rem; margin-bottom: 0.5rem;">Skills Assessment</p>
+            <p class="summary-value" id="feedForwardSkillsValue" style="font-size: 1.25rem; font-weight: 600; color: var(--color-primary);">—</p>
+          </div>
+          <div class="summary-card-item">
+            <p class="summary-label" style="color: #666; font-size: 0.9rem; margin-bottom: 0.5rem;">Self-Assessment Status</p>
+            <p class="summary-value" id="feedForwardSelfAssessmentValue" style="font-size: 1.25rem; font-weight: 600; color: var(--color-primary);">—</p>
+          </div>
+        </div>
+
+        <!-- Feed Forward Form -->
+        <form id="feedForwardForm" class="skills-form">
+          <p class="form-guidance" style="color: #666; font-size: 0.95rem; margin-bottom: var(--spacing-lg);">Provide constructive feedback and development guidance based on the employee's performance, OKR achievement, and self-assessment. All fields are mandatory.</p>
 
           <div class="form-group">
-            <label for="feedForwardComments">Feed Forward Comments</label>
+            <label for="feedForwardQuestion1">1. What are the key areas for improvement?</label>
             <textarea
-              id="feedForwardComments"
-              placeholder="Provide constructive feedback and development opportunities..."
-              aria-label="Feed forward comments for the employee"
+              id="feedForwardQuestion1"
+              name="q1"
+              placeholder="Identify specific areas where the employee can develop and improve..."
+              aria-label="Key areas for improvement"
               required
             ></textarea>
-            <p class="form-hint">Share specific observations, strengths, and development areas.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="feedForwardQuestion2">2. What support, coaching, or resources are required to help this employee succeed?</label>
+            <textarea
+              id="feedForwardQuestion2"
+              name="q2"
+              placeholder="Describe the support, coaching, training, tools, or resources needed for success..."
+              aria-label="Support and resources needed"
+              required
+            ></textarea>
           </div>
 
           <div class="form-group">
             <label for="performanceRating">Overall Performance Rating</label>
-            <select id="performanceRating" required aria-label="Select overall performance rating">
+            <select id="performanceRating" name="rating" required aria-label="Select overall performance rating">
               <option value="">-- Select rating --</option>
-              <option value="exceeded">Exceeded Expectations (>101%)</option>
+              <option value="exceeded">Exceeded Expectations (≥101%)</option>
               <option value="achieved">Achieved (90.1-100%)</option>
               <option value="needs-improvement">Needs Improvement (81-90%)</option>
               <option value="failed">Failed (<80%)</option>
             </select>
           </div>
 
-          <div class="form-actions">
-            <button type="button" class="btn btn--secondary" id="backFromFeedForwardBtn" aria-label="Back to team overview">Back</button>
-            <button type="submit" class="btn btn--primary" aria-label="Save feed forward assessment">Save Feed Forward</button>
+          <!-- Form Actions -->
+          <div class="form-actions skills-actions">
+            <button type="button" class="btn btn--secondary" id="backFromFeedForwardBtn" aria-label="Back to team overview">Back to My Team</button>
+            <button type="button" class="btn btn--secondary" id="saveFeedForwardDraftBtn" aria-label="Save draft of feed forward">Save Draft</button>
+            <button type="submit" class="btn btn--primary" aria-label="Submit feed forward assessment">Submit Feed Forward</button>
           </div>
         </form>
       </div>
@@ -194,56 +219,65 @@
 
     <!-- Step 5: Acknowledgement Section -->
     <section class="step-section" id="acknowledgementSection" style="display: none;">
-      <div class="card">
-        <div class="card__header">
-          <span class="step-badge">Step 5</span>
-          Manager Acknowledgement
+      <div class="skills-assessment-card">
+        <div class="skills-header">
+          <h2 class="skills-title">
+            <span class="step-badge">STEP 5</span>
+            Acknowledgement (Manager)
+          </h2>
+          <div class="employee-info">
+            <p class="employee-info__subtitle">Confirm that the performance review discussion has taken place</p>
+          </div>
         </div>
+
         <form id="acknowledgementForm" class="acknowledgement-form">
+          <!-- Employee Selection -->
           <div class="form-group">
-            <label for="acknowledgementEmployeeSelect">Select Employee</label>
-            <select id="acknowledgementEmployeeSelect" required aria-label="Select employee for acknowledgement">
-              <option value="">-- Choose an employee --</option>
-            </select>
+            <label for="acknowledgementEmployeeName">Acknowledgement: <span id="acknowledgementEmployeeNameValue">—</span></label>
+            <p class="form-guidance" style="color: #666; font-size: 0.9rem; margin-top: var(--spacing-xs);">Confirm that the performance review discussion has taken place</p>
           </div>
 
-          <div class="acknowledgement-info">
-            <h3>Review Summary</h3>
-            <div class="summary-cards">
-              <div class="summary-card">
-                <p class="summary-label">Overall Performance Rating</p>
-                <p class="summary-value" id="ratingValue">—</p>
-              </div>
-              <div class="summary-card">
-                <p class="summary-label">Feed Forward Status</p>
-                <p class="summary-value" id="feedForwardStatusValue">—</p>
+          <!-- Confirmation Alert Box -->
+          <div class="alert alert--info" style="background-color: #fffaed; border-left: 4px solid #f9a825; border-radius: var(--radius-md); padding: var(--spacing-lg); margin: var(--spacing-lg) 0;">
+            <div style="display: flex; gap: var(--spacing-md);">
+              <div style="font-size: 1.5rem; flex-shrink: 0;">⚠</div>
+              <div>
+                <p style="font-weight: 600; color: #f9a825; margin-bottom: var(--spacing-xs);">Confirmation Required</p>
+                <p style="color: #333; font-size: 0.95rem; margin: 0;">
+                  Check the box below to confirm that the mid-year performance review discussion has taken place with the employee.
+                </p>
               </div>
             </div>
           </div>
 
-          <div class="form-group">
-            <label for="acknowledgementComment">Acknowledgement Comments (Optional)</label>
-            <textarea
-              id="acknowledgementComment"
-              placeholder="Optional: Add any final notes..."
-              aria-label="Optional acknowledgement comments"
-            ></textarea>
-          </div>
-
-          <div class="form-group form-group--checkbox">
+          <!-- Confirmation Checkbox -->
+          <div class="form-group form-group--checkbox" style="background-color: #fffef9; border: 1px solid var(--color-teal-soft); border-radius: var(--radius-md); padding: var(--spacing-lg); margin: var(--spacing-lg) 0;">
             <input
               type="checkbox"
               id="confirmAcknowledgement"
               required
               aria-label="Confirm that the mid-year performance review has taken place"
+              style="width: auto; margin-right: var(--spacing-md); cursor: pointer; transform: scale(1.2);"
             />
-            <label for="confirmAcknowledgement" class="label--inline">
-              I confirm that the mid-year performance review discussion has taken place with the employee.
+            <label for="confirmAcknowledgement" class="label--inline" style="cursor: pointer; font-weight: 500; color: var(--color-black);">
+              I confirm that the mid-year performance review discussion has taken place with <strong id="confirmEmployeeName">—</strong>.
             </label>
           </div>
 
-          <div class="form-actions">
-            <button type="button" class="btn btn--secondary" id="backFromAcknowledgementBtn" aria-label="Back to team overview">Back</button>
+          <!-- Optional Comments -->
+          <div class="form-group">
+            <label for="acknowledgementComment">Comment (optional)</label>
+            <textarea
+              id="acknowledgementComment"
+              placeholder="Add any additional comments..."
+              aria-label="Optional acknowledgement comments"
+              style="min-height: 120px; resize: vertical;"
+            ></textarea>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="form-actions skills-actions">
+            <button type="button" class="btn btn--secondary" id="backFromAcknowledgementBtn" aria-label="Back to team overview">Back to My Team</button>
             <button type="submit" class="btn btn--primary" aria-label="Submit manager acknowledgement">Submit Acknowledgement</button>
           </div>
         </form>
