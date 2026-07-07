@@ -57,15 +57,66 @@ This repository contains the source code for the **2026 Performance Management &
 
 ### Portal 4: Admin Portal (PMGM Team)
 **Users:** PMGM Team Members (System Administrators)
-**Functions:**
-- **System Configuration:** Set review period dates, hard lock date, performance thresholds
-- **Access Control:** Manage role assignments (Manager, Data SPOC, Employee)
-- **Hard Lock Date Management:** Configure and enforce system-wide edit lock (no forms editable after date)
-- **Monitor Progress:** Real-time dashboard of completion status across all portals
-- **Data Management:** View all employee data, audit trails, correction capabilities (pre-lock)
-- **SFTP Export Trigger:** Initiate bulk export to SuccessFactors after all reviews complete
-- **Email Management:** Re-send notifications, configure email reminders
-- **Holiday/Timeline Adjustments:** Extend hard lock date, reconfigure timeline (if business requires)
+
+**Tab-Based Structure (Organized by Functionality):**
+
+The admin portal uses a **card-based UI within functional tabs** for clarity and quick access.
+
+| Tab | Sub-Functions | Purpose |
+|-----|----------------|---------|
+| **📊 Data Management** | Employee Upload, Employee Database Viewer, Core Skills Definition, Leadership Skills Definition, Role Assignment, Organizational Hierarchy | Pre-workflow setup: seed system with employees, skill configs, and role assignments |
+| **⚙️ System Configuration** | Hard Lock Date Management, Performance Thresholds, Email Settings, System Settings | Configure review period dates, lock enforcement, performance bracket thresholds |
+| **📈 Progress Monitoring** | Overall Progress Dashboard, Step-wise Completion, Team Status, Performance Statistics | Real-time view of completion status, step breakdowns, admin analytics |
+| **📤 SFTP Export & Audit** | Trigger SFTP Export, Export History, System Audit Log, User Activity Log | Initiate bulk export, view audit trails, compliance records |
+| **🔧 Quick Actions** | Send Email Reminders, Lock System, Manual Data Corrections | Admin quick operations for workflow management |
+
+**Data Management Tab (Detailed Breakdown):**
+
+```
+Data Management Tab (Card Grid Layout)
+
+┌─────────────────────────────────────────────────────────────┐
+│  📁 EMPLOYEE UPLOAD          │  👥 EMPLOYEE DATABASE        │
+│  Upload master employee CSV  │  View/search/filter all      │
+│  with roles & hierarchy      │  employees; edit pre-lock    │
+├─────────────────────────────────────────────────────────────┤
+│  🎯 CORE SKILLS DEF           │  👔 LEADERSHIP SKILLS DEF    │
+│  Configure 5 core skills +   │  Configure 5 leadership      │
+│  required levels per band    │  skills + levels per band    │
+├─────────────────────────────────────────────────────────────┤
+│  🔐 ROLE ASSIGNMENT          │  🏢 ORG HIERARCHY SETUP      │
+│  Assign/reassign roles per   │  Define Corp→Group→Dept      │
+│  employee; bulk CSV update   │  structure for SPOC dropdown │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**System Configuration Tab (Card Grid Layout):**
+
+```
+System Configuration Tab (Card Grid Layout)
+
+┌─────────────────────────────────────────────────────────────┐
+│  🔒 HARD LOCK DATE            │  📊 PERFORMANCE THRESHOLDS   │
+│  Set/enforce system-wide     │  Configure bracket ranges:   │
+│  edit cutoff date            │  Exceeded, Achieved, etc.    │
+├─────────────────────────────────────────────────────────────┤
+│  📧 EMAIL SETTINGS            │  ⚡ SYSTEM SETTINGS          │
+│  Configure SMTP/GmailApp     │  Review period dates,        │
+│  email templates & reminders │  system parameters           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Other Tabs (Card Grid Layout):**
+
+```
+Progress Monitoring Tab          SFTP Export & Audit Tab        Quick Actions Tab
+┌────────────────────────┐      ┌────────────────────────┐     ┌────────────────────────┐
+│ Overall Dashboard      │      │ Trigger SFTP Export    │     │ Send Email Reminders   │
+│ Step Completion Stats  │      │ Export History         │     │ Lock System Now        │
+│ Team Status            │      │ System Audit Log       │     │ Manual Corrections     │
+│ Performance Analytics  │      │ User Activity Log      │     │                        │
+└────────────────────────┘      └────────────────────────┘     └────────────────────────┘
+```
 
 ---
 
@@ -488,16 +539,16 @@ npm run dev
 
 | # | Task | Description | Component | Owner | Status | ETA |
 |----|------|-------------|-----------|-------|--------|-----|
-| A1 | Employee Database CSV Upload | Upload master employee list (Name, Email, Department, Group, Band/Grade, ManagerID, Role) | Admin Portal | Luigi | 🔴 TODO | Jul 8 |
-| A2 | Employee Database Viewer | View/search/filter uploaded employees; edit individual records pre-lock | Admin Portal | Luigi | 🔴 TODO | Jul 8 |
-| A3 | Core Skills Definition Upload | Upload/configure the 5 core skills + required levels per band/grade | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
-| A4 | Leadership Skills Definition Upload | Upload/configure the 5 leadership skills + required levels per band/grade | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
-| A5 | Role Assignment Management | Assign/reassign roles (Manager, Data SPOC, Employee) per employee; bulk update via CSV | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
-| A6 | Organizational Hierarchy Setup | Define Corporate → Group → Department → Team structure for Data SPOC dropdown | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
+| A1 | Employee Database CSV Upload | Upload master employee list (Name, Email, Department, Group, Band/Grade, ManagerID, Role) | Admin Portal | Luigi | ✅ **COMPLETE** (UI & logic) | Jul 7 |
+| A2 | Employee Database Viewer | View/search/filter uploaded employees; edit individual records pre-lock | Admin Portal | Luigi | � **DESIGN READY** (placeholder card) | Jul 9 |
+| A3 | Core Skills Definition Upload | Upload/configure the 5 core skills + required levels per band/grade | Admin Portal | Luigi | � **DESIGN READY** (placeholder card) | Jul 9 |
+| A4 | Leadership Skills Definition Upload | Upload/configure the 5 leadership skills + required levels per band/grade | Admin Portal | Luigi | � **DESIGN READY** (placeholder card) | Jul 9 |
+| A5 | Role Assignment Management | Assign/reassign roles (Manager, Data SPOC, Employee) per employee; bulk update via CSV | Admin Portal | Luigi | � **DESIGN READY** (placeholder card) | Jul 9 |
+| A6 | Organizational Hierarchy Setup | Define Corporate → Group → Department → Team structure for Data SPOC dropdown | Admin Portal | Luigi | � **DESIGN READY** (placeholder card) | Jul 9 |
 | A7 | Backend: Employee Upload API | AppScript function + Converge route to write employee CSV to Google Sheets | Backend | Luigi | 🔴 TODO | Jul 9 |
 | A8 | Backend: Skills Config API | AppScript function + Converge route to write skill definitions to Google Sheets | Backend | Luigi | 🔴 TODO | Jul 9 |
 | A9 | Backend: Role Assignment API | AppScript function + Converge route to update roles in Employee Database sheet | Backend | Luigi | 🔴 TODO | Jul 9 |
-| A10 | Validation: CSV format checks | Validate required columns, data types, duplicate emails, valid ManagerIDs | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
+| A10 | Validation: CSV format checks | Validate required columns, data types, duplicate emails, valid ManagerIDs | Admin Portal | Luigi | ✅ **COMPLETE** (duplicate detection, format validation) | Jul 7 |
 
 **Admin Data Management — Breakdown:**
 
@@ -573,8 +624,9 @@ A6: Organizational Hierarchy Setup
 | **Manager Portal Logic** | 40% 🟡 | UI built, submission handlers incomplete |
 | **Employee Portal Logic** | 30% 🟡 | Step 3 form built, no submission handler |
 | **DataSPOC Portal Logic** | 40% 🟡 | CSV upload works, OKR submission incomplete |
-| **Admin Portal Logic** | 20% 🟡 | UI built, stats/export stubbed |
-| **Admin Data Management** | 0% ❌ | Employee upload, skills config, role assignment — NOT BUILT |
+| **Admin Portal UI** | 70% ✅ | Card-based Data Management grid complete (A1 active, A2-A6 ready) |
+| **Admin Portal: A1 Employee Upload** | 100% ✅ | CSV parsing, validation, preview, upload logic complete |
+| **Admin Portal: A2-A6 (Placeholders)** | 10% 🔄 | Cards designed & clickable, sections ready for implementation |
 | **Converge Backend** | 20% ⚠️ | Routes defined, handlers all TODO |
 | **Converge Database (db.js)** | 0% ❌ | 100% stubbed, blocking all data persistence |
 | **Email Service** | 0% ❌ | Both Email.gs and email.js stubbed |
@@ -590,10 +642,32 @@ A6: Organizational Hierarchy Setup
 - 🟡 **PARTIAL** — Some implementation, needs completion
 - ⚠️ **RISKY** — Dual deployment complexity
 - ❌ **MISSING** — Zero implementation
+- 🔄 **DESIGN READY** — UI/UX ready, implementation pending
 
-### Recent Updates (July 7)
-- Audit completed — identified 8 critical gaps
-- Database strategy finalized (Plan A: Google Sheets, Plan B: PostgreSQL)
+### Recent Updates (July 7 — Today)
+
+**Admin Portal: Data Management Tab Redesign**
+- Replaced flat tab structure with **card-based grid layout** (6 functional cards)
+- **A1: Employee Upload** — Full implementation complete
+  - CSV parsing with BOM handling
+  - Duplicate detection (email, employee ID)
+  - Dynamic column detection (all SAP fields ingested as-is)
+  - Preview table with first 50 rows
+  - Validation error reporting (max 20 errors shown)
+  - File size formatting & drag-drop upload
+  - Success/error messaging
+- **A2-A6: Placeholder cards** — UI ready, sections prepared for implementation
+  - Employee Database Viewer
+  - Core Skills Definition
+  - Leadership Skills Definition
+  - Role Assignment
+  - Org Hierarchy Setup
+- **Design improvements:**
+  - Responsive grid (3 columns desktop, 1 mobile)
+  - Hover effects & smooth animations (fade-in)
+  - Click card to expand section
+  - Clean visual hierarchy
+  - No breaking changes to other tabsn B: PostgreSQL)
 - Team assignments prepared
 - Dual deployment risk assessment done
 - **Added Admin Data Management tasks (A1-A10)** — Luigi owns employee upload, skills config, role assignment

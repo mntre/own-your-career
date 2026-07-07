@@ -257,6 +257,15 @@ const APIConverge = {
    */
   getAuditLog: async function() {
     return this.request('GET', '/admin/audit-log');
+  },
+
+  /**
+   * Upload employee database CSV data (all columns as-is)
+   * @param {Object} data - { headers: string[], rows: Object[] }
+   * @returns {Promise<Object>} {success, message}
+   */
+  uploadEmployeeDatabase: async function(data) {
+    return this.request('POST', '/admin/upload-employees', data);
   }
 };
 

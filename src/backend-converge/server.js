@@ -53,9 +53,13 @@ function createServer() {
 /**
  * Starts the server
  */
-function startServer() {
+async function startServer() {
   const PORT = process.env.PORT || 3001;
   const app = createServer();
+
+  // Initialize database
+  const { initDB } = require('./db');
+  await initDB();
 
   app.listen(PORT, () => {
     console.log(`[OYC] Server running on port ${PORT}`);

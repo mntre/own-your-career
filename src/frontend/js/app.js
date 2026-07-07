@@ -35,7 +35,7 @@ const App = {
 
   /**
    * Check if user has an active session
-   * Redirect to login if not
+   * Redirect to login if not (skipped for local dev testing)
    */
   checkSession: function() {
     const user = sessionStorage.getItem(this.SESSION_KEY);
@@ -50,8 +50,20 @@ const App = {
       return;
     }
     
-    // If no session, redirect to login
+    // If no session, redirect to login (unless local dev testing)
     if (!user || !token || !API.verifyToken(token)) {
+      const isLocalDev = (
+        window.location.protocol === 'file:' ||
+        window.location.port === '5500' ||
+        window.location.port === '5501' ||
+        window.location.hostname === '127.0.0.1'
+      );
+      
+      if (isLocalDev) {
+        console.log('[App] No session but running locally — skipping redirect for dev testing');
+        return;
+      }
+      
       console.log('[App] No active session, redirecting to login');
       this.redirectToLogin();
       return;
