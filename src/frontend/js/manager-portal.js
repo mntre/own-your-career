@@ -118,10 +118,30 @@ function setupEventListeners() {
 
   if (skillsForm) {
     skillsForm.addEventListener('submit', (e) => handleSkillsFormSubmit(e));
+    
+    // Save Draft button
+    const saveDraftBtn = document.getElementById('saveDraftBtn');
+    if (saveDraftBtn) {
+      saveDraftBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        handleSaveDraft();
+      });
+    }
   }
+  
   if (feedForwardForm) {
     feedForwardForm.addEventListener('submit', (e) => handleFeedForwardFormSubmit(e));
+    
+    // Save Draft button for Feed Forward
+    const saveFeedForwardDraftBtn = document.getElementById('saveFeedForwardDraftBtn');
+    if (saveFeedForwardDraftBtn) {
+      saveFeedForwardDraftBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        handleSaveFeedForwardDraft();
+      });
+    }
   }
+  
   if (acknowledgementForm) {
     acknowledgementForm.addEventListener('submit', (e) => handleAcknowledgementFormSubmit(e));
   }
@@ -433,28 +453,606 @@ function createTeamTableRow(member) {
     step5Complete: member.step5Complete || false
   };
 
-  const step1Status = status.step1Complete ? '✓ Complete' : '○ Pending';
-  const step4Status = status.step4Complete ? '✓ Complete' : '○ Pending';
-  const step5Status = status.step5Complete ? '✓ Complete' : '○ Pending';
+  // Determine RAG status for each step (Complete / Pending / Locked)
+  const step1RAG = getStepRAGStatus(status, 'step1');
+  const step4RAG = getStepRAGStatus(status, 'step4');
+  const step5RAG = getStepRAGStatus(status, 'step5');
 
-  const step1Class = status.step1Complete ? 'status-complete' : 'status-pending';
-  const step4Class = status.step4Complete ? 'status-complete' : 'status-pending';
-  const step5Class = status.step5Complete ? 'status-complete' : 'status-pending';
+  // Determine which step is pending/complete and what action button to show
+  const actionButton = getActionButton(member.employeeId, status);
 
   row.innerHTML = `
     <td>${member.name || 'N/A'}</td>
     <td>${member.department || 'N/A'}</td>
     <td>${member.band || 'N/A'}</td>
-    <td><span class="status-badge ${step1Class}">${step1Status}</span></td>
-    <td><span class="status-badge ${step4Class}">${step4Status}</span></td>
-    <td><span class="status-badge ${step5Class}">${step5Status}</span></td>
-    <td>
-      <button class="btn btn--small btn--secondary" onclick="viewEmployeeAssessments('${member.employeeId}')">View</button>
-      <button class="btn btn--small btn--secondary" onclick="viewSyncStatus('${member.employeeId}')">Sync Status</button>
-    </td>
+    <td>${createRAGIndicator(step1RAG, member.employeeId)}</td>
+    <td>${createRAGIndicator(step4RAG, member.employeeId)}</td>
+    <td>${createRAGIndicator(step5RAG, member.employeeId)}</td>
+    <td>${actionButton}</td>
   `;
 
   return row;
+}
+
+/**
+ * Determines which action button to show based on workflow status.
+ * @param {string} employeeId - Employee ID
+ * @param {Object} status - Workflow status object
+ * @returns {string} HTML string for the action button
+ */
+function getActionButton(employeeId, status) {
+  // Determine pending step priority: Step 1 → Step 4 → Step 5
+  if (!status.step1Complete) {
+    return `<button class="btn btn--action btn--primary" onclick="startSkillsAssessment('${employeeId}')">Assess Skills</button>`;
+  }
+  if (!status.step4Complete) {
+    return `<button class="btn btn--action btn--primary" onclick="startFeedForward('${employeeId}')">Feed Forward</button>`;
+  }
+  if (!status.step5Complete) {
+    return `<button class="btn btn--action btn--primary" onclick="startAcknowledgement('${employeeId}')">Acknowledge</button>`;
+  }
+  // All complete - show view button
+  return `<button class="btn btn--action" onclick="viewEmployeeRecord('${employeeId}')">View Record</button>`;
+}
+
+/**
+ * Starts Skills Assessment form for an employee.
+ * @param {string} employeeId - Employee ID
+ */
+function startSkillsAssessment(employeeId) {
+  console.log(`[ManagerPortal] Starting Skills Assessment for employee: ${employeeId}`);
+  ManagerPortal.selectedEmployee = employeeId;
+  
+  // Load employee data and display skills form
+  loadEmployeeSkillsData(employeeId);
+  showAssessmentSection('skillsAssessmentSection');
+}
+
+/**
+ * Starts Feed Forward form for an employee.
+ * @param {string} employeeId - Employee ID
+ */
+function startFeedForward(employeeId) {
+  console.log(`[ManagerPortal] Starting Feed Forward for employee: ${employeeId}`);
+  ManagerPortal.selectedEmployee = employeeId;
+  
+  // Load employee data and display feed forward form
+  loadEmployeeFeedForwardData(employeeId);
+  showAssessmentSection('feedForwardSection');
+}
+
+/**
+ * Starts Acknowledgement form for an employee.
+ * @param {string} employeeId - Employee ID
+ */
+function startAcknowledgement(employeeId) {
+  console.log(`[ManagerPortal] Starting Acknowledgement for employee: ${employeeId}`);
+  ManagerPortal.selectedEmployee = employeeId;
+  
+  // Load employee data and display acknowledgement form
+  loadEmployeeAcknowledgementData(employeeId);
+  showAssessmentSection('acknowledgementSection');
+}
+
+/**
+ * Views the complete employee record.
+ * @param {string} employeeId - Employee ID
+ */
+function viewEmployeeRecord(employeeId) {
+  console.log(`[ManagerPortal] Viewing employee record: ${employeeId}`);
+  
+  // Could open a summary view or external employee file
+  alert(`View employee record for: ${employeeId}\nThis would open the employee file/summary view.`);
+}
+
+/**
+ * Loads skills assessment data for an employee.
+ * @param {string} employeeId - Employee ID
+ */
+function loadEmployeeSkillsData(employeeId) {
+  const employee = ManagerPortal.teamMembers.find(m => m.employeeId === employeeId);
+  if (!employee) return;
+
+  // Populate employee info
+  const nameInput = document.getElementById('assessmentEmployeeName');
+  const bandInput = document.getElementById('assessmentEmployeeBand');
+
+  if (nameInput) nameInput.value = employee.name || '—';
+  if (bandInput) bandInput.value = employee.band || '—';
+
+  // Load skills data from backend or localStorage
+  if (PLATFORM === 'APPSCRIPT') {
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result.success && result.data) {
+          populateSkillsTable(result.data, employee);
+        }
+      })
+      .withFailureHandler((error) => {
+        console.error('[ManagerPortal] Error loading skills data:', error);
+        // Load from placeholder data for testing
+        loadPlaceholderSkillsData(employeeId, employee);
+      })
+      .getSkillsAssessmentData(employeeId);
+  } else {
+    // For testing/demo
+    loadPlaceholderSkillsData(employeeId, employee);
+  }
+}
+
+/**
+ * Loads placeholder skills data for testing.
+ * @param {string} employeeId - Employee ID
+ * @param {Object} employee - Employee object
+ */
+function loadPlaceholderSkillsData(employeeId, employee) {
+  const placeholderSkills = JSON.parse(localStorage.getItem('placeholderSkillsAssessment') || '{}');
+  const skillsData = placeholderSkills[employeeId] || {
+    coreSkills: {},
+    leadershipSkills: {}
+  };
+  
+  // Generate default structure if not present
+  const fullSkillsData = {
+    coreSkills: skillsData.coreSkills || generateDefaultCoreSkills(),
+    leadershipSkills: skillsData.leadershipSkills || generateDefaultLeadershipSkills(employee)
+  };
+  
+  populateSkillsTable(fullSkillsData, employee);
+}
+
+/**
+ * Generates default core skills structure for initialization.
+ * @returns {Object} Core skills mapping
+ */
+function generateDefaultCoreSkills() {
+  const skills = {};
+  CORE_SKILLS.forEach(skill => {
+    skills[skill.id] = { level: '', remarks: '' };
+  });
+  return skills;
+}
+
+/**
+ * Generates default leadership skills structure (only for managers).
+ * @param {Object} employee - Employee object
+ * @returns {Object} Leadership skills mapping
+ */
+function generateDefaultLeadershipSkills(employee) {
+  // Only managers/leads should have leadership skills
+  const isLeader = ['GROUP_HEAD', 'DEPT_HEAD', 'TEAM_HEAD'].includes(employee.roleLevel);
+  if (!isLeader) return {};
+  
+  const skills = {};
+  LEADERSHIP_SKILLS.forEach(skill => {
+    skills[skill.id] = { level: '', remarks: '' };
+  });
+  return skills;
+}
+
+/**
+ * Populates the skills assessment table with data.
+ * @param {Object} skillsData - Skills assessment data { coreSkills, leadershipSkills }
+ * @param {Object} employee - Employee object
+ */
+function populateSkillsTable(skillsData, employee) {
+  console.log('[ManagerPortal] Populating skills table for:', employee.name);
+  
+  const coreSkillsBody = document.getElementById('coreSkillsTableBody');
+  const leadershipSkillsBody = document.getElementById('leadershipSkillsTableBody');
+
+  // Populate Core Skills table
+  if (coreSkillsBody) {
+    coreSkillsBody.innerHTML = CORE_SKILLS.map(skill => {
+      const skillData = skillsData.coreSkills[skill.id] || {};
+      const actualLevel = skillData.level || '';
+      const remarks = skillData.remarks || '';
+      
+      // Calculate RAG status: GO if actualLevel >= required level (assume required is 3)
+      const requiredLevel = 3;
+      let ragStatus = '—';
+      let ragClass = 'rag-empty';
+      
+      if (actualLevel !== '') {
+        const numeric = parseInt(actualLevel);
+        if (numeric >= requiredLevel) {
+          ragStatus = '✓ GO';
+          ragClass = 'rag-go';
+        } else {
+          ragStatus = '✗ FAIL';
+          ragClass = 'rag-fail';
+        }
+      }
+      
+      return `
+        <tr data-skill-id="${skill.id}" data-skill-type="core">
+          <td>${skill.name}</td>
+          <td style="text-align: center; font-weight: 500;">3</td>
+          <td style="text-align: center;">
+            <select class="skill-level-input" data-field="level" data-skill-id="${skill.id}">
+              <option value="">—</option>
+              <option value="0" ${actualLevel === '0' || actualLevel === 0 ? 'selected' : ''}>0 - Not Demonstrated</option>
+              <option value="1" ${actualLevel === '1' || actualLevel === 1 ? 'selected' : ''}>1 - Foundational</option>
+              <option value="2" ${actualLevel === '2' || actualLevel === 2 ? 'selected' : ''}>2 - Developing</option>
+              <option value="3" ${actualLevel === '3' || actualLevel === 3 ? 'selected' : ''}>3 - Proficient</option>
+              <option value="4" ${actualLevel === '4' || actualLevel === 4 ? 'selected' : ''}>4 - Advanced</option>
+              <option value="5" ${actualLevel === '5' || actualLevel === 5 ? 'selected' : ''}>5 - Expert</option>
+            </select>
+          </td>
+          <td style="text-align: center;">
+            <span class="rag-status ${ragClass}">${ragStatus}</span>
+          </td>
+          <td>
+            <input 
+              type="text" 
+              class="skill-remarks-input" 
+              data-field="remarks" 
+              data-skill-id="${skill.id}"
+              placeholder="Optional remarks"
+              value="${remarks}"
+            />
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Add change listeners for RAG calculation
+    coreSkillsBody.querySelectorAll('select.skill-level-input').forEach(select => {
+      select.addEventListener('change', (e) => updateRAGStatus(e, coreSkillsBody, 3));
+    });
+  }
+
+  // Populate Leadership Skills table (only if employee is a leader)
+  const isLeader = ['GROUP_HEAD', 'DEPT_HEAD', 'TEAM_HEAD'].includes(employee.roleLevel);
+  
+  if (leadershipSkillsBody) {
+    if (isLeader && skillsData.leadershipSkills && Object.keys(skillsData.leadershipSkills).length > 0) {
+      leadershipSkillsBody.innerHTML = LEADERSHIP_SKILLS.map(skill => {
+        const skillData = skillsData.leadershipSkills[skill.id] || {};
+        const actualLevel = skillData.level || '';
+        const remarks = skillData.remarks || '';
+        
+        // For leadership skills, assume expected level is 3
+        const expectedLevel = 3;
+        
+        return `
+          <tr data-skill-id="${skill.id}" data-skill-type="leadership">
+            <td>${skill.name}</td>
+            <td style="text-align: center; font-weight: 500;">3</td>
+            <td style="text-align: center;">
+              <select class="skill-level-input" data-field="level" data-skill-id="${skill.id}">
+                <option value="">—</option>
+                <option value="0" ${actualLevel === '0' || actualLevel === 0 ? 'selected' : ''}>0 - Not Demonstrated</option>
+                <option value="1" ${actualLevel === '1' || actualLevel === 1 ? 'selected' : ''}>1 - Foundational</option>
+                <option value="2" ${actualLevel === '2' || actualLevel === 2 ? 'selected' : ''}>2 - Developing</option>
+                <option value="3" ${actualLevel === '3' || actualLevel === 3 ? 'selected' : ''}>3 - Proficient</option>
+                <option value="4" ${actualLevel === '4' || actualLevel === 4 ? 'selected' : ''}>4 - Advanced</option>
+                <option value="5" ${actualLevel === '5' || actualLevel === 5 ? 'selected' : ''}>5 - Expert</option>
+              </select>
+            </td>
+            <td>
+              <input 
+                type="text" 
+                class="skill-remarks-input" 
+                data-field="remarks" 
+                data-skill-id="${skill.id}"
+                placeholder="Optional remarks"
+                value="${remarks}"
+              />
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      // Not a leader or no leadership skills needed
+      leadershipSkillsBody.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; padding: 2rem; color: #999;">
+            Leadership skills assessment not applicable to this role level.
+          </td>
+        </tr>
+      `;
+    }
+  }
+}
+
+/**
+ * Updates RAG status when skill level changes.
+ * @param {Event} e - Change event
+ * @param {HTMLElement} tableBody - Table body element
+ * @param {number} requiredLevel - Required level for GO status
+ */
+function updateRAGStatus(e, tableBody, requiredLevel) {
+  const select = e.target;
+  const row = select.closest('tr');
+  const ragCell = row.querySelector('[class*="rag-status"]');
+  
+  if (!ragCell) return;
+  
+  const actualLevel = parseInt(select.value);
+  let ragStatus = '—';
+  let ragClass = 'rag-empty';
+  
+  if (!isNaN(actualLevel)) {
+    if (actualLevel >= requiredLevel) {
+      ragStatus = '✓ GO';
+      ragClass = 'rag-go';
+    } else {
+      ragStatus = '✗ FAIL';
+      ragClass = 'rag-fail';
+    }
+  }
+  
+  // Update RAG indicator
+  ragCell.className = `rag-status ${ragClass}`;
+  ragCell.textContent = ragStatus;
+}
+
+/**
+ * Shows or hides assessment sections and updates main content.
+ * @param {string} sectionId - Section element ID to show
+ */
+function showAssessmentSection(sectionId) {
+  // Hide team overview
+  const teamSection = document.getElementById('teamOverviewSection');
+  const skillsSection = document.getElementById('skillsAssessmentSection');
+  const feedForwardSection = document.getElementById('feedForwardSection');
+  const acknowledgementSection = document.getElementById('acknowledgementSection');
+
+  if (teamSection) teamSection.style.display = 'none';
+  if (skillsSection) skillsSection.style.display = 'none';
+  if (feedForwardSection) feedForwardSection.style.display = 'none';
+  if (acknowledgementSection) acknowledgementSection.style.display = 'none';
+
+  // Show target section
+  const targetSection = document.getElementById(sectionId);
+  if (targetSection) targetSection.style.display = 'block';
+  
+  // Scroll to top
+  window.scrollTo(0, 0);
+}
+
+/**
+ * Shows the team overview section.
+ */
+function showTeamOverview() {
+  const teamSection = document.getElementById('teamOverviewSection');
+  const skillsSection = document.getElementById('skillsAssessmentSection');
+  const feedForwardSection = document.getElementById('feedForwardSection');
+  const acknowledgementSection = document.getElementById('acknowledgementSection');
+
+  if (teamSection) teamSection.style.display = 'block';
+  if (skillsSection) skillsSection.style.display = 'none';
+  if (feedForwardSection) feedForwardSection.style.display = 'none';
+  if (acknowledgementSection) acknowledgementSection.style.display = 'none';
+  
+  window.scrollTo(0, 0);
+}
+
+/**
+ * Loads feed forward data for an employee.
+ * @param {string} employeeId - Employee ID
+ */
+function loadEmployeeFeedForwardData(employeeId) {
+  const employee = ManagerPortal.teamMembers.find(m => m.employeeId === employeeId);
+  if (!employee) return;
+
+  console.log('[ManagerPortal] Loading feed forward data for:', employee.name);
+
+  // Populate employee info
+  const nameInput = document.getElementById('feedForwardEmployeeName');
+  const bandInput = document.getElementById('feedForwardEmployeeBand');
+
+  if (nameInput) nameInput.value = employee.name || '—';
+  if (bandInput) bandInput.value = employee.band || '—';
+
+  // Load feed forward summary data from backend or placeholder
+  if (PLATFORM === 'APPSCRIPT') {
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result.success && result.data) {
+          populateFeedForwardSummary(result.data);
+        }
+      })
+      .withFailureHandler((error) => {
+        console.error('[ManagerPortal] Error loading feed forward data:', error);
+        // Load from placeholder data for testing
+        loadPlaceholderFeedForwardData(employeeId);
+      })
+      .getFeedForwardData(employeeId);
+  } else {
+    // For testing/demo
+    loadPlaceholderFeedForwardData(employeeId);
+  }
+}
+
+/**
+ * Loads placeholder feed forward data for testing.
+ * @param {string} employeeId - Employee ID
+ */
+function loadPlaceholderFeedForwardData(employeeId) {
+  const placeholderOKRs = JSON.parse(localStorage.getItem('placeholderOKRs') || '{}');
+  const placeholderSkillsAssessment = JSON.parse(localStorage.getItem('placeholderSkillsAssessment') || '{}');
+  const placeholderSelfAssessment = JSON.parse(localStorage.getItem('placeholderSelfAssessment') || '{}');
+
+  const okrScore = placeholderOKRs[employeeId]?.finalScore || '—';
+  const skillsStatus = placeholderSkillsAssessment[employeeId] ? 'Completed' : 'Pending';
+  const selfAssessStatus = placeholderSelfAssessment[employeeId] ? 'Completed' : 'Pending';
+
+  const summaryData = {
+    okrScore: okrScore,
+    skillsStatus: skillsStatus,
+    selfAssessmentStatus: selfAssessStatus
+  };
+
+  populateFeedForwardSummary(summaryData);
+}
+
+/**
+ * Populates the feed forward summary cards with employee data.
+ * @param {Object} data - Summary data { okrScore, skillsStatus, selfAssessmentStatus }
+ */
+function populateFeedForwardSummary(data) {
+  const okrValue = document.getElementById('feedForwardOKRValue');
+  const skillsValue = document.getElementById('feedForwardSkillsValue');
+  const selfAssessValue = document.getElementById('feedForwardSelfAssessmentValue');
+
+  if (okrValue) {
+    if (typeof data.okrScore === 'number') {
+      okrValue.textContent = data.okrScore.toFixed(1) + '%';
+    } else {
+      okrValue.textContent = data.okrScore || '—';
+    }
+  }
+  
+  if (skillsValue) skillsValue.textContent = data.skillsStatus || '—';
+  if (selfAssessValue) selfAssessValue.textContent = data.selfAssessmentStatus || '—';
+}
+
+/**
+ * Handles "Save Draft" button click for feed forward.
+ * Saves feed forward data locally or to backend as draft (not submitted).
+ */
+function handleSaveFeedForwardDraft() {
+  console.log('[ManagerPortal] Saving feed forward draft...');
+  
+  const feedForwardForm = document.getElementById('feedForwardForm');
+  if (!feedForwardForm) return;
+  
+  // Collect form data
+  const formData = new FormData(feedForwardForm);
+  const feedForwardData = {
+    q1: document.getElementById('feedForwardQuestion1').value || '',
+    q2: document.getElementById('feedForwardQuestion2').value || '',
+    rating: document.getElementById('performanceRating').value || '',
+    dateUpdated: new Date().toISOString()
+  };
+
+  if (PLATFORM === 'APPSCRIPT') {
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result.success) {
+          alert('Feed Forward draft saved successfully! You can continue editing or submit when ready.');
+          console.log('[ManagerPortal] Feed Forward draft saved');
+        } else {
+          alert('Error saving feed forward draft: ' + result.message);
+        }
+      })
+      .withFailureHandler((error) => {
+        console.error('[ManagerPortal] Error saving feed forward draft:', error);
+        alert('Error saving feed forward draft');
+      })
+      .saveDraftFeedForward(ManagerPortal.selectedEmployee, feedForwardData);
+  } else {
+    // For demo, just alert
+    alert('Feed Forward draft saved locally (demo mode)');
+  }
+}
+
+/**
+ * Loads acknowledgement data for an employee.
+ * @param {string} employeeId - Employee ID
+ */
+function loadEmployeeAcknowledgementData(employeeId) {
+  const employee = ManagerPortal.teamMembers.find(m => m.employeeId === employeeId);
+  if (!employee) return;
+
+  console.log(`[ManagerPortal] Loading acknowledgement data for: ${employeeId} (${employee.name})`);
+
+  // Populate employee name in the form
+  const employeeNameValue = document.getElementById('acknowledgementEmployeeNameValue');
+  const confirmEmployeeName = document.getElementById('confirmEmployeeName');
+  
+  if (employeeNameValue) employeeNameValue.textContent = employee.name || '—';
+  if (confirmEmployeeName) confirmEmployeeName.textContent = employee.name || 'the employee';
+
+  // Reset form fields
+  const form = document.getElementById('acknowledgementForm');
+  if (form) {
+    form.reset();
+  }
+
+  // Load acknowledgement data from backend
+  if (PLATFORM === 'APPSCRIPT') {
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result.success && result.data) {
+          console.log('[ManagerPortal] Acknowledgement data loaded:', result.data);
+          populateAcknowledgementForm(result.data);
+        }
+      })
+      .withFailureHandler((error) => {
+        console.error('[ManagerPortal] Error loading acknowledgement data:', error);
+        // Load placeholder data for testing
+        populateAcknowledgementForm({
+          feedForwardComplete: true,
+          skillsComplete: true,
+          selfAssessmentComplete: true
+        });
+      })
+      .getManagerAcknowledgementData(employeeId);
+  } else {
+    // For testing/demo
+    populateAcknowledgementForm({
+      feedForwardComplete: true,
+      skillsComplete: true,
+      selfAssessmentComplete: true
+    });
+  }
+}
+
+/**
+ * Populates the acknowledgement form with review summary data.
+ * @param {Object} ackData - Acknowledgement data
+ */
+function populateAcknowledgementForm(ackData) {
+  console.log('[ManagerPortal] Populating acknowledgement form:', ackData);
+  
+  // The form is now simpler - just shows the employee name (already populated)
+  // and the confirmation checkbox
+}
+
+
+/**
+ * Determines the RAG status for a step (Completed / Pending / Locked).
+ * @param {Object} status - Workflow status object
+ * @param {string} stepKey - Step key (e.g., 'step1', 'step4', 'step5')
+ * @returns {string} RAG status: 'completed', 'pending', or 'locked'
+ */
+function getStepRAGStatus(status, stepKey) {
+  if (stepKey === 'step1') {
+    return status.step1Complete ? 'completed' : 'pending';
+  }
+  if (stepKey === 'step4') {
+    // Step 4 is locked until Step 1 is complete
+    return status.step1Complete ? 
+      (status.step4Complete ? 'completed' : 'pending') : 
+      'locked';
+  }
+  if (stepKey === 'step5') {
+    // Step 5 is locked until Step 1 AND Step 4 are complete
+    const step1And4Complete = status.step1Complete && status.step4Complete;
+    return step1And4Complete ? 
+      (status.step5Complete ? 'completed' : 'pending') : 
+      'locked';
+  }
+  return 'pending';
+}
+
+/**
+ * Creates a RAG status indicator badge.
+ * @param {string} ragStatus - Status: 'completed', 'pending', or 'locked'
+ * @param {string} employeeId - Employee ID (for linking)
+ * @returns {string} HTML string for the badge
+ */
+function createRAGIndicator(ragStatus, employeeId) {
+  if (ragStatus === 'completed') {
+    return `<button class="rag-indicator rag-go rag-button" onclick="viewEmployeeRecord('${employeeId}')">✓ Complete</button>`;
+  }
+  if (ragStatus === 'locked') {
+    return `<span class="rag-indicator rag-locked">🔒 Locked</span>`;
+  }
+  return `<span class="rag-indicator rag-fail">— Pending</span>`;
 }
 
 /* --------------------------------------------------------------------------
@@ -806,6 +1404,73 @@ function handleConflictDialog(conflict, step, portalData, employeeId) {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Handles "Save Draft" button click for skills assessment.
+ * Saves assessment data locally or to backend as draft (not submitted).
+ */
+function handleSaveDraft() {
+  console.log('[ManagerPortal] Saving draft...');
+  
+  const skillsForm = document.getElementById('skillsAssessmentForm');
+  if (!skillsForm) return;
+  
+  // Collect form data
+  const skillsData = {
+    coreSkills: {},
+    leadershipSkills: {}
+  };
+  
+  // Collect core skills
+  const coreRows = document.querySelectorAll('#coreSkillsTableBody tr[data-skill-type="core"]');
+  coreRows.forEach(row => {
+    const skillId = row.dataset.skillId;
+    const levelInput = row.querySelector('select[data-field="level"]');
+    const remarksInput = row.querySelector('input[data-field="remarks"]');
+    
+    if (levelInput && remarksInput) {
+      skillsData.coreSkills[skillId] = {
+        level: levelInput.value || '',
+        remarks: remarksInput.value || ''
+      };
+    }
+  });
+  
+  // Collect leadership skills
+  const leaderRows = document.querySelectorAll('#leadershipSkillsTableBody tr[data-skill-type="leadership"]');
+  leaderRows.forEach(row => {
+    const skillId = row.dataset.skillId;
+    const levelInput = row.querySelector('select[data-field="level"]');
+    const remarksInput = row.querySelector('input[data-field="remarks"]');
+    
+    if (levelInput && remarksInput) {
+      skillsData.leadershipSkills[skillId] = {
+        level: levelInput.value || '',
+        remarks: remarksInput.value || ''
+      };
+    }
+  });
+  
+  if (PLATFORM === 'APPSCRIPT') {
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result.success) {
+          alert('Draft saved successfully! You can continue editing or submit when ready.');
+          console.log('[ManagerPortal] Draft saved');
+        } else {
+          alert('Error saving draft: ' + result.message);
+        }
+      })
+      .withFailureHandler((error) => {
+        console.error('[ManagerPortal] Error saving draft:', error);
+        alert('Error saving draft');
+      })
+      .saveDraftSkillsAssessment(ManagerPortal.selectedEmployee, skillsData);
+  } else {
+    // For demo, just alert
+    alert('Draft saved locally (demo mode)');
+  }
+}
+
+/**
  * Handles skills assessment form submission with conflict detection.
  * @param {Event} e - Form submit event
  */
@@ -849,15 +1514,29 @@ function handleFeedForwardFormSubmit(e) {
   
   console.log('[ManagerPortal] Feed forward form submitted');
   
-  const formData = new FormData(document.getElementById('feedForwardForm'));
-  const feedForwardData = Object.fromEntries(formData);
-  feedForwardData.managerId = ManagerPortal.currentManager.employeeId;
+  // Collect form data
+  const q1 = document.getElementById('feedForwardQuestion1').value.trim();
+  const q2 = document.getElementById('feedForwardQuestion2').value.trim();
+  const rating = document.getElementById('performanceRating').value;
+
+  // Validate all fields are filled
+  if (!q1 || !q2 || !rating) {
+    alert('Please fill in all fields before submitting.');
+    return;
+  }
+
+  const feedForwardData = {
+    q1: q1,
+    q2: q2,
+    rating: rating,
+    dateSubmitted: new Date().toISOString()
+  };
 
   if (PLATFORM === 'APPSCRIPT') {
     google.script.run
       .withSuccessHandler((result) => {
         if (result.success) {
-          alert('Feed forward saved successfully!');
+          alert('Feed Forward saved successfully!');
           showTeamOverview();
           loadTeamMembersOverview();
         } else if (result.conflict) {
@@ -884,25 +1563,49 @@ function handleAcknowledgementFormSubmit(e) {
   
   console.log('[ManagerPortal] Acknowledgement form submitted');
   
-  const formData = new FormData(document.getElementById('acknowledgementForm'));
-  const ackData = Object.fromEntries(formData);
+  // Collect form data
+  const confirmCheckbox = document.getElementById('confirmAcknowledgement');
+  const commentField = document.getElementById('acknowledgementComment');
+  
+  if (!confirmCheckbox.checked) {
+    alert('Please check the confirmation box before submitting.');
+    return;
+  }
+
+  const ackData = {
+    confirmed: confirmCheckbox.checked,
+    comment: commentField ? commentField.value.trim() : '',
+    dateSubmitted: new Date().toISOString()
+  };
+
+  console.log('[ManagerPortal] Acknowledgement data to submit:', ackData);
 
   if (PLATFORM === 'APPSCRIPT') {
     google.script.run
       .withSuccessHandler((result) => {
         if (result.success) {
-          alert('Acknowledgement saved successfully!');
+          console.log('[ManagerPortal] Acknowledgement saved successfully');
+          alert('Acknowledgement submitted successfully! The review is now complete.');
           showTeamOverview();
           loadTeamMembersOverview();
+        } else if (result.conflict) {
+          // Handle conflict
+          handleConflictDialog(result.conflict, 'acknowledgement', ackData, ManagerPortal.selectedEmployee);
         } else {
+          console.error('[ManagerPortal] Error saving acknowledgement:', result.message);
           alert('Error saving acknowledgement: ' + result.message);
         }
       })
       .withFailureHandler((error) => {
         console.error('[ManagerPortal] Error saving acknowledgement:', error);
-        alert('Error saving acknowledgement');
+        alert('Error saving acknowledgement: ' + error.toString());
       })
-      .saveAcknowledgement(ManagerPortal.selectedEmployee, ManagerPortal.currentManager.employeeId, ackData, 'MANAGER');
+      .saveManagerAcknowledgement(ManagerPortal.selectedEmployee, ManagerPortal.currentManager.employeeId, ackData);
+  } else {
+    // For demo/local testing
+    console.log('[ManagerPortal] (Demo mode) Acknowledgement would be saved:', ackData);
+    alert('Acknowledgement submitted successfully! (Demo mode)');
+    showTeamOverview();
   }
 }
 
@@ -1087,11 +1790,28 @@ function loadPlaceholderTeamData() {
         'cs-004': { level: 4, remarks: 'Strong customer focus' },
         'cs-005': { level: 3, remarks: 'Collaborative team member' }
       },
-      leadershipSkills: null,
+      leadershipSkills: {},
       completedBy: 'MANAGER_001',
       completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
     },
-    EMP_003: {},
+    EMP_003: {
+      coreSkills: {
+        'cs-001': { level: 5, remarks: 'Expert technical knowledge' },
+        'cs-002': { level: 4, remarks: 'Very efficient' },
+        'cs-003': { level: 5, remarks: 'Quality champion' },
+        'cs-004': { level: 4, remarks: 'Excellent customer focus' },
+        'cs-005': { level: 4, remarks: 'Strong team player' }
+      },
+      leadershipSkills: {
+        'ls-001': { level: 5, remarks: 'Excellent strategic thinking' },
+        'ls-002': { level: 4, remarks: 'Good team development' },
+        'ls-003': { level: 5, remarks: 'Excellent decision making' },
+        'ls-004': { level: 5, remarks: 'Outstanding communication' },
+        'ls-005': { level: 4, remarks: 'Leads change effectively' }
+      },
+      completedBy: 'MANAGER_001',
+      completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+    },
     EMP_004: {
       coreSkills: {
         'cs-001': { level: 2, remarks: 'Need development in technical area' },
@@ -1100,11 +1820,22 @@ function loadPlaceholderTeamData() {
         'cs-004': { level: 3, remarks: 'Understands customers' },
         'cs-005': { level: 2, remarks: 'Developing collaboration skills' }
       },
-      leadershipSkills: null,
+      leadershipSkills: {},
       completedBy: 'MANAGER_001',
       completedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // 3 hours ago
     },
-    EMP_005: {}
+    EMP_005: {
+      coreSkills: {
+        'cs-001': { level: 4, remarks: 'Very capable' },
+        'cs-002': { level: 4, remarks: 'Efficient worker' },
+        'cs-003': { level: 4, remarks: 'Quality focus' },
+        'cs-004': { level: 4, remarks: 'Customer oriented' },
+        'cs-005': { level: 4, remarks: 'Good team member' }
+      },
+      leadershipSkills: {},
+      completedBy: 'MANAGER_001',
+      completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() // 5 days ago
+    }
   };
 
   // Define placeholder self-assessment data

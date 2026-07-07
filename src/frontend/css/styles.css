@@ -893,3 +893,417 @@ p {
     width: 100%;
   }
 }
+
+
+/* --------------------------------------------------------------------------
+   RAG Indicator Button (Clickable Complete Status)
+   -------------------------------------------------------------------------- */
+.rag-indicator.rag-button {
+  border: 1px solid #0a7c42;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  background-color: #e6f9f0;
+  color: #0a7c42;
+  border-radius: var(--radius-sm);
+}
+
+.rag-indicator.rag-button:hover {
+  background-color: #c8f1e8;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.rag-indicator.rag-button:focus-visible {
+  outline: 3px solid var(--color-aquamarine);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Skills Assessment Form
+   -------------------------------------------------------------------------- */
+.skills-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 2px solid var(--color-teal-soft);
+}
+
+.skills-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin: 0;
+  flex: 1;
+}
+
+.employee-info__subtitle {
+  color: #666;
+  font-size: 0.95rem;
+  margin: var(--spacing-sm) 0 0 0;
+}
+
+.employee-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+  padding: var(--spacing-lg);
+  background-color: #f9fbfb;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-teal-soft);
+}
+
+.employee-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.employee-field label {
+  font-weight: 600;
+  color: var(--color-teal-dark);
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.9rem;
+}
+
+.employee-display {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--color-black);
+  padding: var(--spacing-sm);
+}
+
+.skills-form {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.skills-section {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.skills-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-teal-dark);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: var(--spacing-lg);
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-md);
+}
+
+.skills-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--color-white);
+}
+
+.skills-table thead {
+  background-color: var(--color-teal-dark);
+  color: var(--color-white);
+  font-weight: 600;
+}
+
+.skills-table th {
+  padding: var(--spacing-md) var(--spacing-lg);
+  text-align: left;
+  border-bottom: 2px solid var(--color-teal-dark);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.skills-table tbody tr {
+  border-bottom: 1px solid var(--color-teal-soft);
+  transition: background-color 0.2s ease;
+}
+
+.skills-table tbody tr:hover {
+  background-color: rgba(154, 192, 195, 0.08);
+}
+
+.skills-table td {
+  padding: var(--spacing-md) var(--spacing-lg);
+  vertical-align: middle;
+  font-size: 0.95rem;
+}
+
+/* Skill name column */
+.skills-table td:first-child {
+  font-weight: 500;
+  color: var(--color-black);
+  min-width: 180px;
+}
+
+/* Level columns */
+.skills-table td:nth-child(2),
+.skills-table td:nth-child(3) {
+  text-align: center;
+  min-width: 120px;
+  font-weight: 500;
+}
+
+/* RAG Status column */
+.skills-table td:nth-child(4) {
+  text-align: center;
+  min-width: 100px;
+  font-weight: 700;
+}
+
+/* Remarks column */
+.skills-table td:last-child {
+  min-width: 200px;
+}
+
+/* Skill level dropdown */
+.skill-level-input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-white);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.skill-level-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+}
+
+/* Remarks input */
+.skills-table input[type="text"],
+.skills-table textarea {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.skills-table input[type="text"]:focus,
+.skills-table textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+}
+
+.skills-table input[type="text"]::placeholder {
+  color: #bbb;
+}
+
+/* RAG Status styling */
+.rag-status {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.rag-go {
+  background-color: #e6f9f0;
+  color: #0a7c42;
+}
+
+.rag-fail {
+  background-color: #fde8e8;
+  color: #c62828;
+}
+
+.rag-empty {
+  color: #999;
+}
+
+/* Form Actions */
+.skills-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-2xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-teal-soft);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.skills-actions .btn {
+  flex-shrink: 0;
+}
+
+/* Feed Forward Summary Cards */
+.feedforward-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background-color: #f9fbfb;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-teal-soft);
+}
+
+.summary-card-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-label {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.summary-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Form Guidance Text */
+.form-guidance {
+  color: #666;
+  font-size: 0.95rem;
+  margin-bottom: var(--spacing-lg);
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .employee-header {
+    grid-template-columns: 1fr;
+  }
+
+  .skills-table {
+    font-size: 0.85rem;
+  }
+
+  .skills-table th,
+  .skills-table td {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .skills-section-title {
+    font-size: 1.1rem;
+  }
+
+  .skills-actions {
+    flex-direction: column;
+  }
+
+  .skills-actions .btn {
+    width: 100%;
+  }
+
+  .feedforward-summary-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   Alert / Notification Boxes
+   -------------------------------------------------------------------------- */
+.alert {
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: flex-start;
+}
+
+.alert--info {
+  background-color: #fffaed;
+  border-left: 4px solid #f9a825;
+  color: #333;
+}
+
+.alert--success {
+  background-color: #e6f9f0;
+  border-left: 4px solid #0a7c42;
+  color: #0a7c42;
+}
+
+.alert--error {
+  background-color: #fde8e8;
+  border-left: 4px solid #c62828;
+  color: #c62828;
+}
+
+.alert--warning {
+  background-color: #fff3e0;
+  border-left: 4px solid #e65100;
+  color: #e65100;
+}
+
+.alert p {
+  margin: 0;
+}
+
+.alert strong {
+  font-weight: 600;
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
+/* --------------------------------------------------------------------------
+   Acknowledgement Form Styles
+   -------------------------------------------------------------------------- */
+.acknowledgement-form {
+  margin-top: var(--spacing-lg);
+}
+
+.acknowledgement-form .form-group--checkbox {
+  background-color: #fffef9;
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  margin: var(--spacing-lg) 0;
+  align-items: flex-start;
+}
+
+.acknowledgement-form .form-group--checkbox input {
+  width: auto;
+  margin-right: var(--spacing-md);
+  cursor: pointer;
+  transform: scale(1.2);
+  accent-color: var(--color-primary);
+}
+
+.acknowledgement-form .form-group--checkbox label {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--color-black);
+  margin-bottom: 0;
+}
+
+.acknowledgement-form .form-group--checkbox label strong {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .acknowledgement-form .form-group--checkbox {
+    flex-direction: column;
+  }
+
+  .acknowledgement-form .form-group--checkbox input {
+    margin-right: 0;
+    margin-bottom: var(--spacing-md);
+  }
+}
