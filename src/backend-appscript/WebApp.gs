@@ -270,80 +270,6 @@ function serveTemplate_(templateName, data) {
 }
 
 /**
-<<<<<<< Updated upstream
- * Gets an employee by email address.
- * @param {string} userEmail - User's email address
- * @returns {Object|null} Employee object or null if not found
- */
-function getEmployeeByEmail_(userEmail) {
-  try {
-    const employees = Database.getAllEmployees();
-    return employees.find(emp => emp.email === userEmail || emp.Email === userEmail) || null;
-  } catch (e) {
-    console.error(`[WebApp] Error getting employee by email: ${e.message}`);
-    return null;
-  }
-}
-
-/**
- * Returns a denied access HTML page.
- * @param {string} message - Error message to display
- * @returns {HtmlOutput} HTML output with error message
- */
-function deniedAccess_(message) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Access Denied — Own Your Career</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
-          margin: 0;
-          background: #f5f5f5;
-        }
-        .container {
-          text-align: center;
-          background: white;
-          padding: 40px;
-          border-radius: 8px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          max-width: 500px;
-        }
-        h1 {
-          color: #d32f2f;
-          margin-top: 0;
-        }
-        p {
-          color: #666;
-          line-height: 1.6;
-        }
-        .icon {
-          font-size: 64px;
-          margin-bottom: 20px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="icon">🔒</div>
-        <h1>Access Denied</h1>
-        <p>${message}</p>
-        <p style="font-size: 14px; color: #999;">
-          If you believe this is an error, please contact your HR administrator.
-        </p>
-      </div>
-    </body>
-    </html>
-  `;
-  return HtmlService.createHtmlOutput(html);
-}
-
-/**
  * Logs an access attempt for audit trail.
  * @param {string} userEmail - User's email address
  * @param {string} role - User's role (MANAGER, DATA_SPOC, EMPLOYEE, UNKNOWN)
@@ -367,22 +293,4 @@ function logAccessAttempt(userEmail, role, result, reason) {
   } catch (e) {
     console.error(`[WebApp] Error logging access attempt: ${e.message}`);
   }
-=======
- * Injects user data into HTML via inline script.
- * Must be called before returning HtmlOutput.
- * @param {Object} data - User data object
- * @returns {string} JavaScript code to inject
- */
-function injectUserData_(data) {
-  // Ensure employeeId is properly formatted for JavaScript
-  const employeeId = typeof data.employeeId === 'number' ? data.employeeId : `"${data.employeeId}"`;
-  
-  return `
-    <script>
-      window.oyc_userEmail = "${data.userEmail}";
-      window.oyc_userEmployeeID = ${employeeId};
-      console.log('[WebApp] Injected user data: email=' + window.oyc_userEmail + ', employeeId=' + window.oyc_userEmployeeID);
-    </script>
-  `;
->>>>>>> Stashed changes
 }
