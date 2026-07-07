@@ -35,7 +35,7 @@ const App = {
 
   /**
    * Check if user has an active session
-   * Redirect to login if not (skipped for local dev testing)
+   * Redirect to login if not
    */
   checkSession: function() {
     const user = sessionStorage.getItem(this.SESSION_KEY);
@@ -50,21 +50,29 @@ const App = {
       return;
     }
     
-    // If no session, redirect to login (unless local dev testing)
-    if (!user || !token || !API.verifyToken(token)) {
-      const isLocalDev = (
-        window.location.protocol === 'file:' ||
-        window.location.port === '5500' ||
-        window.location.port === '5501' ||
-        window.location.hostname === '127.0.0.1'
-      );
-      
-      if (isLocalDev) {
-        console.log('[App] No session but running locally — skipping redirect for dev testing');
-        return;
+    // If no session data at all, redirect to login
+    if (!user || !token) {
+      console.log('[App] No session data found, redirecting to login');
+      this.redirectToLogin();
+      return;
+    }
+
+    // Verify token client-side (decode JWT, check expiry)
+    let tokenValid = false;
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1]));
+        tokenValid = payload.exp > Math.floor(Date.now() / 1000);
       }
-      
-      console.log('[App] No active session, redirecting to login');
+    } catch (e) {
+      console.warn('[App] Token decode failed:', e.message);
+    }
+
+    if (!tokenValid) {
+      console.log('[App] Token expired or invalid, redirecting to login');
+      sessionStorage.removeItem(this.SESSION_KEY);
+      sessionStorage.removeItem(this.TOKEN_KEY);
       this.redirectToLogin();
       return;
     }
