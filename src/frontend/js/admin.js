@@ -215,8 +215,64 @@ const Admin = {
     const sectionEl = document.getElementById(`section-${section}`);
     if (sectionEl) {
       sectionEl.style.display = 'block';
+      
+      // Add back button if not already present
+      this.addBackToGridButton(sectionEl, section);
+      
       // Scroll to section
       sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  },
+
+  /**
+   * Add a "Back to Grid" button to a section if it doesn't have one
+   * @param {HTMLElement} sectionEl - The section element
+   * @param {string} sectionName - The section name
+   */
+  addBackToGridButton: function(sectionEl, sectionName) {
+    // Check if there's already a back button in this section
+    const existingBackButton = sectionEl.querySelector('.back-to-grid-btn');
+    if (existingBackButton) {
+      return;
+    }
+
+    const dashboardCardHeader = sectionEl.querySelector('.dashboard-card__header');
+    if (dashboardCardHeader) {
+      // Create back button
+      const backButton = document.createElement('button');
+      backButton.className = 'back-to-grid-btn btn btn--secondary';
+      backButton.innerHTML = '← Back to Grid';
+      backButton.style.cssText = 'padding: 8px 16px; font-size: 13px; margin-left: auto;';
+      backButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.hideDataMgmtSection(sectionName);
+      });
+
+      // Insert after the title span or at the end of header
+      const titleSpan = dashboardCardHeader.querySelector('span');
+      if (titleSpan) {
+        titleSpan.insertAdjacentElement('afterend', backButton);
+      } else {
+        dashboardCardHeader.appendChild(backButton);
+      }
+    }
+  },
+
+  /**
+   * Hide a data management section and return to grid view
+   * @param {string} section - Section name (e.g., 'employee-upload')
+   */
+  hideDataMgmtSection: function(section) {
+    // Hide the current section
+    const sectionEl = document.getElementById(`section-${section}`);
+    if (sectionEl) {
+      sectionEl.style.display = 'none';
+    }
+
+    // Show the grid and scroll to it
+    const grid = document.querySelector('.data-mgmt-grid');
+    if (grid) {
+      grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   },
   

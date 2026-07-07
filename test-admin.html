@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal Test</title>
+  <style>
+    .data-mgmt-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .data-mgmt-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .data-mgmt-card:hover {
+      border-color: #038F8D;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      transform: translateY(-2px);
+    }
+
+    .data-mgmt-card__icon {
+      font-size: 40px;
+      line-height: 1;
+    }
+
+    .data-mgmt-card__title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .data-mgmt-card__description {
+      font-size: 13px;
+      color: #666;
+      flex-grow: 1;
+      line-height: 1.4;
+    }
+
+    .data-mgmt-section {
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .dashboard-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    .dashboard-card__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn--secondary {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+
+    .btn--secondary:hover {
+      background-color: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Admin Portal Test</h1>
+  
+  <!-- Data Management Card Grid -->
+  <div class="data-mgmt-grid">
+    <div class="data-mgmt-card" data-section="employee-upload">
+      <div class="data-mgmt-card__icon">📁</div>
+      <div class="data-mgmt-card__title">Employee Upload</div>
+      <div class="data-mgmt-card__description">Upload master employee list from SAP SuccessFactors</div>
+      <button class="btn">Open</button>
+    </div>
+
+    <div class="data-mgmt-card" data-section="employee-database">
+      <div class="data-mgmt-card__icon">👥</div>
+      <div class="data-mgmt-card__title">Employee Database</div>
+      <div class="data-mgmt-card__description">View, search, filter & edit all employee records</div>
+      <button class="btn">Open</button>
+    </div>
+  </div>
+
+  <!-- Employee Upload Section -->
+  <div id="section-employee-upload" class="data-mgmt-section">
+    <div class="dashboard-card">
+      <div class="dashboard-card__header">
+        <div>
+          <h2>Employee Database Upload</h2>
+          <span style="font-size: 12px; color: #666;">Upload master employee list before review cycle</span>
+        </div>
+      </div>
+      <p>Employee upload content goes here...</p>
+    </div>
+  </div>
+
+  <!-- Employee Database Section -->
+  <div id="section-employee-database" class="data-mgmt-section">
+    <div class="dashboard-card">
+      <div class="dashboard-card__header">
+        <div>
+          <h2>Employee Database</h2>
+          <span style="font-size: 12px; color: #666;">View, search, filter & edit employee records</span>
+        </div>
+      </div>
+      <p>Employee database content goes here...</p>
+    </div>
+  </div>
+
+  <script>
+    // Simplified Admin object for testing
+    const Admin = {
+      /**
+       * Show a specific data management section
+       * @param {string} section - Section name (e.g., 'employee-upload')
+       */
+      showDataMgmtSection: function(section) {
+        // Hide all sections
+        document.querySelectorAll('.data-mgmt-section').forEach(s => {
+          s.style.display = 'none';
+        });
+
+        // Show selected section
+        const sectionEl = document.getElementById(`section-${section}`);
+        if (sectionEl) {
+          sectionEl.style.display = 'block';
+          
+          // Add back button if not already present
+          this.addBackToGridButton(sectionEl, section);
+          
+          // Scroll to section
+          sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      },
+
+      /**
+       * Add a "Back to Grid" button to a section if it doesn't have one
+       * @param {HTMLElement} sectionEl - The section element
+       * @param {string} sectionName - The section name
+       */
+      addBackToGridButton: function(sectionEl, sectionName) {
+        // Check if there's already a back button in this section
+        const existingBackButton = sectionEl.querySelector('.back-to-grid-btn');
+        if (existingBackButton) {
+          return;
+        }
+
+        const dashboardCardHeader = sectionEl.querySelector('.dashboard-card__header');
+        if (dashboardCardHeader) {
+          // Create back button
+          const backButton = document.createElement('button');
+          backButton.className = 'back-to-grid-btn btn btn--secondary';
+          backButton.innerHTML = '← Back to Grid';
+          backButton.style.cssText = 'padding: 8px 16px; font-size: 13px; margin-left: auto;';
+          backButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.hideDataMgmtSection(sectionName);
+          });
+
+          // Insert after the title div or at the end of header
+          dashboardCardHeader.appendChild(backButton);
+        }
+      },
+
+      /**
+       * Hide a data management section and return to grid view
+       * @param {string} section - Section name (e.g., 'employee-upload')
+       */
+      hideDataMgmtSection: function(section) {
+        // Hide the current section
+        const sectionEl = document.getElementById(`section-${section}`);
+        if (sectionEl) {
+          sectionEl.style.display = 'none';
+        }
+
+        // Show the grid and scroll to it
+        const grid = document.querySelector('.data-mgmt-grid');
+        if (grid) {
+          grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      },
+
+      /**
+       * Setup event listeners for cards
+       */
+      setupDataMgmtCards: function() {
+        const cards = document.querySelectorAll('.data-mgmt-card');
+        cards.forEach(card => {
+          card.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = card.dataset.section;
+            this.showDataMgmtSection(section);
+          });
+        });
+      },
+
+      /**
+       * Initialize admin portal
+       */
+      init: function() {
+        this.setupDataMgmtCards();
+        console.log('Admin portal test initialized');
+      }
+    };
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      Admin.init();
+    });
+  </script>
+</body>
+</html>

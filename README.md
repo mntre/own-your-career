@@ -675,3 +675,508 @@ A6: Organizational Hierarchy Setup
 - Merged PR #12 (xremy23: Manager portal team view bug fix)
 
 ---
+---
+
+## Database Query & Reporting
+
+The system uses **SQLite** for data persistence, which allows easy querying and reporting. The database file is located at `src/backend-converge/data/oyc.db` (created on first run).
+
+### Querying the Database
+
+#### 1. **Direct SQLite CLI Access**
+```bash
+# Install SQLite if not already installed
+# Windows: Download from https://sqlite.org/download.html
+# Linux/Mac: sudo apt-get install sqlite3 / brew install sqlite
+
+# Connect to the database
+sqlite3 src/backend-converge/data/oyc.db
+
+# Run queries
+sqlite> .tables  # List all tables
+sqlite> SELECT COUNT(*) FROM employees;
+sqlite> SELECT full_name, email, department_label FROM employees LIMIT 10;
+sqlite> .exit     # Exit SQLite
+```
+
+#### 2. **Using DB Browser for SQLite (GUI)**
+- Download DB Browser for SQLite: https://sqlitebrowser.org/
+- Open `oyc.db` file
+- Browse tables, run queries, export reports
+
+#### 3. **VS Code SQLite Extensions**
+- Install "SQLite" extension from marketplace
+- Right-click `.db` file → "Open Database"
+- Use SQL Explorer panel to run queries
+
+#### 4. **Node.js Scripts via Existing API**
+You can use the existing `db.js` API for programmatic access:
+```javascript
+const { initDB, Employees, Workflow } = require('./src/backend-converge/db');
+
+(async () => {
+  await initDB();
+  
+  // Get all employees
+  const allEmployees = Employees.getAll();
+  console.log(`Total employees: ${allEmployees.length}`);
+  
+  // Get workflow progress stats
+  const stats = Workflow.getProgressStats();
+  console.log(`Completion rate: ${stats.completionRate}%`);
+})();
+```
+
+### Common Reports & Queries
+
+#### Employee Report
+```sql
+SELECT 
+  employee_no,
+  full_name,
+  email,
+  department_label as department,
+  business_group_label as group,
+  position_title,
+  immediate_supervisor as manager,
+  role
+FROM employees 
+WHERE is_active = 1
+ORDER BY department_label, full_name;
+```
+
+#### Workflow Progress Report
+```sql
+SELECT 
+  e.employee_no,
+  e.full_name,
+  e.department_label,
+  w.step1_complete as step1,
+  w.step2_complete as step2,
+  w.step3_complete as step3,
+  w.step4_complete as step4,
+  w.step5_complete as step5,
+  w.step6_complete as step6,
+  w.step7_complete as step7,
+  CASE 
+    WHEN w.step7_complete = 1 THEN 'COMPLETE'
+    WHEN w.step1_complete = 0 THEN 'NOT_STARTED'
+    ELSE 'IN_PROGRESS'
+  END as status
+FROM employees e
+LEFT JOIN workflow_status w ON e.employee_no = w.employee_no
+WHERE e.is_active = 1
+ORDER BY e.department_label, e.full_name;
+```
+
+#### Department-wise Completion
+```sql
+SELECT 
+  e.department_label as department,
+  COUNT(*) as total_employees,
+  SUM(CASE WHEN w.step1_complete = 1 THEN 1 ELSE 0 END) as step1_completed,
+  SUM(CASE WHEN w.step2_complete = 1 THEN 1 ELSE 0 END) as step2_completed,
+  SUM(CASE WHEN w.step3_complete = 1 THEN 1 ELSE 0 END) as step3_completed,
+  SUM(CASE WHEN w.step7_complete = 1 THEN 1 ELSE 0 END) as completed_reviews
+FROM employees e
+LEFT JOIN workflow_status w ON e.employee_no = w.employee_no
+WHERE e.is_active = 1
+GROUP BY e.department_label
+ORDER BY completed_reviews DESC;
+```
+
+#### Export to CSV
+```bash
+# Using SQLite CLI
+sqlite3 -header -csv src/backend-converge/data/oyc.db "SELECT * FROM employees;" > employees_report.csv
+sqlite3 -header -csv src/backend-converge/data/oyc.db "SELECT * FROM audit_log ORDER BY timestamp DESC;" > audit_log.csv
+```
+
+#### Audit Log Review
+```sql
+SELECT 
+  timestamp,
+  event,
+  user_email,
+  action,
+  details
+FROM audit_log
+ORDER BY timestamp DESC
+LIMIT 50;
+```
+
+### Database Maintenance
+
+#### Backup Database
+```bash
+# Simple file copy
+cp src/backend-converge/data/oyc.db src/backend-converge/data/oyc_backup_$(date +%Y%m%d).db
+
+# Export to SQL
+sqlite3 src/backend-converge/data/oyc.db .dump > database_backup.sql
+```
+
+#### Restore Database
+```bash
+# From backup file
+cp src/backend-converge/data/oyc_backup_20240707.db src/backend-converge/data/oyc.db
+
+# From SQL dump
+sqlite3 src/backend-converge/data/oyc.db < database_backup.sql
+```
+
+#### Database Integrity Check
+```bash
+sqlite3 src/backend-converge/data/oyc.db "PRAGMA integrity_check;"
+sqlite3 src/backend-converge/data/oyc.db "PRAGMA foreign_key_check;"
+```
+
+### Database Schema (11 Tables)
+
+1. **employees** - Master employee data (SAP upload)
+2. **system_config** - Configuration settings (hard lock date, thresholds)
+3. **skills_assessment** - Step 1: Manager skills ratings
+4. **okr_data** - Step 2: OKR upload data
+5. **self_assessment** - Step 3: Employee self-assessment
+6. **feed_forward** - Step 4: Manager feedback
+7. **acknowledgements** - Steps 5 & 7: Acknowledgements
+8. **workflow_status** - 7-step completion tracking
+9. **audit_log** - System audit trail
+10. **export_history** - Export records
+11. **skill_definitions** - Core & leadership skills definitions
+
+### EC2 Deployment Query Notes
+
+When deployed to EC2:
+1. **Database location**: `/var/www/own-your-career/src/backend-converge/data/oyc.db`
+2. **SSH access**: Connect via SSH and run queries directly
+3. **Backup strategy**: Schedule automated daily backups to S3
+4. **Monitoring**: Use CloudWatch logs for database operations
+
+```bash
+# EC2 SSH access example
+ssh -i your-key.pem ec2-user@3.106.202.130
+cd /var/www/own-your-career
+sqlite3 src/backend-converge/data/oyc.db
+```
+
+---
+
+## Next Steps for Admin Portal
+
+The following sections of the Admin Portal still need implementation:
+
+### A2: Employee Database Viewer
+- **Status**: Design ready (placeholder card)
+- **Needs**: Searchable/filterable table, inline editing, export to CSV
+- **ETA**: July 9
+
+### A3: Core Skills Definition Upload  
+- **Status**: Design ready (placeholder card)
+- **Needs**: Form/CSV upload for 5 core skills, band-level requirements
+- **ETA**: July 9
+
+### A4: Leadership Skills Definition Upload
+- **Status**: Design ready (placeholder card)
+- **Needs**: Form/CSV upload for 5 leadership skills
+- **ETA**: July 9
+
+### A5: Role Assignment Management
+- **Status**: Design ready (placeholder card)
+- **Needs**: Role assignment UI, bulk CSV upload
+- **ETA**: July 9
+
+### A6: Organizational Hierarchy Setup
+- **Status**: Design ready (placeholder card)
+- **Needs**: Org structure tree view/nested dropdowns
+- **ETA**: July 9
+
+### Backend APIs (A7-A9)
+- **Status**: TODO
+- **Needs**: AppScript + Converge routes for employee/skills/role APIs
+- **ETA**: July 9
+
+
+## SQLite Database Query & Reporting
+
+The system uses **SQLite** for data persistence in the Converge backend, providing lightweight, file-based database operations that work well on EC2 free tier (low memory, no external dependencies).
+
+### Database Location
+- **Path:** `src/backend-converge/data/oyc.db`
+- **Auto-creation:** The database is automatically initialized on server startup
+- **Schema:** Includes 11 tables covering employees, skills, OKRs, performance data, and audit logs
+
+### Query Methods
+
+#### 1. Command Line Interface (CLI)
+```bash
+# Navigate to backend directory
+cd src/backend-converge
+
+# Open SQLite CLI
+sqlite3 data/oyc.db
+
+# Example queries:
+.tables                          # List all tables
+.schema employees                # Show table structure
+SELECT * FROM employees LIMIT 5; # View first 5 employees
+SELECT COUNT(*) FROM employees;  # Count total employees
+.exit                            # Exit CLI
+```
+
+#### 2. Database Browser Tools
+- **DB Browser for SQLite** (free GUI tool): Download from [sqlitebrowser.org](https://sqlitebrowser.org/)
+- **VS Code Extensions:** 
+  - "SQLite Viewer" by qwtel
+  - "SQLite" by alexcvzz
+- **SQLiteStudio** (cross-platform GUI)
+
+#### 3. Node.js Programmatic Access
+Use the existing `db.js` API for custom reporting scripts:
+
+```javascript
+// Example reporting script
+const db = require('./db.js');
+
+async function generateEmployeeReport() {
+  const employees = await db.getAllEmployees();
+  const stats = await db.getWorkflowStats();
+  
+  console.log(`Total Employees: ${employees.length}`);
+  console.log(`Step 1 Complete: ${stats.step1_complete}`);
+  console.log(`Step 2 Complete: ${stats.step2_complete}`);
+  // ... generate CSV or JSON report
+}
+
+// Run via: node report-script.js
+```
+
+#### 4. Admin Portal Reporting
+Use the Admin Portal's built-in reporting features:
+- **Progress Monitoring Tab:** Real-time completion statistics
+- **Data Management Tab:** Employee database viewer with export to CSV
+- **SFTP Export & Audit Tab:** Trigger bulk exports to SuccessFactors
+
+### Common Reports & Queries
+
+#### Employee Completion Status
+```sql
+SELECT 
+  e.employee_name,
+  e.email,
+  e.department,
+  ws.step_1_completed,
+  ws.step_2_completed,
+  ws.step_3_completed,
+  ws.step_4_completed,
+  ws.step_5_completed,
+  ws.step_6_completed,
+  ws.step_7_completed,
+  ws.overall_completion_percentage
+FROM employees e
+LEFT JOIN workflow_status ws ON e.employee_id = ws.employee_id
+WHERE ws.overall_completion_percentage < 100
+ORDER BY ws.overall_completion_percentage ASC;
+```
+
+#### OKR Achievement Analysis
+```sql
+SELECT 
+  e.employee_name,
+  e.department,
+  e.band,
+  o.corporate_okr_score,
+  o.group_okr_score,
+  o.department_okr_score,
+  o.team_okr_score,
+  o.final_okr_score,
+  o.performance_bracket
+FROM employees e
+JOIN okr_assessments o ON e.employee_id = o.employee_id
+WHERE o.performance_bracket = 'Needs Improvement'
+ORDER BY o.final_okr_score ASC;
+```
+
+#### Skills Assessment Summary
+```sql
+SELECT 
+  e.department,
+  AVG(s.core_skills_score) as avg_core_skills,
+  AVG(s.leadership_skills_score) as avg_leadership,
+  COUNT(*) as total_assessments
+FROM employees e
+JOIN skills_assessments s ON e.employee_id = s.employee_id
+GROUP BY e.department
+ORDER BY avg_core_skills DESC;
+```
+
+#### Audit Trail Review
+```sql
+SELECT 
+  action_timestamp,
+  user_email,
+  action_type,
+  entity_type,
+  entity_id,
+  action_details
+FROM audit_log
+WHERE action_timestamp >= DATE('now', '-7 days')
+ORDER BY action_timestamp DESC
+LIMIT 100;
+```
+
+### Exporting Data
+
+#### Export to CSV (CLI)
+```bash
+# Export employees table to CSV
+sqlite3 -header -csv data/oyc.db "SELECT * FROM employees;" > employees_export.csv
+
+# Export workflow status
+sqlite3 -header -csv data/oyc.db "SELECT * FROM workflow_status;" > workflow_status_export.csv
+
+# Export multiple tables
+sqlite3 data/oyc.db <<EOF
+.headers on
+.mode csv
+.output combined_export.csv
+SELECT * FROM employees;
+.output stdout
+EOF
+```
+
+#### Programmatic Export (Node.js)
+```javascript
+const fs = require('fs');
+const db = require('./db.js');
+
+async function exportToCSV() {
+  const employees = await db.getAllEmployees();
+  const csv = 'EmployeeID,Name,Email,Department,Group,Role\n' +
+    employees.map(e => `${e.employee_id},${e.name},${e.email},${e.department},${e.group},${e.role}`)
+    .join('\n');
+  
+  fs.writeFileSync('employee_report.csv', csv);
+  console.log('Report exported to employee_report.csv');
+}
+```
+
+### Database Maintenance
+
+#### Backup Database
+```bash
+# Simple file copy (recommended for SQLite)
+cp src/backend-converge/data/oyc.db src/backend-converge/data/oyc_backup_$(date +%Y%m%d).db
+
+# SQL dump backup
+sqlite3 src/backend-converge/data/oyc.db .dump > oyc_backup_$(date +%Y%m%d).sql
+```
+
+#### Check Database Health
+```bash
+# Check database integrity
+sqlite3 data/oyc.db "PRAGMA integrity_check;"
+
+# Check table sizes
+sqlite3 data/oyc.db "SELECT name, COUNT(*) as row_count FROM sqlite_master WHERE type='table' GROUP BY name ORDER BY row_count DESC;"
+
+# Check disk usage
+ls -lh src/backend-converge/data/oyc.db
+```
+
+### EC2-Specific Considerations
+
+1. **Access via SSH:**
+   ```bash
+   ssh -i your-key.pem ec2-user@your-ec2-instance
+   cd /path/to/own-your-career/src/backend-converge
+   sqlite3 data/oyc.db
+   ```
+
+2. **Remote Queries (via API):**
+   The admin portal provides web-based query interfaces that work over HTTPS:
+   - Employee database viewer with filtering
+   - Progress dashboards with drill-down
+   - Export functionality to CSV/Excel
+
+3. **Automated Reports:**
+   Set up cron jobs for automated reporting:
+   ```bash
+   # Daily completion report
+   0 9 * * * cd /path/to/own-your-career && node scripts/daily-report.js
+   
+   # Weekly summary email
+   0 10 * * 1 cd /path/to/own-your-career && node scripts/weekly-summary.js
+   ```
+
+### Troubleshooting
+
+**Issue:** Database file not found
+```bash
+# Check if database exists
+ls -la src/backend-converge/data/
+
+# Initialize database if missing
+cd src/backend-converge
+node -e "require('./db.js').initDatabase()"
+```
+
+**Issue:** Database locked (concurrent access)
+```bash
+# Check for locking processes
+fuser src/backend-converge/data/oyc.db
+
+# Use WAL mode for better concurrency (already configured in db.js)
+sqlite3 data/oyc.db "PRAGMA journal_mode=WAL;"
+```
+
+**Issue:** Performance queries slow
+```bash
+# Add indexes for common queries
+sqlite3 data/oyc.db "
+CREATE INDEX IF NOT EXISTS idx_employees_email ON employees(email);
+CREATE INDEX IF NOT EXISTS idx_workflow_employee ON workflow_status(employee_id);
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(action_timestamp);
+"
+```
+
+### Security Notes
+
+1. **Access Control:**
+   - Database file should be readable/writable only by the application user
+   - Use `chmod 600` on EC2 for file permissions
+   - Never expose SQLite file via web server (keep in protected directory)
+
+2. **Backup Strategy:**
+   - Daily automated backups to S3 (recommended for EC2)
+   - Version database schema changes in migration scripts
+   - Test restore procedures regularly
+
+3. **Compliance:**
+   - Audit logs track all data access
+   - Export logs for compliance reporting
+   - Regular integrity checks for data validation
+
+---
+
+## Recent Database Implementation (July 7, 2026)
+
+**Database:** SQLite (chosen for EC2 free tier compatibility)
+- ✅ **Schema:** 11 tables covering all workflow components
+- ✅ **Integration:** Admin portal fully wired to SQLite database
+- ✅ **Performance:** WAL mode enabled for better concurrency
+- ✅ **Backup:** File-based backup strategy documented
+- ✅ **Query Tools:** Multiple access methods provided (CLI, GUI, API)
+
+**Key Features:**
+- Employee data management via Admin Portal A1 upload
+- Workflow status tracking across 7 steps
+- Performance bracket calculations (OKR formulas)
+- Comprehensive audit logging
+- Real-time progress monitoring
+
+**Next Steps for Reporting:**
+1. Implement automated weekly report generation
+2. Add custom report builder in Admin Portal
+3. Create dashboard visualizations for management
+4. Set up email alerts for critical thresholds
