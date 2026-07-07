@@ -19,7 +19,7 @@ function createServer() {
 
   // Middleware
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || ['http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:5500'],
+    origin: process.env.CORS_ORIGIN || ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000'],
     credentials: true
   }));
 
@@ -54,7 +54,7 @@ function createServer() {
  * Starts the server
  */
 function startServer() {
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 3001;
   const app = createServer();
 
   app.listen(PORT, () => {

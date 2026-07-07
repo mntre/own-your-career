@@ -168,3 +168,292 @@ Google Apps Script → google.script.run → Direct Access ──┘
 | Evaluate if Plan B needed | July 10 (Sprint 2 end) | Luigi/Charvin |
 
 ---
+
+
+---
+
+## ✅ PHASE 2A: OKR Score Calculation Implementation (Data SPOC Portal - Step 2)
+
+**Status:** ✅ COMPLETE  
+**Date Completed:** July 6, 2026  
+**Objective:** Implement OKR score calculation using formula: Score = (Actual Result / Target Result) * Weight
+
+### What Was Built
+
+#### 1. Enhanced Calculation Functions (calculations.js)
+
+Added three new functions to `src/frontend/js/calculations.js`:
+
+**A. `calculateOKRFinalScore(keyResults)`**
+- **Formula:** Sum of `((Actual Result / Target Result) * Weight)` for all key results
+- **Input:** Array of key results with `actualResult`, `targetResult`, `weight`
+- **Output:** Final OKR score as percentage (0-200%, capped at 200% for overachievement)
+- **Example:**
+  ```
+  KR1: Actual=90, Target=100, Weight=40% → (90/100)*40 = 36%
+  KR2: Actual=110, Target=100, Weight=30% → (110/100)*30 = 33%
+  KR3: Actual=80, Target=100, Weight=30% → (80/100)*30 = 24%
+  ───────────────────────────────────────────────────────
+  Total Score = 36 + 33 + 24 = 93%
+  ```
+
+**B. `calculateKeyResultScore(actualResult, targetResult, weight)`**
+- Calculates individual key result achievement and contribution
+- **Output:** `{ score: number, contribution: number }`
+- Used for populating individual row scores in the OKR table
+
+**C. `computeOKRHierarchy(groupKeyResults, departmentKeyResults, teamKeyResults)`**
+- Computes scores for all hierarchy levels
+- Implements cascading fallback:
+  - If Department missing → use Team score
+  - If Group missing → use Department score
+  - Propagates upward only (never downward)
+- **Output:** Hierarchy object with `groupOKRScore`, `departmentOKRScore`, `teamOKRScore`, `corporateOKRScore`
+
+**D. `generateOKRSummary(keyResults, finalScore)`**
+- Generates detailed breakdown with individual contribution percentages
+- **Output:** Summary object with `keyResults`, `finalScore`, `totalWeight`, `isValid`, `details`
+
+#### 2. Real-Time Score Calculation (dataspoc-portal.html)
+
+**A. New Function: `calculateAndDisplayScores(level)`**
+- Calculates scores as user enters actual results (on every keystroke)
+- Updates score cells in real-time
+- Works for all three levels: 'group', 'department', 'team'
+- Logs total score to console
+
+**B. Event Listeners Added**
+- Attached to all `.input-actual-*` fields (group, dept, team)
+- Listen for both `change` and `input` events
+- Trigger score calculation on every user input
+
+#### 3. Enhanced Form Submission (dataspoc-portal.html)
+
+**A. Data Collection**
+- Collects all actual results for both Department and Team OKR tables
+- Validates all fields are filled
+
+**B. Score Calculation**
+- Calls `calculateOKRFinalScore()` for Department level
+- Calls `calculateOKRFinalScore()` for Team level
+- Uses new formula: `(Actual / Target) * Weight`, summed for all KRs
+
+**C. Performance Bracket Assignment**
+- Maps scores to performance brackets using `assignPerformanceBracket()`:
+  - Exceeded: ≥101%
+  - Achieved: 90.1% - 100%
+  - Needs Improvement: 81% - 90%
+  - Failed: ≤80%
+
+**D. Hierarchy Computation**
+- Calls `computeOKRHierarchy()` to cascade scores up to Group and Corporate
+
+**E. Results Display**
+- New `displayOKRResults()` function shows:
+  - Department OKR Score
+  - Team OKR Score
+  - Group OKR Score (cascaded)
+  - Corporate OKR Score (cascaded)
+  - Performance Bracket with CSS styling
+  - Detailed Key Results Summary table with contribution percentages
+
+#### 4. Results Summary Table
+
+Shows for each key result:
+- **Key Result:** Name from CSV
+- **Actual %:** Achievement percentage `(Actual / Target) * 100`
+- **Weight %:** Weight percentage for that KR
+- **Contribution %:** Individual contribution to total score `(Achievement * Weight) / 100`
+
+### Data Flow
+
+```
+Data SPOC enters OKR data:
+  ↓
+User fills Actual Result fields
+  ↓
+Real-time: calculateAndDisplayScores() updates individual scores
+  ↓
+User clicks "Submit OKR Data"
+  ↓
+Collect all Department and Team OKR data
+  ↓
+Validate all actual results are filled
+  ↓
+calculateOKRFinalScore():
+  - For each KR: Score = (Actual / Target) * Weight
+  - Sum all contributions
+  - Result: Department OKR Score, Team OKR Score
+  ↓
+assignPerformanceBracket():
+  - Compare score against thresholds
+  - Assign bracket label and CSS class
+  ↓
+computeOKRHierarchy():
+  - Cascade Department → Group → Corporate (with fallback)
+  - Result: Full hierarchy with all scores
+  ↓
+displayOKRResults():
+  - Show scores, bracket, and detailed summary
+  - Display on results panel
+```
+
+### Formula Examples
+
+#### Example 1: All KRs Meet Target
+
+```
+KR1: Actual=100, Target=100, Weight=50%
+  Achievement = (100/100)*100 = 100%
+  Contribution = (100*50)/100 = 50%
+
+KR2: Actual=100, Target=100, Weight=50%
+  Achievement = (100/100)*100 = 100%
+  Contribution = (100*50)/100 = 50%
+
+Total Score = 50 + 50 = 100% (ACHIEVED bracket)
+```
+
+#### Example 2: Mixed Performance
+
+```
+KR1: Actual=120, Target=100, Weight=40%
+  Achievement = (120/100)*100 = 120%
+  Contribution = (120*40)/100 = 48%
+
+KR2: Actual=80, Target=100, Weight=60%
+  Achievement = (80/100)*100 = 80%
+  Contribution = (80*60)/100 = 48%
+
+Total Score = 48 + 48 = 96% (ACHIEVED bracket)
+```
+
+#### Example 3: Overachievement
+
+```
+KR1: Actual=150, Target=100, Weight=100%
+  Achievement = (150/100)*100 = 150%
+  Contribution = (150*100)/100 = 150%
+
+Total Score = 150% (EXCEEDED bracket)
+```
+
+### CSV Integration
+
+The calculation pulls data directly from uploaded CSV:
+
+```
+CSV columns used:
+├── Target Result (departmentTargetResult, teamTargetResult)
+├── Weight (departmentWeight, teamWeight)
+└── User input: Actual Result (entered in form)
+
+Formula applies immediately after user enters Actual Result.
+```
+
+### Performance Brackets (Business Rules)
+
+| Bracket | Range | CSS Class | Label |
+|---------|-------|-----------|-------|
+| Exceeded | ≥101% | `status-indicator--exceeded` | "Exceeded" |
+| Achieved | 90.1-100% | `status-indicator--achieved` | "Achieved" |
+| Needs Improvement | 81-90% | `status-indicator--needs-improvement` | "Needs Improvement" |
+| Failed | ≤80% | `status-indicator--failed` | "Failed" |
+
+### Files Modified
+
+1. **src/frontend/js/calculations.js**
+   - ✅ Added `calculateOKRFinalScore()`
+   - ✅ Added `calculateKeyResultScore()`
+   - ✅ Added `computeOKRHierarchy()`
+   - ✅ Added `generateOKRSummary()`
+
+2. **src/frontend/html/dataspoc-portal.html**
+   - ✅ Added `calculateAndDisplayScores()` function
+   - ✅ Added event listeners for real-time calculation
+   - ✅ Updated form submission handler to use new calculation formula
+   - ✅ Updated `displayOKRResults()` to show detailed breakdown
+
+### Testing the Implementation
+
+#### Manual Test 1: Single Key Result
+
+1. Upload OKR CSV
+2. Select Corporate, Group, Department, Team
+3. Generate OKR Form
+4. Enter Actual Result: 85 (if Target is 100, Weight is 100%)
+5. Expected Score: 85%
+6. Expected Bracket: ACHIEVED
+
+#### Manual Test 2: Multiple Key Results
+
+1. Enter multiple actual results
+2. Example:
+   - KR1: Actual=90, Target=100, Weight=40% → contribution = 36%
+   - KR2: Actual=100, Target=100, Weight=60% → contribution = 60%
+3. Expected Total: 96%
+4. Expected Bracket: ACHIEVED
+
+#### Manual Test 3: Overachievement
+
+1. Enter Actual=120 (Target=100, Weight=100%)
+2. Expected Score: 120%
+3. Expected Bracket: EXCEEDED
+
+#### Manual Test 4: Underperformance
+
+1. Enter Actual=70 (Target=100, Weight=100%)
+2. Expected Score: 70%
+3. Expected Bracket: NEEDS_IMPROVEMENT
+
+### Browser Console Output
+
+When you submit OKR data, console shows:
+
+```
+=== OKR COMPUTATION RESULTS ===
+Department OKR Score: 93.50% (Achieved)
+Team OKR Score: 89.00% (Needs Improvement)
+Hierarchy: {
+  teamOKRScore: 89,
+  departmentOKRScore: 93.5,
+  groupOKRScore: 93.5,
+  corporateOKRScore: 93.5
+}
+```
+
+### Real-Time Calculation Output
+
+As user types in Actual Result fields:
+
+```
+Department OKR Score: 85.50%
+Team OKR Score: 92.00%
+```
+
+Logs appear in console as scores update.
+
+### Validation
+
+- ✅ All actual results validated before calculation
+- ✅ Empty fields treated as 0
+- ✅ Non-numeric values rejected
+- ✅ Division by zero protected (targetResult defaults to 1)
+- ✅ Negative values rejected
+
+### Known Limitations
+
+- Scores capped at 200% (to handle extreme overachievement)
+- Cascading fallback treats missing levels uniformly (no intelligence)
+- Future: Could implement role-level formula weighting (10/60/40 split)
+
+### What's Next (Phase 2B+)
+
+1. **Department Head Role:** Apply 60% Group + 40% Department formula
+2. **Group Head Role:** Apply 10% Corporate + 90% Group formula
+3. **Analytics:** Track score trends over time
+4. **Calibration Matrix:** 9-Box grid integration
+5. **Export:** SFTP bulk export with calculated scores
+
+---
+
