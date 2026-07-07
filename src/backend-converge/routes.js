@@ -13,6 +13,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('./middleware/auth');
 const rbac = require('./middleware/rbac');
+const { Employees, SystemConfig, Workflow, AuditLog, ExportHistory } = require('./db');
 
 /* --------------------------------------------------------------------------
    Authentication Routes
@@ -200,16 +201,21 @@ router.get('/api/org-data/:spocId', auth.authMiddleware, (req, res) => {
  * RBAC: ADMIN role only
  */
 router.get('/api/admin/system-config', rbac.requireAdmin(), (req, res) => {
-  // TODO: Implement system configuration retrieval from database
-  res.json({
-    success: true,
-    config: {
-      hardLockDate: null,
-      reviewPeriodStart: null,
-      reviewPeriodEnd: null,
-      exceededThreshold: 101
-    }
-  });
+  try {
+    const config = SystemConfig.getAll();
+    res.json({
+      success: true,
+      config: {
+        hardLockDate: config.hard_lock_date || null,
+        reviewPeriodStart: config.review_period_start || null,
+        reviewPeriodEnd: config.review_period_end || null,
+        exceededThreshold: parseFloat(config.exceeded_threshold) || 101
+      }
+    });
+  } catch (error) {
+    console.error('[Admin] Error loading config:', error);
+    res.status(500).json({ success: false, message: 'Error loading configuration' });
+  }
 });
 
 /**
@@ -218,14 +224,22 @@ router.get('/api/admin/system-config', rbac.requireAdmin(), (req, res) => {
  * RBAC: ADMIN role only
  */
 router.post('/api/admin/system-config', rbac.requireAdmin(), (req, res) => {
-  // TODO: Implement system configuration save to database
-  const config = req.body;
-  console.log('[Admin] Saving config:', config);
-  
-  res.json({
-    success: true,
-    message: 'Configuration saved successfully'
-  });
+  try {
+    const { hardLockDate, reviewPeriodStart, reviewPeriodEnd, exceededThreshold } = req.body;
+    const userEmail = req.user ? req.user.email : 'admin';
+
+    if (hardLockDate) SystemConfig.set('hard_lock_date', hardLockDate, userEmail);
+    if (reviewPeriodStart) SystemConfig.set('review_period_start', reviewPeriodStart, userEmail);
+    if (reviewPeriodEnd) SystemConfig.set('review_period_end', reviewPeriodEnd, userEmail);
+    if (exceededThreshold) SystemConfig.set('exceeded_threshold', String(exceededThreshold), userEmail);
+
+    AuditLog.add('CONFIG_CHANGE', userEmail, 'Updated system configuration', JSON.stringify(req.body));
+
+    res.json({ success: true, message: 'Configuration saved successfully' });
+  } catch (error) {
+    console.error('[Admin] Error saving config:', error);
+    res.status(500).json({ success: false, message: 'Error saving configuration' });
+  }
 });
 
 /**
@@ -234,17 +248,13 @@ router.post('/api/admin/system-config', rbac.requireAdmin(), (req, res) => {
  * RBAC: ADMIN role only
  */
 router.get('/api/admin/stats', rbac.requireAdmin(), (req, res) => {
-  // TODO: Implement statistics calculation from database
-  res.json({
-    success: true,
-    stats: {
-      totalEmployees: 0,
-      stepsCompleted: 0,
-      completionRate: 0,
-      pendingEmployees: 0,
-      stepProgress: [0, 0, 0, 0, 0, 0, 0]
-    }
-  });
+  try {
+    const stats = Workflow.getProgressStats();
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error('[Admin] Error loading stats:', error);
+    res.status(500).json({ success: false, message: 'Error loading statistics' });
+  }
 });
 
 /**
@@ -291,11 +301,13 @@ router.get('/api/admin/export-progress-report', rbac.requireAdmin(), (req, res) 
  * RBAC: ADMIN role only
  */
 router.get('/api/admin/export-history', rbac.requireAdmin(), (req, res) => {
-  // TODO: Implement export history retrieval
-  res.json({
-    success: true,
-    history: []
-  });
+  try {
+    const history = ExportHistory.getRecent(50);
+    res.json({ success: true, history });
+  } catch (error) {
+    console.error('[Admin] Error loading export history:', error);
+    res.status(500).json({ success: false, message: 'Error loading export history' });
+  }
 });
 
 /**
@@ -323,11 +335,67 @@ router.post('/api/admin/trigger-sftp-export', rbac.requireAdmin(), (req, res) =>
  * RBAC: ADMIN role only
  */
 router.get('/api/admin/audit-log', rbac.requireAdmin(), (req, res) => {
-  // TODO: Implement audit log retrieval
-  res.json({
-    success: true,
-    logs: []
-  });
+  try {
+    const logs = AuditLog.getRecent(100);
+    res.json({ success: true, logs });
+  } catch (error) {
+    console.error('[Admin] Error loading audit log:', error);
+    res.status(500).json({ success: false, message: 'Error loading audit log' });
+  }
+});
+
+/**
+ * POST /api/admin/upload-employees
+ * Upload employee database from CSV data
+ * RBAC: ADMIN role only
+ */
+router.post('/api/admin/upload-employees', rbac.requireAdmin(), (req, res) => {
+  try {
+    const { headers, rows } = req.body;
+
+    if (!Array.isArray(headers) || headers.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No headers provided'
+      });
+    }
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No employee data provided'
+      });
+    }
+
+    console.log(`[Admin] Uploading ${rows.length} employees (${headers.length} columns) to database`);
+
+    const result = Employees.bulkUpload(headers, rows);
+
+    const userEmail = req.user ? req.user.email : 'admin';
+    AuditLog.add('EMPLOYEE_UPLOAD', userEmail, `Uploaded ${result.inserted} employees`, 
+      `${headers.length} columns, ${result.errors.length} errors`);
+
+    if (result.errors.length > 0) {
+      res.json({
+        success: true,
+        message: `${result.inserted} employees uploaded. ${result.errors.length} rows had errors.`,
+        inserted: result.inserted,
+        errors: result.errors.slice(0, 20)
+      });
+    } else {
+      res.json({
+        success: true,
+        message: `${result.inserted} employees uploaded successfully (${headers.length} columns)`,
+        inserted: result.inserted
+      });
+    }
+  } catch (error) {
+    console.error('[Admin] Error uploading employees:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error uploading employee data: ' + error.message
+    });
+  }
 });
 
 module.exports = router;

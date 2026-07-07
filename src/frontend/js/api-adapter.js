@@ -143,6 +143,10 @@ const API = (() => {
           { timestamp: '2026-07-06 09:00:00', event: 'LOGIN', user: 'admin@example.com', action: 'Admin login', status: 'SUCCESS' },
           { timestamp: '2026-07-06 08:45:00', event: 'CONFIG_CHANGE', user: 'admin@example.com', action: 'Updated hard lock date', status: 'SUCCESS' }
         ]};
+      },
+      uploadEmployeeDatabase: async function(data) {
+        console.log('[Mock API] uploadEmployeeDatabase:', data.rows.length, 'records,', data.headers.length, 'columns');
+        return { success: true, message: data.rows.length + ' employees uploaded successfully (mock)' };
       }
     };
   }

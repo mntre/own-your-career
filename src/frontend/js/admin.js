@@ -45,19 +45,17 @@ const Admin = {
   init: function() {
     console.log('[Admin] Initializing...');
     
-    // Check if user is admin
-    if (!this.checkAdminAccess()) {
-      return;
-    }
-    
-    // Load initial data
-    this.loadData();
-    
-    // Set up event listeners
+    // Always set up UI event listeners (tabs, cards, upload) so page is interactive
     this.setupEventListeners();
-    
-    // Update UI
-    this.updateUI();
+
+    // Check if user is admin — gate data loading & sensitive actions
+    // Skip redirect for local testing (let App handle redirect if needed)
+    if (this.checkAdminAccess()) {
+      // Load initial data
+      this.loadData();
+      // Update UI
+      this.updateUI();
+    }
   },
   
   /**
@@ -65,14 +63,17 @@ const Admin = {
    * @returns {boolean} True if user is admin
    */
   checkAdminAccess: function() {
-    const user = App.getCurrentUser();
-    if (!user || user.role !== 'ADMIN') {
-      console.warn('[Admin] Non-admin user attempted to access admin portal');
-      alert('Access denied. Admin access required.');
-      App.redirectToLogin();
+    try {
+      const user = App && App.getCurrentUser ? App.getCurrentUser() : null;
+      if (!user || user.role !== 'ADMIN') {
+        console.warn('[Admin] No admin session — running in local/dev mode. Data operations disabled.');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('[Admin] App not available, running standalone.');
       return false;
     }
-    return true;
   },
   
   /**
@@ -177,6 +178,45 @@ const Admin = {
     const refreshBtn = document.getElementById('refresh-btn');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => this.refreshData());
+    }
+
+    // Employee CSV Upload
+    this.setupEmployeeUpload();
+
+    // Data Management Cards
+    this.setupDataMgmtCards();
+  },
+
+  /**
+   * Setup data management card click handlers
+   */
+  setupDataMgmtCards: function() {
+    const cards = document.querySelectorAll('.data-mgmt-card');
+    cards.forEach(card => {
+      card.addEventListener('click', (e) => {
+        e.preventDefault();
+        const section = card.dataset.section;
+        this.showDataMgmtSection(section);
+      });
+    });
+  },
+
+  /**
+   * Show a specific data management section
+   * @param {string} section - Section name (e.g., 'employee-upload')
+   */
+  showDataMgmtSection: function(section) {
+    // Hide all sections
+    document.querySelectorAll('.data-mgmt-section').forEach(s => {
+      s.style.display = 'none';
+    });
+
+    // Show selected section
+    const sectionEl = document.getElementById(`section-${section}`);
+    if (sectionEl) {
+      sectionEl.style.display = 'block';
+      // Scroll to section
+      sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   },
   
@@ -478,12 +518,12 @@ const Admin = {
       return;
     }
     
-    tbody.innerHTML = this.exportHistory.map(export => `
+    tbody.innerHTML = this.exportHistory.map(record => `
       <tr>
-        <td>${export.timestamp}</td>
-        <td><span class="badge ${export.status === 'SUCCESS' ? 'badge--success' : 'badge--warning'}">${export.status}</span></td>
-        <td>${export.records || 0}</td>
-        <td>${export.details || '-'}</td>
+        <td>${record.timestamp}</td>
+        <td><span class="badge ${record.status === 'SUCCESS' ? 'badge--success' : 'badge--warning'}">${record.status}</span></td>
+        <td>${record.records || 0}</td>
+        <td>${record.details || '-'}</td>
       </tr>
     `).join('');
   },
@@ -535,6 +575,426 @@ const Admin = {
    */
   getCurrentUser: function() {
     return App.getCurrentUser();
+  },
+
+  /* --------------------------------------------------------------------------
+     EMPLOYEE CSV UPLOAD — Data Management
+     -------------------------------------------------------------------------- */
+
+  /** Parsed employee data from CSV */
+  employeeData: [],
+
+  /** Raw headers from the uploaded CSV */
+  employeeHeaders: [],
+
+  /** Minimum required columns for validation (just need employee ID and email to be useful) */
+  MINIMUM_REQUIRED: ['Employee No.', 'Email Address'],
+
+  /**
+   * Setup employee CSV upload event listeners
+   */
+  setupEmployeeUpload: function() {
+    const uploadZone = document.getElementById('employee-upload-zone');
+    const fileInput = document.getElementById('employee-csv-input');
+    const clearBtn = document.getElementById('employee-clear-file');
+    const uploadBtn = document.getElementById('employee-upload-btn');
+    const templateBtn = document.getElementById('employee-download-template-btn');
+
+    if (!uploadZone || !fileInput) return;
+
+    // Click to browse
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        this.handleEmployeeFile(e.target.files[0]);
+      }
+    });
+
+    // Drag and drop
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('drag-over');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      if (e.dataTransfer.files.length > 0) {
+        this.handleEmployeeFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    // Clear file
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => this.clearEmployeeFile());
+    }
+
+    // Upload button
+    if (uploadBtn) {
+      uploadBtn.addEventListener('click', () => this.uploadEmployeeData());
+    }
+
+    // Download template
+    if (templateBtn) {
+      templateBtn.addEventListener('click', () => this.downloadEmployeeTemplate());
+    }
+  },
+
+  /**
+   * Handle selected employee CSV file
+   * @param {File} file - The selected CSV file
+   */
+  handleEmployeeFile: function(file) {
+    if (!file.name.endsWith('.csv')) {
+      this.showNotification('Please select a CSV file (.csv)', 'error');
+      return;
+    }
+
+    // Show file info
+    document.getElementById('employee-file-info').style.display = 'block';
+    document.getElementById('employee-file-name').textContent = file.name;
+    document.getElementById('employee-file-size').textContent = this.formatFileSize(file.size);
+
+    // Read and parse CSV
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const csvText = e.target.result;
+      this.parseEmployeeCSV(csvText);
+    };
+    reader.onerror = () => {
+      this.showNotification('Error reading file', 'error');
+    };
+    reader.readAsText(file);
+  },
+
+  /**
+   * Parse employee CSV text — ingests ALL columns as-is from the SAP export
+   * @param {string} csvText - Raw CSV content
+   */
+  parseEmployeeCSV: function(csvText) {
+    // Remove BOM if present
+    if (csvText.charCodeAt(0) === 0xFEFF) {
+      csvText = csvText.slice(1);
+    }
+
+    const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
+
+    if (lines.length < 2) {
+      this.showNotification('CSV file must have a header row and at least one data row', 'error');
+      return;
+    }
+
+    // Parse header — take ALL columns as-is
+    const headers = this.parseCSVLine(lines[0]).map(h => h.trim());
+    this.employeeHeaders = headers;
+
+    const errors = [];
+
+    // Check minimum required columns exist
+    const missingRequired = this.MINIMUM_REQUIRED.filter(col =>
+      !headers.some(h => h.toLowerCase() === col.toLowerCase())
+    );
+
+    if (missingRequired.length > 0) {
+      errors.push(`Missing required columns: ${missingRequired.join(', ')}`);
+    }
+
+    // Find key column indices for validation
+    const emailIdx = headers.findIndex(h => h.toLowerCase() === 'email address');
+    const empNoIdx = headers.findIndex(h => h.toLowerCase() === 'employee no.');
+
+    // Parse ALL data rows with ALL columns
+    const employees = [];
+    const emails = new Set();
+    const employeeNos = new Set();
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = this.parseCSVLine(lines[i]);
+      if (values.length === 0 || values.every(v => v.trim() === '')) continue;
+
+      // Build row object with ALL headers
+      const row = {};
+      headers.forEach((header, idx) => {
+        row[header] = idx < values.length ? values[idx].trim() : '';
+      });
+
+      // Basic validation on key fields
+      const empNo = empNoIdx >= 0 ? (values[empNoIdx] || '').trim() : '';
+      const email = emailIdx >= 0 ? (values[emailIdx] || '').trim() : '';
+
+      if (empNo && employeeNos.has(empNo)) {
+        errors.push(`Row ${i + 1}: Duplicate Employee No. "${empNo}"`);
+      } else if (empNo) {
+        employeeNos.add(empNo);
+      }
+
+      if (email && emails.has(email.toLowerCase())) {
+        errors.push(`Row ${i + 1}: Duplicate Email "${email}"`);
+      } else if (email) {
+        emails.add(email.toLowerCase());
+      }
+
+      employees.push(row);
+
+      // Cap errors at 20
+      if (errors.length >= 20) {
+        errors.push('... (more errors not shown — fix the above first)');
+        break;
+      }
+    }
+
+    // Store parsed data
+    this.employeeData = employees;
+
+    // Show preview
+    this.showEmployeePreview(employees, errors);
+  },
+
+  /**
+   * Parse a single CSV line handling quoted fields
+   * @param {string} line - CSV line
+   * @returns {string[]} Array of field values
+   */
+  parseCSVLine: function(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (inQuotes) {
+        if (char === '"') {
+          if (i + 1 < line.length && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += char;
+        }
+      } else {
+        if (char === '"') {
+          inQuotes = true;
+        } else if (char === ',') {
+          result.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+    }
+    result.push(current);
+    return result;
+  },
+
+  /**
+   * Show employee preview table and validation results.
+   * Dynamically renders ALL columns from the CSV.
+   * @param {Object[]} employees - Parsed employee data
+   * @param {string[]} errors - Validation errors
+   */
+  showEmployeePreview: function(employees, errors) {
+    const previewSection = document.getElementById('employee-preview-section');
+    const rowCount = document.getElementById('employee-row-count');
+    const validationStatus = document.getElementById('employee-validation-status');
+    const validationErrors = document.getElementById('employee-validation-errors');
+    const errorList = document.getElementById('employee-error-list');
+    const previewTable = document.getElementById('employee-preview-table');
+    const uploadBtn = document.getElementById('employee-upload-btn');
+
+    previewSection.style.display = 'block';
+    rowCount.textContent = employees.length;
+
+    // Show errors
+    if (errors.length > 0) {
+      validationStatus.textContent = `${errors.length} Error(s)`;
+      validationStatus.className = 'badge badge--warning';
+      validationErrors.style.display = 'block';
+      errorList.innerHTML = errors.map(e => `<li>${e}</li>`).join('');
+      uploadBtn.disabled = true;
+    } else {
+      validationStatus.textContent = 'Valid ✓';
+      validationStatus.className = 'badge badge--success';
+      validationErrors.style.display = 'none';
+      uploadBtn.disabled = false;
+    }
+
+    // Pick key columns to display in preview (show max 8 for readability)
+    const displayColumns = this.getPreviewColumns(this.employeeHeaders);
+
+    // Build dynamic table header
+    const thead = previewTable.querySelector('thead');
+    thead.innerHTML = '<tr>' + displayColumns.map(col => `<th>${this.escapeHTML(col)}</th>`).join('') + '</tr>';
+
+    // Render preview rows (max 50)
+    const previewBody = document.getElementById('employee-preview-body');
+    const previewRows = employees.slice(0, 50);
+    previewBody.innerHTML = previewRows.map(emp => {
+      const cells = displayColumns.map(col => `<td>${this.escapeHTML(emp[col] || '')}</td>`).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+
+    if (employees.length > 50) {
+      previewBody.innerHTML += `<tr><td colspan="${displayColumns.length}" style="text-align: center; color: #666; font-style: italic;">... showing first 50 of ${employees.length} rows</td></tr>`;
+    }
+
+    // Show total column count
+    const headerInfo = document.querySelector('#employee-preview-section h3');
+    if (headerInfo) {
+      headerInfo.innerHTML = `Preview (<span id="employee-row-count">${employees.length}</span> rows, ${this.employeeHeaders.length} columns)`;
+    }
+  },
+
+  /**
+   * Pick key columns for preview display (max 8 for readability).
+   * Prioritizes important SAP fields but shows whatever is available.
+   * @param {string[]} allHeaders - All CSV headers
+   * @returns {string[]} Columns to display
+   */
+  getPreviewColumns: function(allHeaders) {
+    // Priority columns to show if they exist
+    const priority = [
+      'Employee No.',
+      'Full Name',
+      'Email Address',
+      'Business Group (Label)',
+      'Department (Label)',
+      'Band (Picklist Label)',
+      'Position Position Title (Label)',
+      'Immediate Supervisor'
+    ];
+
+    const display = [];
+    priority.forEach(col => {
+      const match = allHeaders.find(h => h.toLowerCase() === col.toLowerCase());
+      if (match) display.push(match);
+    });
+
+    // If fewer than 8, fill from remaining headers
+    if (display.length < 8) {
+      allHeaders.forEach(h => {
+        if (display.length < 8 && !display.includes(h)) {
+          display.push(h);
+        }
+      });
+    }
+
+    return display;
+  },
+
+  /**
+   * Upload parsed employee data to backend — sends ALL columns as-is
+   */
+  uploadEmployeeData: function() {
+    if (this.employeeData.length === 0) {
+      this.showNotification('No employee data to upload', 'error');
+      return;
+    }
+
+    if (!confirm(`Upload ${this.employeeData.length} employees (${this.employeeHeaders.length} columns) to the system? This will REPLACE the current employee database.`)) {
+      return;
+    }
+
+    const uploadBtn = document.getElementById('employee-upload-btn');
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Uploading...';
+
+    console.log('[Admin] Uploading employee data:', this.employeeData.length, 'records,', this.employeeHeaders.length, 'columns');
+
+    API.uploadEmployeeDatabase({ headers: this.employeeHeaders, rows: this.employeeData })
+      .then(response => {
+        if (response.success) {
+          const resultDiv = document.getElementById('employee-upload-result');
+          resultDiv.style.display = 'block';
+          resultDiv.style.background = '#e6f9f0';
+          resultDiv.style.border = '1px solid #0a7c42';
+          resultDiv.style.color = '#0a7c42';
+          resultDiv.innerHTML = `<strong>✓ Upload Successful!</strong><br>${response.message || this.employeeData.length + ' employees uploaded to the system.'}`;
+
+          this.showNotification(`${this.employeeData.length} employees uploaded successfully`, 'success');
+
+          // Update stats
+          if (this.stats) {
+            this.stats.totalEmployees = this.employeeData.length;
+            this.updateStatsUI();
+          }
+        } else {
+          this.showNotification(response.message || 'Upload failed', 'error');
+          uploadBtn.disabled = false;
+        }
+        uploadBtn.textContent = 'Upload to System';
+      })
+      .catch(error => {
+        console.error('[Admin] Upload error:', error);
+        this.showNotification('Error uploading employee data: ' + error.message, 'error');
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload to System';
+      });
+  },
+
+  /**
+   * Clear the selected file and reset preview
+   */
+  clearEmployeeFile: function() {
+    document.getElementById('employee-csv-input').value = '';
+    document.getElementById('employee-file-info').style.display = 'none';
+    document.getElementById('employee-preview-section').style.display = 'none';
+    document.getElementById('employee-upload-result').style.display = 'none';
+    this.employeeData = [];
+  },
+
+  /**
+   * Download a sample CSV template matching SAP HRMF format
+   */
+  downloadEmployeeTemplate: function() {
+    const header = 'HR Business Partner,Employee No.,Full Name,Last Name,First Name,Middle Name,Employment Status (Picklist Label),Position Position Title (Label),Band (Picklist Label),Pathway (Pathway Code),Pathway (Label),Job Code (Job Code),Job Code (Label),Business Group (Group Code),Business Group (Label),Department (Department Code),Department (Label),Cost Center (externalCode),Cost Center (Label),Business Area (Picklist Label),Immediate Supervisor,OT Beyond 4 hours - Approver,Assignment Code,Base of Assignment (Assignment Name),Affiliate (Label),Gender,Email Address';
+    const sampleRow = 'Maria Christine Ebreo,13989,"Abacan, Rachel Aranas",Abacan,Rachel,Aranas,Regular,Support Engineer I,Team Member (E),CNVRG-P04,Professional - Technical (Non-IT),CNVRG-PT4,Engineer I,1068,Infrastructure Business Group,1068-D05,Facilities Implementation,1068040000,Facilities Implementation,DOE - Direct Expense,Renato Albornoz,Rodel Banal,CNVRG-G17-01,"Reliance Center, Pasig",Converge ICT Solutions Inc.,F,sample.employee@convergeict.com';
+    const csv = header + '\n' + sampleRow + '\n';
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'employee-database-template-SAP.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Escape HTML to prevent XSS
+   * @param {string} str - Raw string
+   * @returns {string} Escaped string
+   */
+  escapeHTML: function(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  },
+
+  /**
+   * Format file size for display
+   * @param {number} bytes - File size in bytes
+   * @returns {string} Formatted size string
+   */
+  formatFileSize: function(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 };
 

@@ -749,3 +749,81 @@ function getTeamMembersWithStatusData(managerId) {
     return { success: false, message: e.message };
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                       ADMIN: EMPLOYEE DATABASE UPLOAD                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Upload employee database from CSV data.
+ * Ingests ALL columns as-is from the SAP export.
+ * Replaces all existing data in the Employee Database sheet.
+ * Uses LockService to prevent concurrent writes.
+ * 
+ * @param {Object} data - { headers: string[], rows: Object[] }
+ *   headers: Array of column names (all 27 SAP columns)
+ *   rows: Array of objects with header keys
+ * @returns {Object} { success: boolean, message: string }
+ */
+function uploadEmployeeDatabase(data) {
+  try {
+    if (!data || !Array.isArray(data.headers) || !Array.isArray(data.rows)) {
+      return { success: false, message: 'Invalid data format. Expected { headers, rows }' };
+    }
+
+    var headers = data.headers;
+    var rows = data.rows;
+
+    if (headers.length === 0) {
+      return { success: false, message: 'No headers provided' };
+    }
+
+    if (rows.length === 0) {
+      return { success: false, message: 'No employee data provided' };
+    }
+
+    console.log('[uploadEmployeeDatabase] Uploading ' + rows.length + ' employees (' + headers.length + ' columns)');
+
+    // Acquire lock to prevent concurrent writes
+    var lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+
+    try {
+      var sheet = getSheet_('Employee Database');
+
+      // Clear existing data (keep nothing — full replace)
+      var lastRow = sheet.getLastRow();
+      var lastCol = sheet.getLastColumn();
+      if (lastRow > 0) {
+        sheet.getRange(1, 1, lastRow, Math.max(lastCol, headers.length)).clearContent();
+      }
+
+      // Write headers as row 1
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+      // Prepare data rows — maintain column order from headers
+      var dataRows = rows.map(function(row) {
+        return headers.map(function(col) {
+          return row[col] !== undefined && row[col] !== null ? row[col] : '';
+        });
+      });
+
+      // Write all rows at once (batch write)
+      if (dataRows.length > 0) {
+        sheet.getRange(2, 1, dataRows.length, headers.length).setValues(dataRows);
+      }
+
+      console.log('[uploadEmployeeDatabase] Successfully wrote ' + dataRows.length + ' rows, ' + headers.length + ' columns');
+
+      return {
+        success: true,
+        message: dataRows.length + ' employees uploaded successfully (' + headers.length + ' columns)'
+      };
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (e) {
+    console.error('[uploadEmployeeDatabase] Error: ' + e.message);
+    return { success: false, message: 'Upload failed: ' + e.message };
+  }
+}
