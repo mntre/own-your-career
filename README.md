@@ -460,4 +460,82 @@ npm run dev
 - **Target Launch:** July 17, 2026
 - **Workflow Design:** Confirmed (Zaira Bajar — 7-step process)
 - **BRD Version:** v4.0 (July 1, 2026) — aligned
-- **Last Updated:** July 3, 2026
+- **Last Updated:** July 7, 2026
+
+---
+
+## Pending Work — July 17 Launch Checklist
+
+### 🔴 CRITICAL (Must Complete)
+
+| # | Task | Component | Owner | Status | ETA |
+|----|------|-----------|-------|--------|-----|
+| 1 | Implement database layer (db.js) | Converge backend | Charvin | 🔴 TODO | Jul 7 |
+| 2 | Hard lock date enforcement | All save functions | Charvin + Jeremy | 🔴 TODO | Jul 7 |
+| 3 | Manager portal form submission | Manager Portal | Jeremy | 🔴 TODO | Jul 8 |
+| 4 | Employee portal form submission | Employee Portal | Jeremy | 🔴 TODO | Jul 8 |
+| 5 | DataSPOC portal form submission | DataSPOC Portal | Charvin | 🔴 TODO | Jul 8 |
+| 6 | Server-side gate validation | Converge routes | Charvin | 🔴 TODO | Jul 8 |
+| 7 | Server-side gate validation | AppScript endpoints | Jeremy | 🔴 TODO | Jul 8 |
+| 8 | Conflict detection & resolution | Database.gs | Jeremy | 🔴 TODO | Jul 8 |
+| 9 | Fix `detectConflict()` undefined error | Database.gs | Jeremy | 🔴 TODO | Jul 8 |
+| 10 | Fix `logConflict()` undefined error | Database.gs | Jeremy | 🔴 TODO | Jul 8 |
+
+### 🟡 HIGH PRIORITY (This Week)
+
+| # | Task | Component | Owner | Status | ETA |
+|----|------|-----------|-------|--------|-----|
+| 11 | Admin statistics calculation | Admin Portal | Charvin | 🟡 TODO | Jul 9 |
+| 12 | Email notification templates | Email service | TBD | 🟡 TODO | Jul 10 |
+| 13 | Email sending implementation | Email.gs + email.js | TBD | 🟡 TODO | Jul 10 |
+| 14 | Read-only enforcement after Step 5 | Frontend + Backend | Jeremy | 🟡 TODO | Jul 9 |
+| 15 | Test both platforms (AppScript + Converge) | Integration | Charvin + Jeremy | 🟡 TODO | Jul 10 |
+
+### 🟢 NICE-TO-HAVE (Phase 2+)
+
+| # | Task | Component | Owner | Status | ETA |
+|----|------|-----------|-------|--------|-----|
+| 16 | SFTP export to SuccessFactors | export.js | TBD | 🟢 BACKLOG | Jul 15 |
+| 17 | Sync status detection | manager-portal.js | TBD | 🟢 BACKLOG | Jul 15 |
+| 18 | Audit logging comprehensive | All routes | TBD | 🟢 BACKLOG | Jul 15 |
+| 19 | Rate limiting on API routes | Converge middleware | TBD | 🟢 BACKLOG | Jul 15 |
+| 20 | CORS security hardening | Converge server | TBD | 🟢 BACKLOG | Jul 15 |
+
+### 📊 Implementation Status Summary
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Portal UIs** | 90% ✅ | HTML/CSS complete for all 4 portals |
+| **Hard Gates Logic** | 100% ✅ | Client-side gates complete (gates.js) |
+| **OKR Calculations** | 100% ✅ | All formulas correct, performance brackets accurate |
+| **Form Validation** | 100% ✅ | All validators implemented (validation.js) |
+| **Google OAuth** | 90% ✅ | Testing mode works; production ready |
+| **RBAC Middleware** | 100% ✅ | Middleware functions complete |
+| **AppScript Database** | 80% ✅ | CRUD mostly complete, conflict detection stubbed |
+| **Manager Portal Logic** | 40% 🟡 | UI built, submission handlers incomplete |
+| **Employee Portal Logic** | 30% 🟡 | Step 3 form built, no submission handler |
+| **DataSPOC Portal Logic** | 40% 🟡 | CSV upload works, OKR submission incomplete |
+| **Admin Portal Logic** | 20% 🟡 | UI built, stats/export stubbed |
+| **Converge Backend** | 20% ⚠️ | Routes defined, handlers all TODO |
+| **Converge Database (db.js)** | 0% ❌ | 100% stubbed, blocking all data persistence |
+| **Email Service** | 0% ❌ | Both Email.gs and email.js stubbed |
+| **SFTP Export** | 0% ❌ | export.js stubbed |
+| **Hard Lock Enforcement** | 0% ❌ | Set but never checked on save |
+| **Server-Side Gates** | 0% ❌ | Only client-side enforcement (bypassable) |
+
+### Legend
+- 🔴 **CRITICAL** — Blocks July 17 launch, must complete ASAP
+- 🟡 **HIGH PRIORITY** — Required for July 17, complete this week
+- 🟢 **BACKLOG** — Can defer to Phase 2 if needed
+- ✅ **COMPLETE** — Production ready
+- 🟡 **PARTIAL** — Some implementation, needs completion
+- ⚠️ **RISKY** — Dual deployment complexity
+- ❌ **MISSING** — Zero implementation
+
+### Recent Updates (July 7)
+- Audit completed — identified 8 critical gaps
+- Database strategy finalized (Plan A: Google Sheets, Plan B: PostgreSQL)
+- Team assignments prepared
+- Dual deployment risk assessment done
+
+---
