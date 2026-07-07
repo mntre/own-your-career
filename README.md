@@ -481,6 +481,64 @@ npm run dev
 | 9 | Fix `detectConflict()` undefined error | Database.gs | Jeremy | 🔴 TODO | Jul 8 |
 | 10 | Fix `logConflict()` undefined error | Database.gs | Jeremy | 🔴 TODO | Jul 8 |
 
+### 🔴 CRITICAL — Admin Portal: Data Management (Luigi)
+
+> **Context:** Before the 7-step workflow can run, the admin must seed the system with employee data,
+> skill definitions, and role assignments. This is the "backend setup" that feeds all other portals.
+
+| # | Task | Description | Component | Owner | Status | ETA |
+|----|------|-------------|-----------|-------|--------|-----|
+| A1 | Employee Database CSV Upload | Upload master employee list (Name, Email, Department, Group, Band/Grade, ManagerID, Role) | Admin Portal | Luigi | 🔴 TODO | Jul 8 |
+| A2 | Employee Database Viewer | View/search/filter uploaded employees; edit individual records pre-lock | Admin Portal | Luigi | 🔴 TODO | Jul 8 |
+| A3 | Core Skills Definition Upload | Upload/configure the 5 core skills + required levels per band/grade | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
+| A4 | Leadership Skills Definition Upload | Upload/configure the 5 leadership skills + required levels per band/grade | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
+| A5 | Role Assignment Management | Assign/reassign roles (Manager, Data SPOC, Employee) per employee; bulk update via CSV | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
+| A6 | Organizational Hierarchy Setup | Define Corporate → Group → Department → Team structure for Data SPOC dropdown | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
+| A7 | Backend: Employee Upload API | AppScript function + Converge route to write employee CSV to Google Sheets | Backend | Luigi | 🔴 TODO | Jul 9 |
+| A8 | Backend: Skills Config API | AppScript function + Converge route to write skill definitions to Google Sheets | Backend | Luigi | 🔴 TODO | Jul 9 |
+| A9 | Backend: Role Assignment API | AppScript function + Converge route to update roles in Employee Database sheet | Backend | Luigi | 🔴 TODO | Jul 9 |
+| A10 | Validation: CSV format checks | Validate required columns, data types, duplicate emails, valid ManagerIDs | Admin Portal | Luigi | 🔴 TODO | Jul 9 |
+
+**Admin Data Management — Breakdown:**
+
+```
+A1: Employee CSV Upload
+├── UI: File input + drag-drop zone on Admin Portal "Data Management" tab
+├── CSV columns: EmployeeID, Name, Email, Department, Group, Team, Band, Grade, ManagerID, Role
+├── Validation: Required fields, email format, no duplicates, valid ManagerID references
+├── Backend: Parse CSV → write rows to "Employee Database" Google Sheet tab
+└── Feedback: Success count, error rows listed, preview before confirm
+
+A2: Employee Database Viewer
+├── UI: Searchable/filterable table of all employees
+├── Features: Search by name/email, filter by department/group/role
+├── Edit: Click row → inline edit (pre-lock only)
+├── Delete: Remove employee (with confirmation)
+└── Export: Download current employee list as CSV
+
+A3 + A4: Skills Definition Upload
+├── UI: Form or CSV upload for skill configurations
+├── Core Skills: Technical Competency, Process Efficiency, Customer Focus, Collaboration, Innovation
+├── Leadership Skills: Strategic Thinking, Team Development, Decision Making, Change Management, Stakeholder Management
+├── Per skill: Name, Description, Required Level per Band/Grade (0-5 scale)
+├── Backend: Write to "SkillDefinitions" config (or SystemConfig tab)
+└── Used by: Step 1 (Manager Skills Assessment) to show required vs actual
+
+A5: Role Assignment Management
+├── UI: Table with dropdown per employee (MANAGER / DATA_SPOC / EMPLOYEE / ADMIN)
+├── Bulk: Upload CSV with Email + Role columns to mass-assign
+├── Validation: At least 1 admin, managers must have reports, SPOCs assigned per group
+├── Backend: Update "Role" column in Employee Database sheet
+└── Effect: Determines which portal each user sees after login
+
+A6: Organizational Hierarchy Setup
+├── UI: Tree view or nested dropdowns to define org structure
+├── Levels: Corporate → Group → Department → Team
+├── Used by: Data SPOC portal (Step 2) dropdown filters
+├── Backend: Write to "OrgHierarchy" tab or derive from Employee Database
+└── Validation: No orphan departments, all employees mapped to a team
+```
+
 ### 🟡 HIGH PRIORITY (This Week)
 
 | # | Task | Component | Owner | Status | ETA |
@@ -516,6 +574,7 @@ npm run dev
 | **Employee Portal Logic** | 30% 🟡 | Step 3 form built, no submission handler |
 | **DataSPOC Portal Logic** | 40% 🟡 | CSV upload works, OKR submission incomplete |
 | **Admin Portal Logic** | 20% 🟡 | UI built, stats/export stubbed |
+| **Admin Data Management** | 0% ❌ | Employee upload, skills config, role assignment — NOT BUILT |
 | **Converge Backend** | 20% ⚠️ | Routes defined, handlers all TODO |
 | **Converge Database (db.js)** | 0% ❌ | 100% stubbed, blocking all data persistence |
 | **Email Service** | 0% ❌ | Both Email.gs and email.js stubbed |
@@ -537,5 +596,8 @@ npm run dev
 - Database strategy finalized (Plan A: Google Sheets, Plan B: PostgreSQL)
 - Team assignments prepared
 - Dual deployment risk assessment done
+- **Added Admin Data Management tasks (A1-A10)** — Luigi owns employee upload, skills config, role assignment
+- Merged PR #10 (mntre: OKR calculations + DataSPOC form updates)
+- Merged PR #12 (xremy23: Manager portal team view bug fix)
 
 ---
