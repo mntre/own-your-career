@@ -626,9 +626,9 @@ A6: Organizational Hierarchy Setup
 | **DataSPOC Portal Logic** | 40% 🟡 | CSV upload works, OKR submission incomplete |
 | **Admin Portal UI** | 70% ✅ | Card-based Data Management grid complete (A1 active, A2-A6 ready) |
 | **Admin Portal: A1 Employee Upload** | 100% ✅ | CSV parsing, validation, preview, upload logic complete |
-| **Admin Portal: A2-A6 (Placeholders)** | 10% 🔄 | Cards designed & clickable, sections ready for implementation |
-| **Converge Backend** | 20% ⚠️ | Routes defined, handlers all TODO |
-| **Converge Database (db.js)** | 0% ❌ | 100% stubbed, blocking all data persistence |
+| **Admin Portal: A2-A6 (Placeholders)** | 40% � | A2 (Database Viewer) & A5 (Role Assignment) complete; A3, A4, A6 placeholder |
+| **Converge Backend** | 50% 🟡 | Login, employee upload, role derivation, role CRUD all wired |
+| **Converge Database (db.js)** | 80% ✅ | SQLite: 12 tables, role derivation pipeline, supervisor overrides, migrations |
 | **Email Service** | 0% ❌ | Both Email.gs and email.js stubbed |
 | **SFTP Export** | 0% ❌ | export.js stubbed |
 | **Hard Lock Enforcement** | 0% ❌ | Set but never checked on save |
@@ -978,10 +978,10 @@ ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT;
 
 | Phase | Status |
 |-------|--------|
-| RD-1: Schema update | 📋 Ready to build |
-| RD-2: Build lookup | 📋 Ready to build |
-| RD-3: Resolve supervisors | 📋 Ready to build |
-| RD-4: Derive roles | 📋 Ready to build (replace existing `autoDerivRoles`) |
-| RD-5: Wire to upload flow | 📋 Ready to build |
-| RD-6: Override management UI | 📋 Can defer |
-| RD-7: API endpoints | 📋 Ready to build |
+| RD-1: Schema update | ✅ COMPLETE (columns + override table + migrations) |
+| RD-2: Build lookup | ✅ COMPLETE (buildSupervisorLookup in db.js) |
+| RD-3: Resolve supervisors | ✅ COMPLETE (3-layer: override → match → flag) |
+| RD-4: Derive roles | ✅ COMPLETE (preserves DATA_SPOC/ADMIN) |
+| RD-5: Wire to upload flow | ✅ COMPLETE (auto-runs after CSV upload) |
+| RD-6: Override management UI | ✅ COMPLETE (API endpoints ready, admin.js updated) |
+| RD-7: API endpoints | ✅ COMPLETE (derive, unresolved, override CRUD, re-derive) |

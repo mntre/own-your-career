@@ -408,18 +408,29 @@ router.post('/api/admin/upload-employees', rbac.requireAdmin(), (req, res) => {
     AuditLog.add('EMPLOYEE_UPLOAD', userEmail, `Uploaded ${result.inserted} employees`, 
       `${headers.length} columns, ${result.errors.length} errors`);
 
+    // Auto-run role derivation pipeline after upload (RD-5)
+    let roleDerivation = null;
+    try {
+      roleDerivation = Employees.runFullRoleDerivation();
+      console.log(`[Admin] Role derivation: ${roleDerivation.managersDetected} managers, ${roleDerivation.matched} matched, ${roleDerivation.unresolved} unresolved`);
+    } catch (rdError) {
+      console.error('[Admin] Role derivation failed (non-blocking):', rdError.message);
+    }
+
     if (result.errors.length > 0) {
       res.json({
         success: true,
         message: `${result.inserted} employees uploaded. ${result.errors.length} rows had errors.`,
         inserted: result.inserted,
-        errors: result.errors.slice(0, 20)
+        errors: result.errors.slice(0, 20),
+        roleDerivation: roleDerivation
       });
     } else {
       res.json({
         success: true,
         message: `${result.inserted} employees uploaded successfully (${headers.length} columns)`,
-        inserted: result.inserted
+        inserted: result.inserted,
+        roleDerivation: roleDerivation
       });
     }
   } catch (error) {
@@ -433,22 +444,32 @@ router.post('/api/admin/upload-employees', rbac.requireAdmin(), (req, res) => {
 
 /**
  * POST /api/admin/derive-roles
- * Auto-derive MANAGER roles from immediate_supervisor field in employee data
- * After upload, system auto-detects which employees have reports and marks them as MANAGER
+ * Run full role derivation pipeline (RD-2 + RD-3 + RD-4):
+ * 1. Build lookup names (First + Last)
+ * 2. Resolve supervisors (override → match → flag)
+ * 3. Derive MANAGER roles from hierarchy
+ * Preserves manually assigned DATA_SPOC and ADMIN roles.
  * RBAC: ADMIN role only
  */
 router.post('/api/admin/derive-roles', rbac.requireAdmin(), (req, res) => {
   try {
-    const result = Employees.autoDerivRoles();
+    const result = Employees.runFullRoleDerivation();
 
     const userEmail = req.user ? req.user.email : 'admin';
-    AuditLog.add('ROLE_DERIVATION', userEmail, `Auto-detected ${result.managersAutoDetected} managers`, 
-      JSON.stringify(result.roles));
+    AuditLog.add('ROLE_DERIVATION', userEmail, 
+      `Derivation complete: ${result.managersDetected} managers, ${result.matched} matched, ${result.unresolved} unresolved`,
+      JSON.stringify(result));
 
     res.json({
       success: true,
-      message: `Role derivation complete: ${result.managersAutoDetected} managers auto-detected`,
-      managersAutoDetected: result.managersAutoDetected,
+      message: `Role derivation complete: ${result.managersDetected} managers detected, ${result.matched} supervisors matched`,
+      lookupCount: result.lookupCount,
+      matched: result.matched,
+      overridden: result.overridden,
+      unresolved: result.unresolved,
+      external: result.external,
+      managersDetected: result.managersDetected,
+      preserved: result.preserved,
       roles: result.roles
     });
   } catch (error) {
@@ -457,6 +478,122 @@ router.post('/api/admin/derive-roles', rbac.requireAdmin(), (req, res) => {
       success: false,
       message: 'Error deriving roles: ' + error.message
     });
+  }
+});
+
+/**
+ * GET /api/admin/unresolved-supervisors
+ * List supervisors that couldn't be matched (need override or are external)
+ * RBAC: ADMIN role only
+ */
+router.get('/api/admin/unresolved-supervisors', rbac.requireAdmin(), (req, res) => {
+  try {
+    const unresolved = Employees.getUnresolvedSupervisors();
+    res.json({ success: true, unresolved });
+  } catch (error) {
+    console.error('[Admin] Error loading unresolved supervisors:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/supervisor-overrides
+ * Get all supervisor override rules
+ * RBAC: ADMIN role only
+ */
+router.get('/api/admin/supervisor-overrides', rbac.requireAdmin(), (req, res) => {
+  try {
+    const overrides = Employees.getOverrides();
+    res.json({ success: true, overrides });
+  } catch (error) {
+    console.error('[Admin] Error loading overrides:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/supervisor-override
+ * Add or update a supervisor override rule
+ * Body: { supervisorName, resolvedEmployeeNo, reason }
+ * RBAC: ADMIN role only
+ */
+router.post('/api/admin/supervisor-override', rbac.requireAdmin(), (req, res) => {
+  try {
+    const { supervisorName, resolvedEmployeeNo, reason } = req.body;
+
+    if (!supervisorName || !resolvedEmployeeNo) {
+      return res.status(400).json({
+        success: false,
+        message: 'supervisorName and resolvedEmployeeNo are required'
+      });
+    }
+
+    const userEmail = req.user ? req.user.email : 'admin';
+    Employees.setOverride(supervisorName, resolvedEmployeeNo, reason, userEmail);
+
+    AuditLog.add('OVERRIDE_SET', userEmail, 
+      `Set override: "${supervisorName}" → ${resolvedEmployeeNo}`, reason || '');
+
+    res.json({
+      success: true,
+      message: `Override saved: "${supervisorName}" → ${resolvedEmployeeNo}`
+    });
+  } catch (error) {
+    console.error('[Admin] Error setting override:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/supervisor-override/:id
+ * Remove a supervisor override rule
+ * RBAC: ADMIN role only
+ */
+router.delete('/api/admin/supervisor-override/:id', rbac.requireAdmin(), (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Invalid override ID' });
+    }
+
+    Employees.deleteOverride(id);
+
+    const userEmail = req.user ? req.user.email : 'admin';
+    AuditLog.add('OVERRIDE_DELETE', userEmail, `Deleted override ID: ${id}`, '');
+
+    res.json({ success: true, message: 'Override deleted' });
+  } catch (error) {
+    console.error('[Admin] Error deleting override:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/re-derive-roles
+ * Re-run role derivation (after override changes)
+ * Alias for derive-roles — same logic
+ * RBAC: ADMIN role only
+ */
+router.post('/api/admin/re-derive-roles', rbac.requireAdmin(), (req, res) => {
+  try {
+    // Re-run resolve + derive (lookup already built)
+    const resolveResults = Employees.resolveSupervisors();
+    const deriveResults = Employees.deriveRolesFromHierarchy();
+
+    const userEmail = req.user ? req.user.email : 'admin';
+    AuditLog.add('ROLE_RE_DERIVATION', userEmail, 
+      `Re-derived: ${deriveResults.managersDetected} managers after override change`, '');
+
+    res.json({
+      success: true,
+      message: `Re-derivation complete: ${deriveResults.managersDetected} managers`,
+      ...resolveResults,
+      managersDetected: deriveResults.managersDetected,
+      roles: deriveResults.roles
+    });
+  } catch (error) {
+    console.error('[Admin] Error re-deriving roles:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
