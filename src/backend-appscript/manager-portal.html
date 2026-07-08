@@ -7,9 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    /* ==========================================================================
-       Own Your Career — Global Styles (Inline for AppScript)
-       ========================================================================== */
     :root {
       --color-primary: #038F8D;
       --color-black: #000000;
@@ -22,6 +19,8 @@
       --color-complete: #0a7c42;
       --color-pending: #f9a825;
       --color-locked: #9AC0C3;
+      --color-warn-bg: #fff8e1;
+      --color-warn-border: #ffeb3b;
       --font-heading: 'Funnel Display', sans-serif;
       --font-body: 'Funnel Sans', 'DM Sans', sans-serif;
       --spacing-xs: 0.25rem;
@@ -42,8 +41,10 @@
     html { font-size: 16px; -webkit-font-smoothing: antialiased; }
     body { font-family: var(--font-body); color: var(--color-black); background-color: #f5f5f5; line-height: 1.6; }
 
-    h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 700; line-height: 1.2; color: var(--color-black); }
-    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.25rem; }
+    h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 700; line-height: 1.2; }
+    h1 { font-size: 2rem; color: var(--color-black); }
+    h2 { font-size: 1.5rem; color: var(--color-black); }
+    h3 { font-size: 1.25rem; color: var(--color-black); }
     p { margin-bottom: var(--spacing-md); }
 
     .portal-header {
@@ -70,9 +71,10 @@
     }
     .btn:focus-visible { outline: 3px solid var(--color-aquamarine); outline-offset: 2px; }
     .btn--primary { background-color: var(--color-primary); color: var(--color-white); }
-    .btn--primary:hover { background-color: var(--color-teal-mid); }
+    .btn--primary:hover:not(:disabled) { background-color: var(--color-teal-mid); }
+    .btn--primary:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn--secondary { background-color: var(--color-teal-soft); color: var(--color-teal-dark); }
-    .btn--secondary:hover { background-color: var(--color-aquamarine); }
+    .btn--secondary:hover:not(:disabled) { background-color: var(--color-aquamarine); }
     .btn--small { padding: 0.4rem 0.8rem; font-size: 0.875rem; margin-right: 0.5rem; }
 
     .table {
@@ -90,7 +92,7 @@
       font-weight: 600;
       border-bottom: 2px solid var(--color-teal-dark);
     }
-    .table tr:hover { background-color: rgba(154, 192, 195, 0.15); }
+    .table tr:hover { background-color: rgba(154, 192, 195, 0.15); cursor: pointer; }
     .table td { border-bottom: 1px solid var(--color-teal-soft); }
 
     .status-badge {
@@ -137,9 +139,124 @@
       border-color: var(--color-primary);
       box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
     }
+    .form-group textarea { min-height: 100px; resize: vertical; }
 
     .form-actions { display: flex; gap: var(--spacing-md); margin-top: var(--spacing-2xl); justify-content: flex-end; }
     .team-section { background: white; padding: var(--spacing-lg); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+
+    .tab-bar {
+      display: flex;
+      gap: var(--spacing-sm);
+      border-bottom: 2px solid var(--color-teal-soft);
+      margin-bottom: var(--spacing-lg);
+    }
+    .tab-button {
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-weight: 500;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .tab-button:hover { color: var(--color-primary); }
+    .tab-button.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+
+    .employee-detail-header {
+      background: white;
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+    .employee-detail-header h2 { margin-bottom: var(--spacing-sm); }
+    .employee-info {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--spacing-lg);
+      margin-top: var(--spacing-md);
+    }
+    .employee-info__item { display: flex; flex-direction: column; }
+    .employee-info__label { font-weight: 500; color: #666; font-size: 0.875rem; }
+    .employee-info__value { margin-top: 0.25rem; font-size: 1rem; color: var(--color-black); }
+
+    .locked-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      z-index: 10;
+    }
+    .locked-message {
+      text-align: center;
+      font-size: 1.1rem;
+      color: var(--color-black);
+    }
+    .locked-message__icon { font-size: 2.5rem; margin-bottom: var(--spacing-sm); }
+
+    .form-section { position: relative; }
+    .form-section.locked { opacity: 0.5; pointer-events: none; }
+
+    .alert {
+      padding: var(--spacing-lg);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--spacing-lg);
+    }
+    .alert--warn {
+      background-color: var(--color-warn-bg);
+      border-left: 4px solid var(--color-warn-border);
+    }
+    .alert--warn .alert__title {
+      font-weight: 600;
+      color: #f57f17;
+      margin-bottom: var(--spacing-xs);
+    }
+    .alert--warn .alert__message {
+      color: #555;
+      font-size: 0.95rem;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-2xl);
+      justify-content: space-between;
+    }
+
+    .performance-heat-map {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: var(--spacing-lg);
+    }
+    .heat-map-row {
+      background: white;
+      padding: var(--spacing-lg);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      border-left: 4px solid #ccc;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .heat-map-row:hover { box-shadow: var(--shadow-lg); }
+    .heat-map-row.green { border-left-color: #0a7c42; }
+    .heat-map-row.amber { border-left-color: #f9a825; }
+    .heat-map-row.red { border-left-color: #c62828; }
+
+    @media (max-width: 768px) {
+      .portal-main { padding: var(--spacing-md); }
+      .employee-info { grid-template-columns: 1fr; }
+      .performance-heat-map { grid-template-columns: 1fr; }
+      .tab-bar { gap: 0; }
+      .tab-button { flex: 1; text-align: center; }
+    }
   </style>
 </head>
 <body>
@@ -153,19 +270,24 @@
 
   <!-- Main Content -->
   <main class="portal-main">
-    <!-- My Team Table (Overview) -->
-    <section class="team-section" id="teamOverviewSection">
-      <!-- Filter/Info Bar -->
+
+    <!-- Team Overview (Tab 1) -->
+    <section id="teamOverviewSection" class="team-section" style="display: block;">
       <div class="team-header">
         <h2>Performance Review Status</h2>
         <p class="team-header__info">
           <span class="info-icon">ℹ️</span>
-          Skills Assessment must be completed for ALL team members before Feed Forward is enabled.
+          Click on an employee to view their details and complete workflow steps.
         </p>
       </div>
 
-      <!-- Team Table -->
-      <div class="team-table-container">
+      <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+        <button id="tabOverview" class="tab-button active" onclick="ManagerPortal.switchTab('overview')">Performance Review Status</button>
+        <button id="tabHeatMap" class="tab-button" onclick="ManagerPortal.switchTab('heatmap')">Performance Summary</button>
+      </div>
+
+      <!-- Performance Review Table -->
+      <div id="reviewTableContainer" style="display: block;">
         <table class="table team-table" role="grid" aria-label="Team performance review status">
           <thead>
             <tr>
@@ -185,12 +307,185 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Performance Heat Map -->
+      <div id="heatMapContainer" style="display: none;">
+        <div style="margin-bottom: var(--spacing-lg);">
+          <label for="deptFilter" style="font-weight: 500; margin-right: var(--spacing-md);">Filter by Department:</label>
+          <select id="deptFilter" class="form-group" style="width: 250px; margin: 0;" onchange="ManagerPortal.filterHeatMap()">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+        <div id="heatMapContent" class="performance-heat-map"></div>
+      </div>
+    </section>
+
+    <!-- Employee Detail Section (Tab 2+) -->
+    <section id="employeeDetailSection" style="display: none;">
+      <div class="employee-detail-header">
+        <button class="btn btn--secondary btn--small" onclick="ManagerPortal.showTeamOverview()" style="margin-bottom: var(--spacing-md);">← Back to My Team</button>
+        <h2 id="employeeName"></h2>
+        <div class="employee-info">
+          <div class="employee-info__item">
+            <span class="employee-info__label">Band / Grade</span>
+            <span class="employee-info__value" id="employeeBand">—</span>
+          </div>
+          <div class="employee-info__item">
+            <span class="employee-info__label">Department</span>
+            <span class="employee-info__value" id="employeeDepartment">—</span>
+          </div>
+          <div class="employee-info__item">
+            <span class="employee-info__label">Email</span>
+            <span class="employee-info__value" id="employeeEmail">—</span>
+          </div>
+          <div class="employee-info__item">
+            <span class="employee-info__label">Group</span>
+            <span class="employee-info__value" id="employeeGroup">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="tab-bar">
+        <button class="tab-button active" onclick="ManagerPortal.switchEmployeeTab('step1')">Step 1: Skills</button>
+        <button class="tab-button" onclick="ManagerPortal.switchEmployeeTab('step4')">Step 4: Feed Forward</button>
+        <button class="tab-button" onclick="ManagerPortal.switchEmployeeTab('step5')">Step 5: Acknowledgement</button>
+      </div>
+
+      <!-- Step 1: Skills Assessment Form -->
+      <div id="step1FormSection" class="form-section" style="display: block;">
+        <div style="background: #e3f2fd; padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
+          <strong>STEP 1 — Skills Assessment Form</strong>
+        </div>
+
+        <form id="skillsAssessmentForm" style="display: none;">
+          <div class="form-group">
+            <label for="skillsEmployeeName">Employee Name</label>
+            <input type="text" id="skillsEmployeeName" disabled style="background-color: #f5f5f5;">
+          </div>
+
+          <div class="form-group">
+            <label for="skillsBand">Band / Grade</label>
+            <input type="text" id="skillsBand" disabled style="background-color: #f5f5f5;">
+          </div>
+
+          <h3 style="margin-top: var(--spacing-xl); margin-bottom: var(--spacing-md);">Core Skills</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Core Skill</th>
+                <th>Required Level</th>
+                <th>Actual Level (Manager Input)</th>
+                <th>RAG Status</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="coreSkillsTable"></tbody>
+          </table>
+
+          <h3 style="margin-top: var(--spacing-xl); margin-bottom: var(--spacing-md);">Leadership Skills</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Leadership Skill</th>
+                <th>Expected Level</th>
+                <th>Actual Level (Manager Input)</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="leadershipSkillsTable"></tbody>
+          </table>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn--secondary" onclick="ManagerPortal.saveDraft('skills')">Save Draft</button>
+            <button type="button" class="btn btn--secondary" onclick="ManagerPortal.showTeamOverview()">Back to My Team</button>
+            <button type="submit" class="btn btn--primary">Submit Assessment</button>
+          </div>
+        </form>
+
+        <div id="step1LockedMessage" style="display: none;"></div>
+      </div>
+
+      <!-- Step 4: Feed Forward Form -->
+      <div id="step4FormSection" class="form-section" style="display: none;">
+        <div style="background: #e8d5f2; padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
+          <strong>STEP 4 — Feed Forward (Manager Assessment) Form</strong>
+        </div>
+
+        <form id="feedForwardForm" style="display: none;">
+          <div class="form-group">
+            <label for="ffQ1">1. What contributed to your performance this quarter? *</label>
+            <textarea id="ffQ1" placeholder="Describe your key contributions, achievements, and what drives your performance this period..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="ffQ2">2. What challenges or gaps impacted your performance? *</label>
+            <textarea id="ffQ2" placeholder="Describe any obstacles, resource gaps, or challenges that affected your output..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="ffQ3">3. What support do you need for the next quarter? *</label>
+            <textarea id="ffQ3" placeholder="Describe what tools, training, coaching, or resources would help you improve..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="ffQ4">4. What specific commitments will you make to improve human-centric performance? *</label>
+            <textarea id="ffQ4" placeholder="Describe specific actions and commitments you will take in the next period..." required></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn--secondary" onclick="ManagerPortal.saveDraft('feedforward')">Save Draft</button>
+            <button type="button" class="btn btn--secondary" onclick="ManagerPortal.showTeamOverview()">Back to My Team</button>
+            <button type="submit" class="btn btn--primary">Submit Assessment</button>
+          </div>
+        </form>
+
+        <div id="step4LockedMessage" style="display: none;"></div>
+      </div>
+
+      <!-- Step 5: Manager Acknowledgement Form -->
+      <div id="step5FormSection" class="form-section" style="display: none;">
+        <div style="background: #fff3cd; padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
+          <strong>STEP 5 — Acknowledgement (Manager)</strong>
+        </div>
+
+        <form id="managerAckForm" style="display: none;">
+          <div class="alert alert--warn">
+            <div class="alert__title">⚠️ Confirmation Required</div>
+            <div class="alert__message"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="managerAckCheckbox">
+              <input type="checkbox" id="managerAckCheckbox" required>
+              I confirm that the mid-year performance review discussion has taken place with <span id="ackEmployeeName"></span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label for="ackComment">Add any additional comments...</label>
+            <textarea id="ackComment" placeholder="Optional: Add any comments about this review..." style="min-height: 80px;"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn--secondary" onclick="ManagerPortal.showTeamOverview()">Back to My Team</button>
+            <button type="submit" class="btn btn--primary" id="submitAckBtn" disabled>Submit</button>
+          </div>
+        </form>
+
+        <div id="step5LockedMessage" style="display: none;"></div>
+      </div>
+
+      <!-- Navigation between steps -->
+      <div class="nav-buttons" style="display: block; margin-top: var(--spacing-xl);">
+        <button class="btn btn--secondary" id="prevStepBtn" onclick="ManagerPortal.previousStep()" style="visibility: hidden;">← Previous Step</button>
+        <button class="btn btn--secondary" id="nextStepBtn" onclick="ManagerPortal.nextStep()">Next Step →</button>
+      </div>
     </section>
   </main>
 
   <script>
     // === PLATFORM DETECTION (AppScript) ===
-    // Template variables will be substituted by Google Apps Script
     window.PLATFORM = 'APPSCRIPT';
     window.oyc_userEmail = '<?= userEmail ?>';
     window.oyc_userEmployeeID = <?= employeeId ?>;
@@ -205,6 +500,9 @@
     const ManagerPortal = {
       currentManager: null,
       teamMembers: [],
+      currentEmployee: null,
+      currentEmployeeStep: 'step1',
+      skillDefinitions: [],
 
       init: function() {
         console.log('[ManagerPortal] Initializing...');
@@ -214,6 +512,39 @@
           name: 'Manager'
         };
         this.loadTeamMembers();
+        this.setupFormListeners();
+      },
+
+      setupFormListeners: function() {
+        const self = this;
+        const skillsForm = document.getElementById('skillsAssessmentForm');
+        const ffForm = document.getElementById('feedForwardForm');
+        const ackForm = document.getElementById('managerAckForm');
+        const ackCheckbox = document.getElementById('managerAckCheckbox');
+
+        if (skillsForm) {
+          skillsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            self.saveSkillsAssessment();
+          });
+        }
+        if (ffForm) {
+          ffForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            self.saveFeedForward();
+          });
+        }
+        if (ackForm) {
+          ackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            self.saveManagerAck();
+          });
+        }
+        if (ackCheckbox) {
+          ackCheckbox.addEventListener('change', function() {
+            document.getElementById('submitAckBtn').disabled = !ackCheckbox.checked;
+          });
+        }
       },
 
       loadTeamMembers: function() {
@@ -226,6 +557,8 @@
               console.log('[ManagerPortal] Loaded', result.data.length, 'team members');
               this.teamMembers = result.data;
               this.displayTeamOverview(result.data);
+              this.populateDepartmentFilter();
+              this.loadSkillDefinitions();
             } else {
               console.error('[ManagerPortal] Error:', result.message);
               alert('Error: ' + result.message);
@@ -238,12 +571,28 @@
           .getTeamMembersWithStatusData(this.currentManager.employeeId);
       },
 
+      loadSkillDefinitions: function() {
+        console.log('[ManagerPortal] Loading skill definitions');
+        google.script.run
+          .withSuccessHandler((result) => {
+            if (result.success) {
+              this.skillDefinitions = result.data;
+              console.log('[ManagerPortal] Loaded', result.data.length, 'skills');
+            } else {
+              console.warn('[ManagerPortal] Could not load skills:', result.message);
+            }
+          })
+          .withFailureHandler((error) => {
+            console.error('[ManagerPortal] Error loading skills:', error);
+          })
+          .getSkillDefinitions();
+      },
+
       displayTeamOverview: function(teamMembers) {
         const tableBody = document.getElementById('teamTableBody');
         if (!tableBody) return;
 
         console.log('[ManagerPortal] Displaying', teamMembers.length, 'team members');
-
         tableBody.innerHTML = '';
 
         if (teamMembers.length === 0) {
@@ -253,31 +602,24 @@
           return;
         }
 
-        teamMembers.forEach((member, index) => {
+        teamMembers.forEach((member) => {
           const row = this.createTeamTableRow(member);
           tableBody.appendChild(row);
-          if (index < 3) {
-            console.log('[ManagerPortal] Row', index, '-', member.name, 'ID:', member.employeeId);
-          }
         });
       },
 
       createTeamTableRow: function(member) {
         const row = document.createElement('tr');
+        row.style.cursor = 'pointer';
+        row.onclick = () => this.showEmployeeDetail(member);
 
-        const status = member.workflowStatus || {
-          step1Complete: member.step1Complete || false,
-          step4Complete: member.step4Complete || false,
-          step5Complete: member.step5Complete || false
-        };
+        const step1Status = member.step1Complete ? '✓ Complete' : '○ Pending';
+        const step4Status = member.step4Complete ? '✓ Complete' : '○ Pending';
+        const step5Status = member.step5Complete ? '✓ Complete' : '○ Pending';
 
-        const step1Status = status.step1Complete ? '✓ Complete' : '○ Pending';
-        const step4Status = status.step4Complete ? '✓ Complete' : '○ Pending';
-        const step5Status = status.step5Complete ? '✓ Complete' : '○ Pending';
-
-        const step1Class = status.step1Complete ? 'status-complete' : 'status-pending';
-        const step4Class = status.step4Complete ? 'status-complete' : 'status-pending';
-        const step5Class = status.step5Complete ? 'status-complete' : 'status-pending';
+        const step1Class = member.step1Complete ? 'status-complete' : 'status-pending';
+        const step4Class = member.step4Complete ? 'status-complete' : 'status-pending';
+        const step5Class = member.step5Complete ? 'status-complete' : 'status-pending';
 
         row.innerHTML = `
           <td>${member.name || 'N/A'}</td>
@@ -287,11 +629,337 @@
           <td><span class="status-badge ${step4Class}">${step4Status}</span></td>
           <td><span class="status-badge ${step5Class}">${step5Status}</span></td>
           <td>
-            <button class="btn btn--small btn--secondary">View</button>
+            <button class="btn btn--small btn--secondary" onclick="event.stopPropagation(); ManagerPortal.showEmployeeDetailFromRow(this)">View</button>
           </td>
         `;
+        
+        // Store member data on the row for later retrieval
+        row._memberData = member;
 
         return row;
+      },
+
+      showEmployeeDetailFromRow: function(button) {
+        // Retrieve member data from the row
+        const row = button.closest('tr');
+        if (row && row._memberData) {
+          this.showEmployeeDetail(row._memberData);
+        }
+      },
+
+      showEmployeeDetail: function(member) {
+        console.log('[ManagerPortal] Showing detail for employee:', member.name);
+        this.currentEmployee = member;
+        this.currentEmployeeStep = 'step1';
+
+        document.getElementById('teamOverviewSection').style.display = 'none';
+        document.getElementById('employeeDetailSection').style.display = 'block';
+
+        document.getElementById('employeeName').textContent = member.name || 'N/A';
+        document.getElementById('employeeBand').textContent = member.band || 'N/A';
+        document.getElementById('employeeDepartment').textContent = member.department || 'N/A';
+        document.getElementById('employeeEmail').textContent = member.email || 'N/A';
+        document.getElementById('employeeGroup').textContent = member.group || 'N/A';
+        document.getElementById('ackEmployeeName').textContent = member.name || 'employee';
+
+        this.switchEmployeeTab('step1');
+      },
+
+      showTeamOverview: function() {
+        console.log('[ManagerPortal] Returning to team overview');
+        document.getElementById('teamOverviewSection').style.display = 'block';
+        document.getElementById('employeeDetailSection').style.display = 'none';
+        this.currentEmployee = null;
+      },
+
+      switchTab: function(tab) {
+        const isOverview = tab === 'overview';
+        document.getElementById('reviewTableContainer').style.display = isOverview ? 'block' : 'none';
+        document.getElementById('heatMapContainer').style.display = isOverview ? 'none' : 'block';
+        document.getElementById('tabOverview').classList.toggle('active', isOverview);
+        document.getElementById('tabHeatMap').classList.toggle('active', !isOverview);
+      },
+
+      switchEmployeeTab: function(step) {
+        this.currentEmployeeStep = step;
+
+        // Hide all step forms
+        document.getElementById('step1FormSection').style.display = 'none';
+        document.getElementById('step4FormSection').style.display = 'none';
+        document.getElementById('step5FormSection').style.display = 'none';
+
+        // Show current step
+        document.getElementById(step + 'FormSection').style.display = 'block';
+
+        // Update tab buttons - find and activate the correct tab
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach((btn) => {
+          btn.classList.remove('active');
+        });
+
+        // Update nav buttons
+        document.getElementById('prevStepBtn').style.visibility = step === 'step1' ? 'hidden' : 'visible';
+        document.getElementById('nextStepBtn').style.visibility = step === 'step5' ? 'hidden' : 'visible';
+
+        // Load form data
+        if (step === 'step1') this.renderSkillsForm();
+        else if (step === 'step4') this.renderFeedForwardForm();
+        else if (step === 'step5') this.renderAckForm();
+
+        // Check gates and lock if needed
+        this.checkGates(step);
+      },
+
+      checkGates: function(step) {
+        if (!this.currentEmployee) return;
+        const status = this.currentEmployee.workflowStatus || {};
+
+        let isLocked = false;
+        let lockMessage = '';
+
+        // Gate logic from business-rules.md:
+        // Step 4 locked if Step 3 not complete
+        // Step 5 locked if Step 4 not complete
+        if (step === 'step4' && !status.step3Complete) {
+          isLocked = true;
+          lockMessage = 'Employee must complete self-assessment first';
+        } else if (step === 'step5' && !status.step4Complete) {
+          isLocked = true;
+          lockMessage = 'Feed Forward must be completed first';
+        }
+
+        const formId = step + 'Form';
+        const form = document.getElementById(formId);
+        const msgDiv = document.getElementById(step + 'LockedMessage');
+
+        if (isLocked) {
+          if (form) form.style.display = 'none';
+          if (msgDiv) {
+            msgDiv.innerHTML = `<div style="position: relative; padding: 4rem; text-align: center; background: #f5f5f5; border-radius: 8px;">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+              <p style="font-size: 1.1rem; color: #333; margin: 0;">${lockMessage}</p>
+            </div>`;
+            msgDiv.style.display = 'block';
+          }
+        } else {
+          if (msgDiv) msgDiv.style.display = 'none';
+          if (form) form.style.display = 'block';
+        }
+      },
+
+      renderSkillsForm: function() {
+        if (!this.currentEmployee) return;
+        const form = document.getElementById('skillsAssessmentForm');
+        if (!form) return;
+
+        document.getElementById('skillsEmployeeName').value = this.currentEmployee.name || '';
+        document.getElementById('skillsBand').value = this.currentEmployee.band || '';
+
+        const coreSkills = this.skillDefinitions.filter(s => s.skillType === 'CORE');
+        const leadershipSkills = this.skillDefinitions.filter(s => s.skillType === 'LEADERSHIP');
+
+        this.renderSkillsTable('coreSkillsTable', coreSkills);
+        this.renderSkillsTable('leadershipSkillsTable', leadershipSkills);
+      },
+
+      renderSkillsTable: function(tableId, skills) {
+        const tbody = document.getElementById(tableId);
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        skills.forEach(skill => {
+          const tr = document.createElement('tr');
+          const levels = ['—', '1', '2', '3', '4', '5'];
+          const levelOptions = levels.map(l => `<option value="${l}">${l}</option>`).join('');
+
+          tr.innerHTML = `
+            <td>${skill.skillName}</td>
+            <td>${skill.requiredLevel}</td>
+            <td>
+              <select class="actualLevelSelect" data-skill="${skill.skillId}" onchange="ManagerPortal.updateRAGStatus('${tableId}', ${skill.skillId})">
+                ${levelOptions}
+              </select>
+            </td>
+            <td class="ragStatus" data-skill="${skill.skillId}">—</td>
+            <td><input type="text" class="remarksInput" data-skill="${skill.skillId}" placeholder="Optional remarks" style="width: 100%;"></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      },
+
+      updateRAGStatus: function(tableId, skillId) {
+        const select = document.querySelector(`.actualLevelSelect[data-skill="${skillId}"]`);
+        const ragCell = document.querySelector(`.ragStatus[data-skill="${skillId}"]`);
+        const actualLevel = select ? parseInt(select.value) : null;
+        const skill = this.skillDefinitions.find(s => s.skillId === skillId);
+
+        if (!actualLevel || actualLevel === 0 || !skill) {
+          if (ragCell) ragCell.textContent = '—';
+        } else {
+          const required = skill.requiredLevel;
+          const isPass = actualLevel >= required;
+          if (ragCell) {
+            ragCell.textContent = isPass ? '✓ GO' : '✗ FAIL';
+            ragCell.style.color = isPass ? '#0a7c42' : '#c62828';
+          }
+        }
+      },
+
+      renderFeedForwardForm: function() {
+        // Form renders with empty textareas
+        document.getElementById('ffQ1').value = '';
+        document.getElementById('ffQ2').value = '';
+        document.getElementById('ffQ3').value = '';
+        document.getElementById('ffQ4').value = '';
+      },
+
+      renderAckForm: function() {
+        document.getElementById('managerAckCheckbox').checked = false;
+        document.getElementById('submitAckBtn').disabled = true;
+        document.getElementById('ackComment').value = '';
+        document.querySelector('.alert__message').textContent = `I confirm that the mid-year performance review discussion has taken place with ${this.currentEmployee?.name || 'this employee'}.`;
+      },
+
+      saveSkillsAssessment: function() {
+        if (!this.currentEmployee) return;
+        console.log('[ManagerPortal] Saving skills assessment for:', this.currentEmployee.name);
+
+        const skills = [];
+        document.querySelectorAll('.actualLevelSelect').forEach(select => {
+          skills.push({
+            skillId: select.dataset.skill,
+            actualLevel: select.value
+          });
+        });
+
+        const data = {
+          skills: skills,
+          dateSubmitted: new Date().toISOString()
+        };
+
+        google.script.run
+          .withSuccessHandler((result) => {
+            if (result.success) {
+              alert('Skills assessment saved successfully!');
+              this.currentEmployee.step1Complete = true;
+            } else {
+              alert('Error: ' + result.message);
+            }
+          })
+          .withFailureHandler((error) => {
+            alert('Error saving: ' + error.toString());
+          })
+          .saveSkillsAssessment(this.currentEmployee.employeeId, data);
+      },
+
+      saveFeedForward: function() {
+        if (!this.currentEmployee) return;
+        console.log('[ManagerPortal] Saving feed forward for:', this.currentEmployee.name);
+
+        const data = {
+          q1: document.getElementById('ffQ1').value,
+          q2: document.getElementById('ffQ2').value,
+          q3: document.getElementById('ffQ3').value,
+          q4: document.getElementById('ffQ4').value,
+          dateSubmitted: new Date().toISOString()
+        };
+
+        google.script.run
+          .withSuccessHandler((result) => {
+            if (result.success) {
+              alert('Feed Forward saved successfully!');
+              this.currentEmployee.step4Complete = true;
+            } else {
+              alert('Error: ' + result.message);
+            }
+          })
+          .withFailureHandler((error) => {
+            alert('Error saving: ' + error.toString());
+          })
+          .saveFeedForward(this.currentEmployee.employeeId, this.currentManager.employeeId, data);
+      },
+
+      saveManagerAck: function() {
+        if (!this.currentEmployee) return;
+        console.log('[ManagerPortal] Saving manager acknowledgement for:', this.currentEmployee.name);
+
+        const data = {
+          acknowledged: document.getElementById('managerAckCheckbox').checked,
+          comment: document.getElementById('ackComment').value,
+          dateSubmitted: new Date().toISOString()
+        };
+
+        google.script.run
+          .withSuccessHandler((result) => {
+            if (result.success) {
+              alert('Acknowledgement saved successfully!');
+              this.currentEmployee.step5Complete = true;
+            } else {
+              alert('Error: ' + result.message);
+            }
+          })
+          .withFailureHandler((error) => {
+            alert('Error saving: ' + error.toString());
+          })
+          .saveAcknowledgement(this.currentEmployee.employeeId, this.currentManager.employeeId, data, 'MANAGER');
+      },
+
+      saveDraft: function(formType) {
+        alert('Draft saved!');
+      },
+
+      nextStep: function() {
+        const steps = ['step1', 'step4', 'step5'];
+        const currentIndex = steps.indexOf(this.currentEmployeeStep);
+        if (currentIndex < steps.length - 1) {
+          this.switchEmployeeTab(steps[currentIndex + 1]);
+        }
+      },
+
+      previousStep: function() {
+        const steps = ['step1', 'step4', 'step5'];
+        const currentIndex = steps.indexOf(this.currentEmployeeStep);
+        if (currentIndex > 0) {
+          this.switchEmployeeTab(steps[currentIndex - 1]);
+        }
+      },
+
+      populateDepartmentFilter: function() {
+        const departments = [...new Set(this.teamMembers.map(m => m.department).filter(d => d))];
+        const select = document.getElementById('deptFilter');
+        departments.forEach(dept => {
+          const option = document.createElement('option');
+          option.value = dept;
+          option.textContent = dept;
+          select.appendChild(option);
+        });
+      },
+
+      filterHeatMap: function() {
+        const selectedDept = document.getElementById('deptFilter').value;
+        const filtered = selectedDept ? this.teamMembers.filter(m => m.department === selectedDept) : this.teamMembers;
+        this.renderHeatMap(filtered);
+      },
+
+      renderHeatMap: function(members) {
+        const container = document.getElementById('heatMapContent');
+        container.innerHTML = '';
+
+        members.forEach(member => {
+          const score = member.step1Complete && member.step4Complete && member.step5Complete ? 95 : 70; // Simplified scoring
+          const color = score >= 101 ? 'green' : score >= 90 ? 'amber' : 'red';
+          const colorLabel = color === 'green' ? 'Exceeded' : color === 'amber' ? 'Achieved' : 'Needs Improvement';
+
+          const div = document.createElement('div');
+          div.className = `heat-map-row ${color}`;
+          div.innerHTML = `
+            <h4>${member.name}</h4>
+            <p><strong>${score}%</strong> - ${colorLabel}</p>
+            <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">Dept: ${member.department}</p>
+          `;
+          div.onclick = () => this.showEmployeeDetail(member);
+          container.appendChild(div);
+        });
       }
     };
 
@@ -300,7 +968,6 @@
       ManagerPortal.init();
     });
 
-    // Also initialize immediately if DOM is ready
     if (document.readyState !== 'loading') {
       ManagerPortal.init();
     }
