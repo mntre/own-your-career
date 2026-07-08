@@ -1075,17 +1075,31 @@ const Admin = {
           resultDiv.style.background = '#e6f9f0';
           resultDiv.style.borderColor = '#0a7c42';
           resultDiv.style.color = '#0a7c42';
+
+          const roles = response.roles || {};
+          const unresolvedNote = response.unresolved > 0 
+            ? `<br><span style="color: #e65100;">⚠️ ${response.unresolved} unresolved supervisor(s) — check Role Assignment for details</span>` 
+            : '';
+
           resultDiv.innerHTML = `
-            <strong>✓ Roles Derived!</strong><br>
+            <strong>✓ Role Derivation Complete!</strong><br>
             ${response.message || 'Role assignment complete.'}<br>
             <small style="margin-top: 8px; display: block;">
-              Managers: ${response.managersAutoDetected} | 
-              Data SPOCs: ${response.roles.DATA_SPOC} | 
-              Team Members: ${response.roles.EMPLOYEE}
+              Supervisors matched: ${response.matched || 0} | 
+              External (not in file): ${response.external || 0} | 
+              Managers detected: ${response.managersDetected || 0} | 
+              Manual roles preserved: ${response.preserved || 0}
             </small>
+            <small style="display: block; margin-top: 4px;">
+              Final roles — Managers: ${roles.MANAGER || 0} | 
+              Data SPOCs: ${roles.DATA_SPOC || 0} | 
+              Employees: ${roles.EMPLOYEE || 0} | 
+              Admins: ${roles.ADMIN || 0}
+            </small>
+            ${unresolvedNote}
           `;
 
-          this.showNotification(`${response.managersAutoDetected} managers auto-detected`, 'success');
+          this.showNotification(`${response.managersDetected || 0} managers auto-detected`, 'success');
           this.loadRoleCounts();
         } else {
           const resultDiv = document.getElementById('role-derivation-result');

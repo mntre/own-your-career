@@ -270,10 +270,56 @@ const APIConverge = {
 
   /**
    * Auto-derive MANAGER roles from immediate_supervisor field
-   * @returns {Promise<Object>} {success, message, managersAutoDetected, roles}
+   * @returns {Promise<Object>} {success, message, managersDetected, matched, unresolved, roles}
    */
   deriveRolesFromHierarchy: async function() {
     return this.request('POST', '/admin/derive-roles');
+  },
+
+  /**
+   * Get unresolved supervisors (for override UI)
+   * @returns {Promise<Object>} {success, unresolved}
+   */
+  getUnresolvedSupervisors: async function() {
+    return this.request('GET', '/admin/unresolved-supervisors');
+  },
+
+  /**
+   * Get all supervisor override rules
+   * @returns {Promise<Object>} {success, overrides}
+   */
+  getSupervisorOverrides: async function() {
+    return this.request('GET', '/admin/supervisor-overrides');
+  },
+
+  /**
+   * Set a supervisor override rule
+   * @param {string} supervisorName
+   * @param {string} resolvedEmployeeNo
+   * @param {string} reason
+   * @returns {Promise<Object>} {success, message}
+   */
+  setSupervisorOverride: async function(supervisorName, resolvedEmployeeNo, reason) {
+    return this.request('POST', '/admin/supervisor-override', {
+      supervisorName, resolvedEmployeeNo, reason
+    });
+  },
+
+  /**
+   * Delete a supervisor override
+   * @param {number} id
+   * @returns {Promise<Object>} {success, message}
+   */
+  deleteSupervisorOverride: async function(id) {
+    return this.request('DELETE', `/admin/supervisor-override/${id}`);
+  },
+
+  /**
+   * Re-derive roles after override changes
+   * @returns {Promise<Object>} {success, message, managersDetected, roles}
+   */
+  reDeriveRoles: async function() {
+    return this.request('POST', '/admin/re-derive-roles');
   },
 
   /**

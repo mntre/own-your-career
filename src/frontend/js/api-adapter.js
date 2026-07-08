@@ -170,12 +170,18 @@ const API = (() => {
       },
 
       deriveRolesFromHierarchy: async function() {
-        console.log('[Mock API] deriveRolesFromHierarchy');
+        console.log('[Mock API] deriveRolesFromHierarchy (full pipeline)');
         return {
           success: true,
-          message: 'Roles derived from employee hierarchy',
-          managersAutoDetected: 5,
-          roles: { MANAGER: 5, DATA_SPOC: 2, EMPLOYEE: 93 }
+          message: 'Role derivation complete: 1 managers detected, 6 supervisors matched',
+          lookupCount: 7,
+          matched: 6,
+          overridden: 0,
+          unresolved: 0,
+          external: 1,
+          managersDetected: 1,
+          preserved: 0,
+          roles: { MANAGER: 1, EMPLOYEE: 6 }
         };
       },
 

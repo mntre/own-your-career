@@ -54,7 +54,10 @@ async function initDB() {
   // Enable foreign keys
   db.run('PRAGMA foreign_keys = ON');
 
-  // Create all tables
+  // Run migrations FIRST (add new columns to existing tables)
+  runMigrations();
+
+  // Create all tables (for fresh databases)
   createTables();
 
   // Save to disk
@@ -107,10 +110,25 @@ function createTables() {
       affiliate TEXT,
       gender TEXT,
       hr_business_partner TEXT,
+      lookup_name TEXT,
+      supervisor_employee_no TEXT,
+      supervisor_match_status TEXT DEFAULT 'unresolved',
       role TEXT DEFAULT 'EMPLOYEE',
       is_active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Supervisor override table (for duplicate names / exceptions)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS supervisor_overrides (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supervisor_name TEXT NOT NULL UNIQUE,
+      resolved_employee_no TEXT NOT NULL,
+      reason TEXT,
+      created_by TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
     )
   `);
 
@@ -251,7 +269,7 @@ function createTables() {
     )
   `);
 
-  // Indexes
+  // Indexes (run after migrations so new columns exist)
   db.run('CREATE INDEX IF NOT EXISTS idx_employees_email ON employees(email)');
   db.run('CREATE INDEX IF NOT EXISTS idx_employees_dept ON employees(department_label)');
   db.run('CREATE INDEX IF NOT EXISTS idx_employees_group ON employees(business_group_label)');
@@ -259,6 +277,38 @@ function createTables() {
   db.run('CREATE INDEX IF NOT EXISTS idx_skills_employee ON skills_assessment(employee_no)');
   db.run('CREATE INDEX IF NOT EXISTS idx_okr_employee ON okr_data(employee_no)');
   db.run('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_overrides_name ON supervisor_overrides(supervisor_name)');
+}
+
+/**
+ * Run database migrations (add columns to existing tables if missing).
+ * Safe to run multiple times — uses try/catch to handle "column already exists" gracefully.
+ */
+function runMigrations() {
+  const migrations = [
+    'ALTER TABLE employees ADD COLUMN lookup_name TEXT',
+    'ALTER TABLE employees ADD COLUMN supervisor_employee_no TEXT',
+    'ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT DEFAULT \'unresolved\''
+  ];
+
+  migrations.forEach(sql => {
+    try {
+      db.run(sql);
+    } catch (e) {
+      // Column likely already exists — this is expected and safe to ignore
+      if (!e.message.includes('duplicate column name')) {
+        console.warn('[DB] Migration skipped:', e.message);
+      }
+    }
+  });
+
+  // Indexes for new columns (safe to create after migration)
+  try {
+    db.run('CREATE INDEX IF NOT EXISTS idx_employees_lookup_name ON employees(lookup_name)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_employees_supervisor_empno ON employees(supervisor_employee_no)');
+  } catch (e) {
+    // Ignore if already exists
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -538,57 +588,238 @@ const Employees = {
   },
 
   /**
-   * Auto-derive roles from employee data (after upload)
-   * Rule: If employee has reports (appears in other's immediate_supervisor), mark as MANAGER
-   * @returns {{ managersAutoDetected: number, roles: Object }}
+   * RD-2: Build supervisor lookup names for all employees.
+   * Concatenates first_name + " " + last_name → stores in lookup_name column.
+   * Called automatically after bulkUpload.
+   * @returns {number} Number of lookup names built
    */
-  autoDerivRoles: function() {
-    const managers = new Set();
-    const allEmps = queryAll('SELECT employee_no, full_name, immediate_supervisor FROM employees WHERE is_active = 1');
-
-    // Find all unique supervisor names
-    allEmps.forEach(emp => {
-      if (emp.immediate_supervisor && emp.immediate_supervisor.trim()) {
-        managers.add(emp.immediate_supervisor);
-      }
-    });
-
-    // Update roles for detected managers
+  buildSupervisorLookup: function() {
+    const allEmps = queryAll('SELECT employee_no, first_name, last_name FROM employees WHERE is_active = 1');
     let count = 0;
-    managers.forEach(supervisorName => {
-      // Find employee by name match
-      const mgr = queryOne(
-        'SELECT employee_no FROM employees WHERE full_name = $name AND is_active = 1',
-        { $name: supervisorName }
-      );
-      if (mgr) {
-        execute('UPDATE employees SET role = $role, updated_at = datetime(\'now\') WHERE employee_no = $emp', {
-          $role: 'MANAGER',
-          $emp: mgr.employee_no
-        });
+
+    allEmps.forEach(emp => {
+      const firstName = (emp.first_name || '').trim();
+      const lastName = (emp.last_name || '').trim();
+      const lookupName = (firstName + ' ' + lastName).trim();
+
+      if (lookupName) {
+        execute(
+          'UPDATE employees SET lookup_name = $lookup, updated_at = datetime(\'now\') WHERE employee_no = $emp',
+          { $lookup: lookupName, $emp: emp.employee_no }
+        );
         count++;
       }
     });
 
     saveDB();
+    return count;
+  },
+
+  /**
+   * RD-3: Resolve supervisors by matching immediate_supervisor against lookup_name.
+   * Uses 3-layer priority: Override table → Exact match → Flag unresolved.
+   * @returns {{ matched: number, overridden: number, unresolved: number, external: number }}
+   */
+  resolveSupervisors: function() {
+    const results = { matched: 0, overridden: 0, unresolved: 0, external: 0 };
+
+    // Get all employees with an immediate_supervisor value
+    const allEmps = queryAll(
+      'SELECT employee_no, immediate_supervisor FROM employees WHERE is_active = 1 AND immediate_supervisor IS NOT NULL AND immediate_supervisor != \'\''
+    );
+
+    // Get all overrides
+    const overrides = queryAll('SELECT supervisor_name, resolved_employee_no FROM supervisor_overrides');
+    const overrideMap = {};
+    overrides.forEach(o => { overrideMap[o.supervisor_name] = o.resolved_employee_no; });
+
+    allEmps.forEach(emp => {
+      const supervisorName = (emp.immediate_supervisor || '').trim();
+      if (!supervisorName) return;
+
+      // Layer 1: Check override table
+      if (overrideMap[supervisorName]) {
+        execute(
+          'UPDATE employees SET supervisor_employee_no = $supEmp, supervisor_match_status = $status, updated_at = datetime(\'now\') WHERE employee_no = $emp',
+          { $supEmp: overrideMap[supervisorName], $status: 'override', $emp: emp.employee_no }
+        );
+        results.overridden++;
+        return;
+      }
+
+      // Layer 2: Match against lookup_name
+      const matches = queryAll(
+        'SELECT employee_no FROM employees WHERE lookup_name = $name AND is_active = 1',
+        { $name: supervisorName }
+      );
+
+      if (matches.length === 1) {
+        // Exactly 1 match — resolved
+        execute(
+          'UPDATE employees SET supervisor_employee_no = $supEmp, supervisor_match_status = $status, updated_at = datetime(\'now\') WHERE employee_no = $emp',
+          { $supEmp: matches[0].employee_no, $status: 'matched', $emp: emp.employee_no }
+        );
+        results.matched++;
+      } else if (matches.length === 0) {
+        // No match — external supervisor (not in this upload)
+        execute(
+          'UPDATE employees SET supervisor_employee_no = NULL, supervisor_match_status = $status, updated_at = datetime(\'now\') WHERE employee_no = $emp',
+          { $status: 'external', $emp: emp.employee_no }
+        );
+        results.external++;
+      } else {
+        // 2+ matches — duplicate, needs override
+        execute(
+          'UPDATE employees SET supervisor_employee_no = NULL, supervisor_match_status = $status, updated_at = datetime(\'now\') WHERE employee_no = $emp',
+          { $status: 'unresolved', $emp: emp.employee_no }
+        );
+        results.unresolved++;
+      }
+    });
+
+    saveDB();
+    return results;
+  },
+
+  /**
+   * RD-4: Derive roles from resolved hierarchy.
+   * Marks employees with direct reports as MANAGER.
+   * Preserves manually assigned DATA_SPOC and ADMIN roles.
+   * @returns {{ managersDetected: number, preserved: number, roles: Object }}
+   */
+  deriveRolesFromHierarchy: function() {
+    // Find all employee_nos that appear as someone's supervisor_employee_no
+    const supervisorEmpNos = queryAll(
+      'SELECT DISTINCT supervisor_employee_no as emp_no FROM employees WHERE supervisor_employee_no IS NOT NULL AND is_active = 1'
+    );
+
+    const supervisorSet = new Set(supervisorEmpNos.map(r => r.emp_no));
+
+    // Get current manually assigned roles (DATA_SPOC, ADMIN) — preserve these
+    const manualRoles = queryAll(
+      'SELECT employee_no, role FROM employees WHERE role IN (\'DATA_SPOC\', \'ADMIN\') AND is_active = 1'
+    );
+    const manualRoleMap = {};
+    manualRoles.forEach(r => { manualRoleMap[r.employee_no] = r.role; });
+
+    // Reset all non-manual roles to EMPLOYEE first
+    execute('UPDATE employees SET role = \'EMPLOYEE\', updated_at = datetime(\'now\') WHERE role NOT IN (\'DATA_SPOC\', \'ADMIN\') AND is_active = 1');
+
+    // Mark supervisors as MANAGER (skip if they have manual DATA_SPOC/ADMIN role)
+    let managersDetected = 0;
+    supervisorSet.forEach(empNo => {
+      if (!manualRoleMap[empNo]) {
+        execute(
+          'UPDATE employees SET role = \'MANAGER\', updated_at = datetime(\'now\') WHERE employee_no = $emp AND is_active = 1',
+          { $emp: empNo }
+        );
+        managersDetected++;
+      }
+    });
+
+    saveDB();
+
+    // Get final role counts
+    const roleCountResult = queryAll(
+      'SELECT role, COUNT(*) as count FROM employees WHERE is_active = 1 GROUP BY role'
+    );
+    const roles = {};
+    roleCountResult.forEach(r => { roles[r.role] = r.count; });
 
     return {
-      managersAutoDetected: count,
-      roles: {
-        'MANAGER': count,
-        'DATA_SPOC': queryOne('SELECT COUNT(*) as count FROM employees WHERE role = $role AND is_active = 1', { $role: 'DATA_SPOC' })?.count || 0,
-        'EMPLOYEE': queryOne('SELECT COUNT(*) as count FROM employees WHERE role = $role AND is_active = 1', { $role: 'EMPLOYEE' })?.count || 0
-      }
+      managersDetected,
+      preserved: manualRoles.length,
+      roles
     };
   },
 
   /**
+   * Full role derivation pipeline (RD-2 + RD-3 + RD-4).
+   * Called after employee upload to derive all roles automatically.
+   * @returns {Object} Combined results from all steps
+   */
+  runFullRoleDerivation: function() {
+    console.log('[DB] Running full role derivation pipeline...');
+
+    // Step RD-2: Build lookup names
+    const lookupCount = this.buildSupervisorLookup();
+    console.log(`[DB] RD-2: Built ${lookupCount} lookup names`);
+
+    // Step RD-3: Resolve supervisors
+    const resolveResults = this.resolveSupervisors();
+    console.log(`[DB] RD-3: Resolved supervisors — matched: ${resolveResults.matched}, overridden: ${resolveResults.overridden}, external: ${resolveResults.external}, unresolved: ${resolveResults.unresolved}`);
+
+    // Step RD-4: Derive roles
+    const deriveResults = this.deriveRolesFromHierarchy();
+    console.log(`[DB] RD-4: Detected ${deriveResults.managersDetected} managers, preserved ${deriveResults.preserved} manual roles`);
+
+    return {
+      lookupCount,
+      ...resolveResults,
+      managersDetected: deriveResults.managersDetected,
+      preserved: deriveResults.preserved,
+      roles: deriveResults.roles
+    };
+  },
+
+  /**
+   * Get unresolved supervisors (for admin override UI)
+   * @returns {Object[]} Array of { supervisor_name, affected_count }
+   */
+  getUnresolvedSupervisors: function() {
+    return queryAll(`
+      SELECT immediate_supervisor as supervisor_name, COUNT(*) as affected_count
+      FROM employees 
+      WHERE supervisor_match_status IN ('unresolved', 'external') AND is_active = 1 AND immediate_supervisor IS NOT NULL
+      GROUP BY immediate_supervisor
+      ORDER BY affected_count DESC
+    `);
+  },
+
+  /**
+   * Get all supervisor overrides
+   * @returns {Object[]}
+   */
+  getOverrides: function() {
+    return queryAll('SELECT * FROM supervisor_overrides ORDER BY created_at DESC');
+  },
+
+  /**
+   * Add or update a supervisor override
+   * @param {string} supervisorName
+   * @param {string} resolvedEmployeeNo
+   * @param {string} reason
+   * @param {string} createdBy
+   */
+  setOverride: function(supervisorName, resolvedEmployeeNo, reason, createdBy) {
+    execute(`
+      INSERT INTO supervisor_overrides (supervisor_name, resolved_employee_no, reason, created_by)
+      VALUES ($name, $emp, $reason, $by)
+      ON CONFLICT(supervisor_name) DO UPDATE SET 
+        resolved_employee_no = excluded.resolved_employee_no,
+        reason = excluded.reason,
+        created_by = excluded.created_by
+    `, { $name: supervisorName, $emp: resolvedEmployeeNo, $reason: reason || '', $by: createdBy || '' });
+    saveDB();
+  },
+
+  /**
+   * Delete a supervisor override
+   * @param {number} id - Override ID
+   */
+  deleteOverride: function(id) {
+    execute('DELETE FROM supervisor_overrides WHERE id = $id', { $id: id });
+    saveDB();
+  },
+
+  /**
    * Get all employees with roles for assignment UI
-   * @returns {Object[]} Array with employee_no, full_name, email, department, role
+   * @returns {Object[]} Array with employee_no, full_name, email, department, role, supervisor info
    */
   getRoleAssignmentList: function() {
     return queryAll(`
-      SELECT employee_no, full_name, email, department_label as department, role 
+      SELECT employee_no, full_name, email, department_label as department, band, 
+             role, immediate_supervisor, supervisor_employee_no, supervisor_match_status
       FROM employees 
       WHERE is_active = 1 
       ORDER BY role DESC, full_name ASC
