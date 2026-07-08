@@ -180,6 +180,12 @@ function parseCSVFile(file) {
           console.log('BOM removed');
         }
         
+        // Normalize smart quotes and special characters to their standard equivalents
+        csv = csv.replace(/[\u2018\u2019]/g, "'");  // Replace smart single quotes with straight apostrophe
+        csv = csv.replace(/[\u201C\u201D]/g, '"');  // Replace smart double quotes with straight quotes
+        csv = csv.replace(/[\u2013\u2014]/g, '-');  // Replace en/em dashes with hyphen
+        csv = csv.replace(/\u2026/g, '...');        // Replace ellipsis with three dots
+        
         // Parse CSV using proper CSV parsing (handles quoted fields with line breaks)
         const lines = parseCSVContent(csv);
         
@@ -289,18 +295,24 @@ function parseCSVFile(file) {
           const teamKeyResult = row[15];
           const teamCategory = row[16];
           const teamTargetResult = row[17];
-          const teamWeight = parseFloat(row[18]);
+          
+          // Team Weight is optional - some departments may not have teams
+          let teamWeight = 0; // Default to 0 if not provided
+          if (row[18] && row[18].trim() !== '') {
+            const parsedTeamWeight = parseFloat(row[18]);
+            if (isNaN(parsedTeamWeight)) {
+              throw new Error(`Row ${i + 1}: Team Weight "${row[18]}" is not a valid number.`);
+            }
+            teamWeight = parsedTeamWeight;
+          } else {
+            console.log(`Row ${i}: Team Weight is optional (department may not have team structure)`);
+          }
 
           // Skip row if corporate is empty
           if (!corporate || corporate.length === 0) {
             console.log(`Row ${i}: Skipped (no corporate value)`);
             skippedRowCount++;
             continue;
-          }
-
-          // Validate weight is numeric
-          if (isNaN(teamWeight)) {
-            throw new Error(`Row ${i + 1}: Team Weight "${row[18]}" is not a valid number.`);
           }
 
           // ===== FALLBACK LOGIC: Fill in missing objectives/key results =====
