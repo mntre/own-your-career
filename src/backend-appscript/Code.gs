@@ -2123,3 +2123,1867 @@ function logout() {
     };
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/*                   OKR CSV HIERARCHY DETECTION (TASK 2)                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * TASK 2: Parses OKR CSV file and detects corporate hierarchy.
+ * Extracts: Corporate, Group, Department, Team
+ * Validates structure and weight distribution.
+ * Supports blank field cascading (downward hierarchy logic).
+ * 
+ * CSV Structure Expected (4 hierarchy levels):
+ * Corporate, Group, Group_Objective, Group_KeyResult, Group_Category, Group_TargetResult, Group_Weight,
+ * Department, Department_Objective, Department_KeyResult, Department_Category, Department_TargetResult, Department_Weight,
+ * Team, Team_Objective, Team_KeyResult, Team_Category, Team_TargetResult, Team_Weight
+ * 
+ * @param {string} csvContent - Raw CSV file content (text)
+ * @returns {Object} {
+ *   success: boolean,
+ *   corporate: string,
+ *   group: string,
+ *   department: string (can be empty for Group-only OKRs),
+ *   team: string (can be empty for Dept-only OKRs),
+ *   keyResults: [{
+ *     corporate: string,
+ *     group: string,
+ *     groupObjective: string,
+ *     groupKeyResult: string,
+ *     groupWeight: number,
+ *     department: string,
+ *     departmentObjective: string,
+ *     departmentKeyResult: string,
+ *     departmentWeight: number,
+ *     team: string,
+ *     teamObjective: string,
+ *     teamKeyResult: string,
+ *     teamWeight: number,
+ *     category: string,
+ *     targetResult: string
+ *   }],
+ *   validation: {
+ *     isValid: boolean,
+ *     warnings: string[],
+ *     errors: string[]
+ *   }
+ * }
+ */
+function parseOKRCSVAndDetectHierarchy(csvContent) {
+  try {
+    console.log('[parseOKRCSVAndDetectHierarchy] Starting CSV parsing...');
+    
+    const errors = [];
+    const warnings = [];
+    const keyResults = [];
+    let corporate = null;
+    let group = null;
+    let department = null;
+    let team = null;
+
+    // Parse CSV lines
+    const lines = csvContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    
+    if (lines.length < 2) {
+      return {
+        success: false,
+        corporate: null,
+        group: null,
+        department: null,
+        team: null,
+        keyResults: [],
+        validation: {
+          isValid: false,
+          warnings: [],
+          errors: ['CSV file is empty or has no data rows']
+        }
+      };
+    }
+
+    // Parse header row
+    const headerLine = lines[0];
+    const headers = headerLine.split(',').map(h => h.trim());
+    
+    console.log(`[parseOKRCSVAndDetectHierarchy] Headers: ${headers.join(' | ')}`);
+
+    // Validate required columns
+    const requiredColumns = [
+      'Corporate', 'Group', 'Group_Objective', 'Group_KeyResult', 'Group_Weight',
+      'Department', 'Department_Objective', 'Department_KeyResult', 'Department_Weight',
+      'Team', 'Team_Objective', 'Team_KeyResult', 'Team_Weight'
+    ];
+
+    for (const col of requiredColumns) {
+      if (!headers.some(h => h === col || h === col.toLowerCase())) {
+        errors.push(`Missing required column: ${col}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      return {
+        success: false,
+        corporate: null,
+        group: null,
+        department: null,
+        team: null,
+        keyResults: [],
+        validation: {
+          isValid: false,
+          warnings: [],
+          errors: errors
+        }
+      };
+    }
+
+    // Parse data rows
+    for (let rowIdx = 1; rowIdx < lines.length; rowIdx++) {
+      try {
+        const line = lines[rowIdx];
+        // Simple CSV parser (handles quoted values)
+        const values = parseCSVLine_(line);
+        
+        if (values.length < headers.length) {
+          warnings.push(`Row ${rowIdx + 1}: Not enough columns, expected ${headers.length}, got ${values.length}`);
+          continue;
+        }
+
+        // Map header to value
+        const row = {};
+        headers.forEach((header, idx) => {
+          row[header] = values[idx];
+        });
+
+        // Extract hierarchy values
+        const rowCorp = row['Corporate'] || row['corporate'] || '';
+        const rowGroup = row['Group'] || row['group'] || '';
+        const rowDept = row['Department'] || row['department'] || '';
+        const rowTeam = row['Team'] || row['team'] || '';
+
+        // Validate required hierarchy fields
+        if (!rowCorp) {
+          errors.push(`Row ${rowIdx + 1}: Missing Corporate`);
+          continue;
+        }
+        if (!rowGroup) {
+          errors.push(`Row ${rowIdx + 1}: Missing Group`);
+          continue;
+        }
+
+        // Set hierarchy values (from first valid row)
+        if (!corporate) corporate = rowCorp;
+        if (!group) group = rowGroup;
+        if (!department && rowDept) department = rowDept;
+        if (!team && rowTeam) team = rowTeam;
+
+        // Validate Group OKR fields
+        const groupObjective = row['Group_Objective'] || row['group_objective'] || '';
+        const groupKeyResult = row['Group_KeyResult'] || row['group_keyresult'] || '';
+        
+        if (!groupObjective || !groupKeyResult) {
+          errors.push(`Row ${rowIdx + 1}: Missing Group Objective or Key Result`);
+          continue;
+        }
+
+        // Parse weights
+        const groupWeight = parseFloat(row['Group_Weight'] || row['group_weight'] || '0');
+        const deptWeight = parseFloat(row['Department_Weight'] || row['department_weight'] || '0');
+        const teamWeight = parseFloat(row['Team_Weight'] || row['team_weight'] || '0');
+
+        if (isNaN(groupWeight) || groupWeight < 0 || groupWeight > 100) {
+          errors.push(`Row ${rowIdx + 1}: Invalid Group Weight: ${row['Group_Weight']}`);
+          continue;
+        }
+
+        // Extract OKR data with cascading logic
+        const deptObjective = row['Department_Objective'] || row['department_objective'] || groupObjective;
+        const deptKeyResult = row['Department_KeyResult'] || row['department_keyresult'] || groupKeyResult;
+        const teamObjective = row['Team_Objective'] || row['team_objective'] || deptObjective;
+        const teamKeyResult = row['Team_KeyResult'] || row['team_keyresult'] || deptKeyResult;
+
+        const category = row['Category'] || row['category'] || row['Group_Category'] || row['group_category'] || 'Target';
+        const targetResult = row['TargetResult'] || row['targetresult'] || row['Group_TargetResult'] || row['group_targetresult'] || '';
+
+        // Create key result record
+        const krRecord = {
+          corporate: rowCorp,
+          group: rowGroup,
+          groupObjective: groupObjective,
+          groupKeyResult: groupKeyResult,
+          groupWeight: groupWeight,
+          department: rowDept,
+          departmentObjective: deptObjective,
+          departmentKeyResult: deptKeyResult,
+          departmentWeight: deptWeight,
+          team: rowTeam,
+          teamObjective: teamObjective,
+          teamKeyResult: teamKeyResult,
+          teamWeight: teamWeight,
+          category: category,
+          targetResult: targetResult
+        };
+
+        keyResults.push(krRecord);
+        console.log(`[parseOKRCSVAndDetectHierarchy] Row ${rowIdx + 1}: Parsed successfully`);
+      } catch (e) {
+        errors.push(`Row ${rowIdx + 1}: Error parsing row - ${e.message}`);
+        console.error(`[parseOKRCSVAndDetectHierarchy] Row ${rowIdx + 1} error: ${e.message}`);
+      }
+    }
+
+    // Validate weight distribution
+    if (keyResults.length > 0) {
+      const groupWeights = keyResults.map(kr => kr.groupWeight).reduce((a, b) => a + b, 0);
+      if (groupWeights !== 100) {
+        warnings.push(`Group weights total ${groupWeights}%, expected 100% (tolerance ±1%)`);
+      }
+    }
+
+    const isValid = errors.length === 0 && keyResults.length > 0;
+
+    console.log(`[parseOKRCSVAndDetectHierarchy] Parsing complete: Corp=${corporate}, Group=${group}, Dept=${department}, Team=${team}, KRs=${keyResults.length}`);
+    console.log(`[parseOKRCSVAndDetectHierarchy] Validation: isValid=${isValid}, errors=${errors.length}, warnings=${warnings.length}`);
+
+    return {
+      success: isValid,
+      corporate: corporate,
+      group: group,
+      department: department,
+      team: team,
+      keyResults: keyResults,
+      validation: {
+        isValid: isValid,
+        warnings: warnings,
+        errors: errors
+      }
+    };
+  } catch (e) {
+    console.error(`[parseOKRCSVAndDetectHierarchy] Fatal error: ${e.message}`);
+    return {
+      success: false,
+      corporate: null,
+      group: null,
+      department: null,
+      team: null,
+      keyResults: [],
+      validation: {
+        isValid: false,
+        warnings: [],
+        errors: [`Fatal error: ${e.message}`]
+      }
+    };
+  }
+}
+
+/**
+ * Helper: Parses a single CSV line handling quoted values.
+ * Simple implementation for OKR CSV parsing.
+ * 
+ * @param {string} line - CSV line to parse
+ * @returns {string[]} Array of parsed values
+ * @private
+ */
+function parseCSVLine_(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++;
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // Field separator
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  // Add last field
+  result.push(current.trim());
+  return result;
+}
+
+/**
+ * Validates OKR CSV structure and content.
+ * Detailed validation for data quality.
+ * 
+ * @param {Object} parseResult - Result from parseOKRCSVAndDetectHierarchy()
+ * @returns {Object} { isValid: boolean, errors: string[], warnings: string[] }
+ */
+function validateOKRCSV(parseResult) {
+  const errors = [...parseResult.validation.errors];
+  const warnings = [...parseResult.validation.warnings];
+
+  if (!parseResult.corporate) {
+    errors.push('No corporate data detected');
+  }
+  if (!parseResult.group) {
+    errors.push('No group data detected');
+  }
+
+  if (parseResult.keyResults.length === 0) {
+    errors.push('No valid key results found in CSV');
+  }
+
+  // Check for empty department/team with content
+  if (!parseResult.department && parseResult.keyResults.some(kr => kr.department)) {
+    warnings.push('Some rows have Department data but hierarchy header shows none');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors: errors,
+    warnings: warnings
+  };
+}
+
+/**
+ * Gets all unique hierarchy combinations from parsed OKR data.
+ * Used for populating dropdown selectors.
+ * 
+ * @param {Object} parseResult - Result from parseOKRCSVAndDetectHierarchy()
+ * @returns {Object} {
+ *   corporates: string[],
+ *   groups: string[],
+ *   departments: string[],
+ *   teams: string[]
+ * }
+ */
+function getUniqueLevelsFromOKR(parseResult) {
+  const corporates = new Set();
+  const groups = new Set();
+  const departments = new Set();
+  const teams = new Set();
+
+  parseResult.keyResults.forEach(kr => {
+    if (kr.corporate) corporates.add(kr.corporate);
+    if (kr.group) groups.add(kr.group);
+    if (kr.department) departments.add(kr.department);
+    if (kr.team) teams.add(kr.team);
+  });
+
+  return {
+    corporates: Array.from(corporates).sort(),
+    groups: Array.from(groups).sort(),
+    departments: Array.from(departments).sort(),
+    teams: Array.from(teams).sort()
+  };
+}
+
+/**
+ * Generates standardized file name for Google Drive upload.
+ * Format: Corporate_Group_Department_Team.csv
+ * If no Team: Corporate_Group_Department.csv
+ * 
+ * @param {string} corporate - Corporate name
+ * @param {string} group - Group name
+ * @param {string} department - Department name (can be empty)
+ * @param {string} team - Team name (can be empty)
+ * @returns {string} Standardized file name
+ */
+function generateOKRFileName(corporate, group, department, team) {
+  const parts = [corporate, group];
+  
+  if (department && department.trim()) {
+    parts.push(department);
+  }
+  
+  if (team && team.trim()) {
+    parts.push(team);
+  }
+
+  // Replace spaces and special chars with underscores
+  const fileName = parts
+    .map(part => part.trim().replace(/[^a-zA-Z0-9-]/g, '_'))
+    .join('_');
+
+  return fileName + '.csv';
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*                   GOOGLE DRIVE OKR FILE UPLOAD HANDLER (TASK 3)            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * TASK 3: Uploads OKR CSV file to Google Drive with user as uploader.
+ * File is saved to a shared folder and renamed per hierarchy: Corporate_Group_Department_Team.csv
+ * 
+ * @param {string} csvContent - Raw CSV file content
+ * @param {string} userEmail - Email of Data SPOC uploading (used as owner in metadata)
+ * @param {string} fileName - Original file name
+ * @param {string} corporate - Corporate name (for file naming)
+ * @param {string} group - Group name (for file naming)
+ * @param {string} department - Department name (for file naming, can be empty)
+ * @param {string} team - Team name (for file naming, can be empty)
+ * @returns {Object} {
+ *   success: boolean,
+ *   fileId: string (Google Drive file ID),
+ *   fileName: string (renamed file name),
+ *   webViewLink: string (shareable link),
+ *   message: string,
+ *   error?: string
+ * }
+ */
+function uploadOKRFileToGoogleDrive(csvContent, userEmail, fileName, corporate, group, department, team) {
+  try {
+    console.log(`[uploadOKRFileToGoogleDrive] Starting upload: user=${userEmail}, orig=${fileName}`);
+
+    // Get shared folder ID from properties
+    const sharedFolderIdProperty = PropertiesService.getScriptProperties().getProperty('OKR_SHARED_FOLDER_ID');
+    if (!sharedFolderIdProperty) {
+      console.warn('[uploadOKRFileToGoogleDrive] OKR_SHARED_FOLDER_ID not configured in Script Properties');
+      console.warn('[uploadOKRFileToGoogleDrive] File will be saved to root of user\'s Drive');
+    }
+
+    // Generate standardized file name
+    const standardizedFileName = generateOKRFileName(corporate, group, department, team);
+    console.log(`[uploadOKRFileToGoogleDrive] Standardized name: ${standardizedFileName}`);
+
+    // Create file blob from CSV content
+    const blob = Utilities.newBlob(csvContent, 'text/csv', standardizedFileName);
+
+    // Prepare file properties
+    const fileOptions = {
+      title: standardizedFileName,
+      description: `OKR Data: ${corporate} / ${group} / ${department} / ${team} (Uploaded by ${userEmail} on ${new Date().toISOString()})`,
+      mimeType: 'text/csv'
+    };
+
+    // Upload to shared folder if configured, otherwise to user's root
+    let uploadedFile;
+    try {
+      if (sharedFolderIdProperty) {
+        const folder = DriveApp.getFolderById(sharedFolderIdProperty);
+        uploadedFile = folder.createFile(blob);
+        console.log(`[uploadOKRFileToGoogleDrive] File created in shared folder: ${sharedFolderIdProperty}`);
+      } else {
+        uploadedFile = DriveApp.createFile(blob);
+        console.log('[uploadOKRFileToGoogleDrive] File created in user\'s root Drive');
+      }
+    } catch (e) {
+      // If shared folder fails, fall back to user's root
+      console.warn(`[uploadOKRFileToGoogleDrive] Shared folder access failed (${e.message}), using user root`);
+      uploadedFile = DriveApp.createFile(blob);
+    }
+
+    // Set file metadata
+    uploadedFile.setName(standardizedFileName);
+    uploadedFile.setDescription(fileOptions.description);
+
+    // Get file details
+    const fileId = uploadedFile.getId();
+    const webViewLink = uploadedFile.getUrl();
+
+    console.log(`[uploadOKRFileToGoogleDrive] Upload successful: fileId=${fileId}`);
+    console.log(`[uploadOKRFileToGoogleDrive] Web view link: ${webViewLink}`);
+
+    return {
+      success: true,
+      fileId: fileId,
+      fileName: standardizedFileName,
+      webViewLink: webViewLink,
+      message: `OKR file uploaded successfully: ${standardizedFileName}`
+    };
+  } catch (e) {
+    console.error(`[uploadOKRFileToGoogleDrive] Error: ${e.message}`);
+    console.error(`[uploadOKRFileToGoogleDrive] Stack: ${e.stack}`);
+
+    return {
+      success: false,
+      fileId: null,
+      fileName: null,
+      webViewLink: null,
+      message: 'Failed to upload OKR file to Google Drive',
+      error: e.message
+    };
+  }
+}
+
+/**
+ * Checks if user has access to a specific Google Drive file.
+ * Used to verify permissions before allowing edits/deletes.
+ * 
+ * @param {string} fileId - Google Drive file ID
+ * @param {string} userEmail - User email to check access
+ * @returns {Object} { hasAccess: boolean, canEdit: boolean, canDelete: boolean, message: string }
+ */
+function checkDriveFileAccess(fileId, userEmail) {
+  try {
+    const file = DriveApp.getFileById(fileId);
+    
+    // Check if user can edit
+    const editors = file.getEditors();
+    const viewers = file.getViewers();
+    const owner = file.getOwner();
+
+    const userCanEdit = editors.some(u => u.getEmail() === userEmail) || owner.getEmail() === userEmail;
+    const userCanView = viewers.some(u => u.getEmail() === userEmail) || userCanEdit;
+
+    console.log(`[checkDriveFileAccess] File ${fileId}: user ${userEmail} - view=${userCanView}, edit=${userCanEdit}`);
+
+    return {
+      hasAccess: userCanView,
+      canEdit: userCanEdit,
+      canDelete: owner.getEmail() === userEmail, // Only owner can delete
+      message: userCanView ? 'Access granted' : 'Access denied'
+    };
+  } catch (e) {
+    console.error(`[checkDriveFileAccess] Error checking access: ${e.message}`);
+    return {
+      hasAccess: false,
+      canEdit: false,
+      canDelete: false,
+      message: `Error checking access: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Shares a Google Drive file with specific users.
+ * Used to grant access to Data SPOC and related users.
+ * 
+ * @param {string} fileId - Google Drive file ID
+ * @param {string[]} emailsToShare - Array of email addresses to share with
+ * @param {string} role - Share role: 'viewer', 'commenter', 'editor' (default: 'viewer')
+ * @returns {Object} { success: boolean, shared: string[], failed: string[], message: string }
+ */
+function shareOKRFileWithUsers(fileId, emailsToShare, role = 'viewer') {
+  try {
+    const file = DriveApp.getFileById(fileId);
+    const shared = [];
+    const failed = [];
+
+    emailsToShare.forEach(email => {
+      try {
+        if (role === 'editor') {
+          file.addEditor(email);
+        } else if (role === 'commenter') {
+          file.addCommenter(email);
+        } else {
+          file.addViewer(email);
+        }
+        shared.push(email);
+        console.log(`[shareOKRFileWithUsers] Shared with ${email} as ${role}`);
+      } catch (e) {
+        failed.push(email);
+        console.error(`[shareOKRFileWithUsers] Failed to share with ${email}: ${e.message}`);
+      }
+    });
+
+    return {
+      success: failed.length === 0,
+      shared: shared,
+      failed: failed,
+      message: `Shared with ${shared.length} users${failed.length > 0 ? `, ${failed.length} failed` : ''}`
+    };
+  } catch (e) {
+    console.error(`[shareOKRFileWithUsers] Error: ${e.message}`);
+    return {
+      success: false,
+      shared: [],
+      failed: emailsToShare,
+      message: `Error sharing file: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Moves a Google Drive file to a specific folder.
+ * Used to organize OKR files by hierarchy.
+ * 
+ * @param {string} fileId - Google Drive file ID
+ * @param {string} targetFolderId - Target folder ID
+ * @returns {Object} { success: boolean, message: string }
+ */
+function moveOKRFileToFolder(fileId, targetFolderId) {
+  try {
+    const file = DriveApp.getFileById(fileId);
+    const targetFolder = DriveApp.getFolderById(targetFolderId);
+
+    // Get current parent folders
+    const currentParents = file.getParents();
+    while (currentParents.hasNext()) {
+      const parent = currentParents.next();
+      parent.removeFile(file);
+    }
+
+    // Move to target folder
+    targetFolder.addFile(file);
+
+    console.log(`[moveOKRFileToFolder] File ${fileId} moved to folder ${targetFolderId}`);
+
+    return {
+      success: true,
+      message: `File moved to target folder`
+    };
+  } catch (e) {
+    console.error(`[moveOKRFileToFolder] Error: ${e.message}`);
+    return {
+      success: false,
+      message: `Error moving file: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Deletes a Google Drive file.
+ * Only file owner can delete.
+ * 
+ * @param {string} fileId - Google Drive file ID
+ * @param {string} userEmail - Email of user requesting delete
+ * @returns {Object} { success: boolean, message: string }
+ */
+function deleteOKRFileFromDrive(fileId, userEmail) {
+  try {
+    const file = DriveApp.getFileById(fileId);
+    const owner = file.getOwner();
+
+    // Only owner can delete
+    if (owner.getEmail() !== userEmail) {
+      console.warn(`[deleteOKRFileFromDrive] Delete denied: ${userEmail} is not owner (owner: ${owner.getEmail()})`);
+      return {
+        success: false,
+        message: 'Only the file owner can delete this file'
+      };
+    }
+
+    file.setTrashed(true);
+    console.log(`[deleteOKRFileFromDrive] File ${fileId} moved to trash by ${userEmail}`);
+
+    return {
+      success: true,
+      message: 'File deleted successfully'
+    };
+  } catch (e) {
+    console.error(`[deleteOKRFileFromDrive] Error: ${e.message}`);
+    return {
+      success: false,
+      message: `Error deleting file: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Gets metadata for a Google Drive file.
+ * Used to verify file details and ownership.
+ * 
+ * @param {string} fileId - Google Drive file ID
+ * @returns {Object} {
+ *   success: boolean,
+ *   fileName: string,
+ *   fileSize: number (bytes),
+ *   mimeType: string,
+ *   owner: string (email),
+ *   createdDate: string (ISO),
+ *   lastModifiedDate: string (ISO),
+ *   webViewLink: string,
+ *   downloadLink: string,
+ *   message?: string
+ * }
+ */
+function getOKRFileMetadata(fileId) {
+  try {
+    const file = DriveApp.getFileById(fileId);
+
+    const metadata = {
+      success: true,
+      fileName: file.getName(),
+      fileSize: file.getSize(),
+      mimeType: file.getMimeType(),
+      owner: file.getOwner().getEmail(),
+      createdDate: file.getDateCreated().toISOString(),
+      lastModifiedDate: file.getLastUpdated().toISOString(),
+      webViewLink: file.getUrl(),
+      downloadLink: file.getDownloadUrl()
+    };
+
+    console.log(`[getOKRFileMetadata] Retrieved metadata for file ${fileId}`);
+    return metadata;
+  } catch (e) {
+    console.error(`[getOKRFileMetadata] Error: ${e.message}`);
+    return {
+      success: false,
+      fileName: null,
+      fileSize: null,
+      mimeType: null,
+      owner: null,
+      createdDate: null,
+      lastModifiedDate: null,
+      webViewLink: null,
+      downloadLink: null,
+      message: `Error getting file metadata: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Creates a folder in Google Drive for organizing OKR files.
+ * Hierarchical structure: Corporate / Group / Department / Team
+ * 
+ * @param {string} parentFolderId - Parent folder ID (root if null)
+ * @param {string} folderName - Name for the new folder
+ * @returns {Object} { success: boolean, folderId: string, folderName: string, message: string }
+ */
+function createOKRFolder(parentFolderId, folderName) {
+  try {
+    let newFolder;
+
+    if (parentFolderId) {
+      const parentFolder = DriveApp.getFolderById(parentFolderId);
+      newFolder = parentFolder.createFolder(folderName);
+      console.log(`[createOKRFolder] Created folder "${folderName}" in parent ${parentFolderId}`);
+    } else {
+      newFolder = DriveApp.createFolder(folderName);
+      console.log(`[createOKRFolder] Created folder "${folderName}" in root`);
+    }
+
+    return {
+      success: true,
+      folderId: newFolder.getId(),
+      folderName: folderName,
+      message: `Folder created: ${folderName}`
+    };
+  } catch (e) {
+    console.error(`[createOKRFolder] Error: ${e.message}`);
+    return {
+      success: false,
+      folderId: null,
+      folderName: folderName,
+      message: `Error creating folder: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Gets or creates hierarchical folder structure for OKR files.
+ * Example: /OKR_Files/Converge/People & Culture/People Platforms/Data Analytics
+ * 
+ * @param {string} corporate - Corporate name
+ * @param {string} group - Group name
+ * @param {string} department - Department name (optional)
+ * @param {string} team - Team name (optional)
+ * @returns {Object} { success: boolean, folderId: string, folderPath: string, message: string }
+ */
+function getOrCreateOKRHierarchyFolder(corporate, group, department, team) {
+  try {
+    const rootFolderId = PropertiesService.getScriptProperties().getProperty('OKR_SHARED_FOLDER_ID');
+    let currentFolderId = rootFolderId || null;
+    const pathParts = [corporate, group];
+
+    if (department) pathParts.push(department);
+    if (team) pathParts.push(team);
+
+    for (const folderName of pathParts) {
+      try {
+        if (currentFolderId) {
+          const folder = DriveApp.getFolderById(currentFolderId);
+          const subFolders = folder.getFoldersByName(folderName);
+
+          if (subFolders.hasNext()) {
+            currentFolderId = subFolders.next().getId();
+            console.log(`[getOrCreateOKRHierarchyFolder] Found existing folder: ${folderName}`);
+          } else {
+            const newFolder = folder.createFolder(folderName);
+            currentFolderId = newFolder.getId();
+            console.log(`[getOrCreateOKRHierarchyFolder] Created new folder: ${folderName}`);
+          }
+        } else {
+          const rootFolders = DriveApp.getFoldersByName(folderName);
+          if (rootFolders.hasNext()) {
+            currentFolderId = rootFolders.next().getId();
+            console.log(`[getOrCreateOKRHierarchyFolder] Found existing root folder: ${folderName}`);
+          } else {
+            const newFolder = DriveApp.createFolder(folderName);
+            currentFolderId = newFolder.getId();
+            console.log(`[getOrCreateOKRHierarchyFolder] Created new root folder: ${folderName}`);
+          }
+        }
+      } catch (e) {
+        console.error(`[getOrCreateOKRHierarchyFolder] Error with folder ${folderName}: ${e.message}`);
+        throw e;
+      }
+    }
+
+    const folderPath = pathParts.join(' / ');
+
+    return {
+      success: true,
+      folderId: currentFolderId,
+      folderPath: folderPath,
+      message: `Folder path ready: ${folderPath}`
+    };
+  } catch (e) {
+    console.error(`[getOrCreateOKRHierarchyFolder] Error: ${e.message}`);
+    return {
+      success: false,
+      folderId: null,
+      folderPath: null,
+      message: `Error creating folder hierarchy: ${e.message}`
+    };
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*                 OKR UPLOADING STATUS RETRIEVAL (TASK 4)                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * TASK 4: Retrieves uploading status for all employees in a specific hierarchy.
+ * Used to populate the "Uploading Status" table in Data SPOC Portal.
+ * Shows which employees have submitted OKRs and their current status.
+ * 
+ * @param {string} corporate - Corporate name
+ * @param {string} group - Group name
+ * @param {string} department - Department name (optional, can be empty)
+ * @param {string} team - Team name (optional, can be empty)
+ * @returns {Object} {
+ *   success: boolean,
+ *   corporate: string,
+ *   group: string,
+ *   department: string,
+ *   team: string,
+ *   employees: [{
+ *     employeeId: string,
+ *     name: string,
+ *     department: string,
+ *     okrStatus: string ('Pending' | 'Uploaded' | 'Scored' | 'Locked'),
+ *     lastUpdated: string (ISO timestamp or '—'),
+ *     uploadId: string (null if not uploaded),
+ *     uploadedBy: string (email, null if not uploaded),
+ *     canEdit: boolean (true if employee can still edit)
+ *   }],
+ *   summary: {
+ *     totalEmployees: number,
+ *     pendingCount: number,
+ *     uploadedCount: number,
+ *     scoredCount: number,
+ *     lockedCount: number,
+ *     completionPercentage: number
+ *   },
+ *   message: string
+ * }
+ */
+function getUploadingStatus(corporate, group, department, team) {
+  try {
+    console.log(`[getUploadingStatus] Fetching status: Corp=${corporate}, Group=${group}, Dept=${department}, Team=${team}`);
+
+    // Get uploading status from database
+    const statusData = Database.getUploadingStatusByHierarchy(corporate, group, department, team);
+
+    if (!statusData || statusData.length === 0) {
+      console.warn('[getUploadingStatus] No employees found for this hierarchy');
+      return {
+        success: false,
+        corporate: corporate,
+        group: group,
+        department: department,
+        team: team,
+        employees: [],
+        summary: {
+          totalEmployees: 0,
+          pendingCount: 0,
+          uploadedCount: 0,
+          scoredCount: 0,
+          lockedCount: 0,
+          completionPercentage: 0
+        },
+        message: 'No employees found for this hierarchy'
+      };
+    }
+
+    // Enrich status data with lock information
+    const enrichedEmployees = statusData.map(emp => {
+      let canEdit = true;
+      let lockStatus = null;
+
+      // Check if OKR has been scored (if uploaded)
+      if (emp.uploadId) {
+        lockStatus = Database.checkOKRScoredStatus(emp.uploadId);
+        if (lockStatus && lockStatus.isScored) {
+          canEdit = false; // Cannot edit if scored
+        }
+      }
+
+      return {
+        ...emp,
+        canEdit: canEdit,
+        lockStatus: lockStatus
+      };
+    });
+
+    // Calculate summary statistics
+    const summary = {
+      totalEmployees: enrichedEmployees.length,
+      pendingCount: enrichedEmployees.filter(e => e.okrStatus === 'Pending').length,
+      uploadedCount: enrichedEmployees.filter(e => e.okrStatus === 'Uploaded').length,
+      scoredCount: enrichedEmployees.filter(e => e.okrStatus === 'Scored').length,
+      lockedCount: enrichedEmployees.filter(e => e.okrStatus === 'Locked').length,
+      completionPercentage: enrichedEmployees.length > 0 
+        ? Math.round(((enrichedEmployees.length - enrichedEmployees.filter(e => e.okrStatus === 'Pending').length) / enrichedEmployees.length) * 100)
+        : 0
+    };
+
+    console.log(`[getUploadingStatus] Summary: ${summary.uploadedCount} uploaded, ${summary.pendingCount} pending, ${summary.completionPercentage}% complete`);
+
+    return {
+      success: true,
+      corporate: corporate,
+      group: group,
+      department: department,
+      team: team,
+      employees: enrichedEmployees,
+      summary: summary,
+      message: `Retrieved status for ${enrichedEmployees.length} employees`
+    };
+  } catch (e) {
+    console.error(`[getUploadingStatus] Error: ${e.message}`);
+    console.error(`[getUploadingStatus] Stack: ${e.stack}`);
+
+    return {
+      success: false,
+      corporate: corporate,
+      group: group,
+      department: department,
+      team: team,
+      employees: [],
+      summary: {
+        totalEmployees: 0,
+        pendingCount: 0,
+        uploadedCount: 0,
+        scoredCount: 0,
+        lockedCount: 0,
+        completionPercentage: 0
+      },
+      message: `Error retrieving uploading status: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Gets detailed status for a single employee in a specific hierarchy.
+ * Used for drilling down on individual employee status.
+ * 
+ * @param {string} employeeId - Employee ID
+ * @param {string} corporate - Corporate name
+ * @param {string} group - Group name
+ * @param {string} department - Department name (optional)
+ * @param {string} team - Team name (optional)
+ * @returns {Object} {
+ *   success: boolean,
+ *   employeeId: string,
+ *   name: string,
+ *   okrStatus: string,
+ *   lastUpdated: string,
+ *   uploadDetails: {
+ *     uploadId: string,
+ *     uploadedBy: string,
+ *     uploadedAt: string,
+ *     fileName: string,
+ *     googleDriveFileId: string,
+ *     webViewLink: string
+ *   },
+ *   lockStatus: {
+ *     isLocked: boolean,
+ *     isScored: boolean,
+ *     lastScoredAt: string,
+ *     lastScoredBy: string
+ *   },
+ *   canEdit: boolean,
+ *   message: string
+ * }
+ */
+function getEmployeeOKRStatus(employeeId, corporate, group, department, team) {
+  try {
+    console.log(`[getEmployeeOKRStatus] Fetching status for employee ${employeeId}`);
+
+    // Get employee data
+    const employee = Database.getEmployeeById(employeeId);
+    if (!employee) {
+      return {
+        success: false,
+        employeeId: employeeId,
+        name: null,
+        okrStatus: 'Not Found',
+        lastUpdated: null,
+        uploadDetails: null,
+        lockStatus: null,
+        canEdit: false,
+        message: `Employee ${employeeId} not found`
+      };
+    }
+
+    // Get OKR upload record
+    const uploadRecord = Database.getOKRUploadByHierarchy(corporate, group, department, team);
+
+    let okrStatus = 'Pending';
+    let lastUpdated = null;
+    let uploadDetails = null;
+    let lockStatus = { isLocked: false, isScored: false };
+    let canEdit = true;
+
+    if (uploadRecord) {
+      okrStatus = uploadRecord.status || 'Uploaded';
+      lastUpdated = uploadRecord.uploadedAt;
+
+      // Check scored status
+      lockStatus = Database.checkOKRScoredStatus(uploadRecord.uploadId);
+      if (lockStatus && lockStatus.isScored) {
+        canEdit = false;
+      }
+
+      // Get Drive file metadata if available
+      if (uploadRecord.googleDriveFileId) {
+        try {
+          const fileMetadata = getOKRFileMetadata(uploadRecord.googleDriveFileId);
+          if (fileMetadata.success) {
+            uploadDetails = {
+              uploadId: uploadRecord.uploadId,
+              uploadedBy: uploadRecord.userEmail,
+              uploadedAt: uploadRecord.uploadedAt,
+              fileName: fileMetadata.fileName,
+              googleDriveFileId: uploadRecord.googleDriveFileId,
+              webViewLink: fileMetadata.webViewLink
+            };
+          }
+        } catch (e) {
+          console.warn(`[getEmployeeOKRStatus] Could not get Drive file metadata: ${e.message}`);
+        }
+      }
+    }
+
+    console.log(`[getEmployeeOKRStatus] Employee ${employeeId}: ${okrStatus}, canEdit=${canEdit}`);
+
+    return {
+      success: true,
+      employeeId: employeeId,
+      name: employee.Name || employee.name || 'Unknown',
+      okrStatus: okrStatus,
+      lastUpdated: lastUpdated,
+      uploadDetails: uploadDetails,
+      lockStatus: lockStatus,
+      canEdit: canEdit,
+      message: `Retrieved OKR status for employee ${employeeId}`
+    };
+  } catch (e) {
+    console.error(`[getEmployeeOKRStatus] Error: ${e.message}`);
+
+    return {
+      success: false,
+      employeeId: employeeId,
+      name: null,
+      okrStatus: 'Error',
+      lastUpdated: null,
+      uploadDetails: null,
+      lockStatus: null,
+      canEdit: false,
+      message: `Error retrieving employee OKR status: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Gets all OKR uploads for a specific Data SPOC user.
+ * Used to show Data SPOC their upload history.
+ * 
+ * @param {string} userEmail - Data SPOC email
+ * @returns {Object} {
+ *   success: boolean,
+ *   userEmail: string,
+ *   uploads: [{
+ *     uploadId: string,
+ *     corporate: string,
+ *     group: string,
+ *     department: string,
+ *     team: string,
+ *     uploadedAt: string (ISO),
+ *     status: string ('UPLOADED' | 'SCORED' | 'LOCKED'),
+ *     lastScoredAt: string (ISO, null if not scored),
+ *     lastScoredBy: string (email, null if not scored),
+ *     fileName: string,
+ *     googleDriveFileId: string,
+ *     webViewLink: string
+ *   }],
+ *   summary: {
+ *     totalUploads: number,
+ *     uploadedCount: number,
+ *     scoredCount: number,
+ *     lockedCount: number
+ *   },
+ *   message: string
+ * }
+ */
+function getUserOKRUploads(userEmail) {
+  try {
+    console.log(`[getUserOKRUploads] Fetching uploads for user ${userEmail}`);
+
+    // Get all employees
+    const allEmployees = Database.getAllEmployees();
+
+    // Filter to get all OKR uploads by this user
+    const userUploads = [];
+
+    allEmployees.forEach(emp => {
+      const empCorp = emp.Corporate || emp.corporate || '';
+      const empGroup = emp.Group || emp.group || '';
+      const empDept = emp.Department || emp.department || '';
+      const empTeam = emp.Team || emp.team || '';
+
+      // Try to get upload for this hierarchy
+      const uploadRecord = Database.getOKRUploadByHierarchy(empCorp, empGroup, empDept, empTeam);
+      if (uploadRecord && uploadRecord.userEmail === userEmail) {
+        // Avoid duplicates (same hierarchy might appear in multiple employee rows)
+        if (!userUploads.some(u => u.uploadId === uploadRecord.uploadId)) {
+          try {
+            const fileMetadata = getOKRFileMetadata(uploadRecord.googleDriveFileId);
+            userUploads.push({
+              uploadId: uploadRecord.uploadId,
+              corporate: uploadRecord.corporate,
+              group: uploadRecord.group,
+              department: uploadRecord.department,
+              team: uploadRecord.team,
+              uploadedAt: uploadRecord.uploadedAt,
+              status: uploadRecord.status,
+              lastScoredAt: uploadRecord.lastScoredAt,
+              lastScoredBy: uploadRecord.lastScoredBy,
+              fileName: fileMetadata.success ? fileMetadata.fileName : uploadRecord.fileName,
+              googleDriveFileId: uploadRecord.googleDriveFileId,
+              webViewLink: fileMetadata.success ? fileMetadata.webViewLink : null
+            });
+          } catch (e) {
+            console.warn(`[getUserOKRUploads] Could not get Drive metadata for upload ${uploadRecord.uploadId}: ${e.message}`);
+          }
+        }
+      }
+    });
+
+    // Calculate summary
+    const summary = {
+      totalUploads: userUploads.length,
+      uploadedCount: userUploads.filter(u => u.status === 'UPLOADED').length,
+      scoredCount: userUploads.filter(u => u.status === 'SCORED').length,
+      lockedCount: userUploads.filter(u => u.status === 'LOCKED').length
+    };
+
+    console.log(`[getUserOKRUploads] Found ${userUploads.length} uploads for ${userEmail}`);
+
+    return {
+      success: true,
+      userEmail: userEmail,
+      uploads: userUploads,
+      summary: summary,
+      message: `Retrieved ${userUploads.length} OKR uploads for ${userEmail}`
+    };
+  } catch (e) {
+    console.error(`[getUserOKRUploads] Error: ${e.message}`);
+
+    return {
+      success: false,
+      userEmail: userEmail,
+      uploads: [],
+      summary: {
+        totalUploads: 0,
+        uploadedCount: 0,
+        scoredCount: 0,
+        lockedCount: 0
+      },
+      message: `Error retrieving user OKR uploads: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Checks if an OKR is editable by a specific user.
+ * Determines lock status and ownership permissions.
+ * 
+ * @param {string} uploadId - OKR upload ID
+ * @param {string} userEmail - User email requesting edit
+ * @returns {Object} {
+ *   success: boolean,
+ *   uploadId: string,
+ *   userEmail: string,
+ *   isEditable: boolean,
+ *   reason: string,
+ *   lockDetails: {
+ *     isScored: boolean,
+ *     lastScoredAt: string,
+ *     lastScoredBy: string,
+ *     isLocked: boolean
+ *   },
+ *   ownership: {
+ *     uploadedBy: string,
+ *     isUploader: boolean,
+ *     canEditAsUploader: boolean
+ *   }
+ * }
+ */
+function checkOKREditableStatus(uploadId, userEmail) {
+  try {
+    console.log(`[checkOKREditableStatus] Checking if ${userEmail} can edit upload ${uploadId}`);
+
+    // Get upload record
+    const sheet = getSheet_(SHEETS.OKR_UPLOAD);
+    const headers = getHeaderMap_(sheet);
+
+    if (sheet.getLastRow() < 2) {
+      return {
+        success: false,
+        uploadId: uploadId,
+        userEmail: userEmail,
+        isEditable: false,
+        reason: 'Upload not found',
+        lockDetails: null,
+        ownership: null
+      };
+    }
+
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    let uploadRecord = null;
+    values.forEach(row => {
+      const rowObj = rowToObject_(row, Object.keys(headers));
+      if (rowObj.uploadId === uploadId) {
+        uploadRecord = rowObj;
+      }
+    });
+
+    if (!uploadRecord) {
+      return {
+        success: false,
+        uploadId: uploadId,
+        userEmail: userEmail,
+        isEditable: false,
+        reason: 'Upload not found',
+        lockDetails: null,
+        ownership: null
+      };
+    }
+
+    // Check lock status
+    const lockStatus = Database.checkOKRScoredStatus(uploadId);
+    const isScored = lockStatus && lockStatus.isScored;
+
+    // Check ownership
+    const isUploader = uploadRecord.userEmail === userEmail;
+    const canEditAsUploader = isUploader && !isScored;
+
+    // Determine editability
+    let isEditable = false;
+    let reason = '';
+
+    if (isScored) {
+      isEditable = isUploader; // Only uploader can edit scored OKRs
+      reason = isUploader ? 'Scored OKRs can be edited by uploader only' : 'OKR is scored and locked for editing';
+    } else {
+      isEditable = true; // Any Data SPOC can edit unscored OKRs
+      reason = 'OKR is editable (not yet scored)';
+    }
+
+    console.log(`[checkOKREditableStatus] Result: editable=${isEditable}, reason=${reason}`);
+
+    return {
+      success: true,
+      uploadId: uploadId,
+      userEmail: userEmail,
+      isEditable: isEditable,
+      reason: reason,
+      lockDetails: {
+        isScored: isScored,
+        lastScoredAt: lockStatus?.lastScoredAt || null,
+        lastScoredBy: lockStatus?.lastScoredBy || null,
+        isLocked: isScored
+      },
+      ownership: {
+        uploadedBy: uploadRecord.userEmail,
+        isUploader: isUploader,
+        canEditAsUploader: canEditAsUploader
+      }
+    };
+  } catch (e) {
+    console.error(`[checkOKREditableStatus] Error: ${e.message}`);
+
+    return {
+      success: false,
+      uploadId: uploadId,
+      userEmail: userEmail,
+      isEditable: false,
+      reason: `Error checking edit status: ${e.message}`,
+      lockDetails: null,
+      ownership: null
+    };
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*                   GOOGLE.SCRIPT.RUN API ENDPOINTS (TASK 5)                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * TASK 5: Public API endpoint for parsing and uploading OKR CSV.
+ * Called from frontend: google.script.run.uploadOKRCSV(...)
+ * 
+ * Orchestrates the complete flow:
+ * 1. Parse CSV and detect hierarchy
+ * 2. Validate structure
+ * 3. Upload to Google Drive
+ * 4. Save metadata to database
+ * 
+ * @param {string} csvContent - Raw CSV file content
+ * @param {string} userEmail - Data SPOC email (from frontend)
+ * @param {string} fileName - Original file name
+ * @returns {Object} {
+ *   success: boolean,
+ *   uploadId: string,
+ *   corporate: string,
+ *   group: string,
+ *   department: string,
+ *   team: string,
+ *   fileId: string (Google Drive file ID),
+ *   fileName: string,
+ *   message: string,
+ *   validation?: {
+ *     isValid: boolean,
+ *     errors: string[],
+ *     warnings: string[]
+ *   },
+ *   error?: string
+ * }
+ */
+function uploadOKRCSV(csvContent, userEmail, fileName) {
+  try {
+    console.log(`[uploadOKRCSV] API called: user=${userEmail}, file=${fileName}`);
+
+    // Step 1: Parse CSV and detect hierarchy
+    console.log('[uploadOKRCSV] Step 1: Parsing CSV...');
+    const parseResult = parseOKRCSVAndDetectHierarchy(csvContent);
+
+    if (!parseResult.success) {
+      console.error('[uploadOKRCSV] CSV parsing failed');
+      return {
+        success: false,
+        uploadId: null,
+        corporate: null,
+        group: null,
+        department: null,
+        team: null,
+        fileId: null,
+        fileName: null,
+        message: 'CSV parsing failed',
+        validation: parseResult.validation,
+        error: parseResult.validation.errors.join('; ')
+      };
+    }
+
+    console.log(`[uploadOKRCSV] CSV parsed: Corp=${parseResult.corporate}, Group=${parseResult.group}, KRs=${parseResult.keyResults.length}`);
+
+    // Step 2: Validate parsed data
+    console.log('[uploadOKRCSV] Step 2: Validating data...');
+    const validation = validateOKRCSV(parseResult);
+
+    if (!validation.isValid) {
+      console.error('[uploadOKRCSV] Validation failed');
+      return {
+        success: false,
+        uploadId: null,
+        corporate: parseResult.corporate,
+        group: parseResult.group,
+        department: parseResult.department,
+        team: parseResult.team,
+        fileId: null,
+        fileName: null,
+        message: 'Data validation failed',
+        validation: validation,
+        error: validation.errors.join('; ')
+      };
+    }
+
+    console.log('[uploadOKRCSV] Validation passed');
+
+    // Step 3: Upload to Google Drive
+    console.log('[uploadOKRCSV] Step 3: Uploading to Google Drive...');
+    const driveUpload = uploadOKRFileToGoogleDrive(
+      csvContent,
+      userEmail,
+      fileName,
+      parseResult.corporate,
+      parseResult.group,
+      parseResult.department,
+      parseResult.team
+    );
+
+    if (!driveUpload.success) {
+      console.error('[uploadOKRCSV] Google Drive upload failed');
+      return {
+        success: false,
+        uploadId: null,
+        corporate: parseResult.corporate,
+        group: parseResult.group,
+        department: parseResult.department,
+        team: parseResult.team,
+        fileId: null,
+        fileName: null,
+        message: 'Google Drive upload failed',
+        validation: validation,
+        error: driveUpload.error
+      };
+    }
+
+    console.log(`[uploadOKRCSV] Drive upload success: fileId=${driveUpload.fileId}`);
+
+    // Step 4: Save metadata to database
+    console.log('[uploadOKRCSV] Step 4: Saving metadata to database...');
+    const dbResult = Database.saveOKRHierarchyUpload({
+      corporate: parseResult.corporate,
+      group: parseResult.group,
+      department: parseResult.department,
+      team: parseResult.team,
+      userEmail: userEmail,
+      googleDriveFileId: driveUpload.fileId,
+      fileName: driveUpload.fileName,
+      csvContent: csvContent
+    });
+
+    if (!dbResult.success) {
+      console.error('[uploadOKRCSV] Database save failed');
+      // Try to clean up Drive file
+      try {
+        deleteOKRFileFromDrive(driveUpload.fileId, userEmail);
+      } catch (e) {
+        console.warn('[uploadOKRCSV] Could not clean up Drive file after DB failure');
+      }
+
+      return {
+        success: false,
+        uploadId: null,
+        corporate: parseResult.corporate,
+        group: parseResult.group,
+        department: parseResult.department,
+        team: parseResult.team,
+        fileId: driveUpload.fileId,
+        fileName: driveUpload.fileName,
+        message: 'Database save failed',
+        validation: validation,
+        error: dbResult.message
+      };
+    }
+
+    console.log(`[uploadOKRCSV] Database save success: uploadId=${dbResult.uploadId}`);
+
+    // Success!
+    console.log('[uploadOKRCSV] Upload complete and successful');
+    return {
+      success: true,
+      uploadId: dbResult.uploadId,
+      corporate: parseResult.corporate,
+      group: parseResult.group,
+      department: parseResult.department,
+      team: parseResult.team,
+      fileId: driveUpload.fileId,
+      fileName: driveUpload.fileName,
+      message: dbResult.message,
+      validation: validation
+    };
+  } catch (e) {
+    console.error(`[uploadOKRCSV] Fatal error: ${e.message}`);
+    console.error(`[uploadOKRCSV] Stack: ${e.stack}`);
+
+    return {
+      success: false,
+      uploadId: null,
+      corporate: null,
+      group: null,
+      department: null,
+      team: null,
+      fileId: null,
+      fileName: null,
+      message: 'Unexpected error during upload',
+      error: e.message
+    };
+  }
+}
+
+/**
+ * TASK 5: Public API endpoint to get uploading status for a hierarchy.
+ * Called from frontend: google.script.run.getOKRUploadingStatus(...)
+ * 
+ * @param {string} corporate - Corporate name
+ * @param {string} group - Group name
+ * @param {string} department - Department name (optional)
+ * @param {string} team - Team name (optional)
+ * @param {string} userEmail - Current user email (for permissions check)
+ * @returns {Object} Status data with employee list and summary (see getUploadingStatus)
+ */
+function getOKRUploadingStatus(corporate, group, department, team, userEmail) {
+  try {
+    console.log(`[getOKRUploadingStatus] API called: user=${userEmail}, Corp=${corporate}, Group=${group}`);
+
+    // HYPERCARE: SPOC restriction removed — any DATA_SPOC can view status for any hierarchy
+    // Previously: verifyUserRoleFromDatabase(userEmail, 'DATA_SPOC') was required
+    // Now: Role-based access control is performed at portal load time (verifyDataSPOCAccess)
+    console.log(`[getOKRUploadingStatus] Note: SPOC department restriction removed (hypercare feature)`);
+
+    // Get uploading status
+    const statusResult = getUploadingStatus(corporate, group, department, team);
+    return statusResult;
+  } catch (e) {
+    console.error(`[getOKRUploadingStatus] Error: ${e.message}`);
+    return {
+      success: false,
+      corporate: corporate,
+      group: group,
+      department: department,
+      team: team,
+      employees: [],
+      summary: { totalEmployees: 0 },
+      message: `Error retrieving uploading status: ${e.message}`,
+      error: e.message
+    };
+  }
+}
+
+/**
+ * TASK 5: Public API endpoint to get hierarchy options from parsed CSV.
+ * Called from frontend to populate dropdown selectors.
+ * Called from frontend: google.script.run.getHierarchyOptionsFromCSV(...)
+ * 
+ * @param {string} csvContent - Raw CSV file content
+ * @returns {Object} {
+ *   success: boolean,
+ *   corporates: string[],
+ *   groups: string[],
+ *   departments: string[],
+ *   teams: string[],
+ *   message: string,
+ *   validation?: { isValid: boolean, errors: string[], warnings: string[] }
+ * }
+ */
+function getHierarchyOptionsFromCSV(csvContent) {
+  try {
+    console.log('[getHierarchyOptionsFromCSV] API called');
+
+    // Parse CSV
+    const parseResult = parseOKRCSVAndDetectHierarchy(csvContent);
+
+    if (!parseResult.success) {
+      console.error('[getHierarchyOptionsFromCSV] CSV parsing failed');
+      return {
+        success: false,
+        corporates: [],
+        groups: [],
+        departments: [],
+        teams: [],
+        message: 'CSV parsing failed',
+        validation: parseResult.validation
+      };
+    }
+
+    // Extract unique levels
+    const levels = getUniqueLevelsFromOKR(parseResult);
+
+    console.log(`[getHierarchyOptionsFromCSV] Extracted: ${levels.corporates.length} corps, ${levels.groups.length} groups, ${levels.departments.length} depts, ${levels.teams.length} teams`);
+
+    return {
+      success: true,
+      corporates: levels.corporates,
+      groups: levels.groups,
+      departments: levels.departments,
+      teams: levels.teams,
+      message: 'Hierarchy options extracted successfully',
+      validation: parseResult.validation
+    };
+  } catch (e) {
+    console.error(`[getHierarchyOptionsFromCSV] Error: ${e.message}`);
+    return {
+      success: false,
+      corporates: [],
+      groups: [],
+      departments: [],
+      teams: [],
+      message: `Error extracting hierarchy options: ${e.message}`
+    };
+  }
+}
+
+/**
+ * TASK 5: Public API endpoint to check if OKR lock status.
+ * Called from frontend to determine read-only vs editable mode.
+ * Called from frontend: google.script.run.checkOKRLockStatus(...)
+ * 
+ * @param {string} uploadId - OKR upload ID
+ * @param {string} userEmail - Current user email
+ * @returns {Object} {
+ *   success: boolean,
+ *   uploadId: string,
+ *   isLocked: boolean,
+ *   isScored: boolean,
+ *   canEdit: boolean,
+ *   editReason: string,
+ *   lastScoredAt: string (ISO),
+ *   lastScoredBy: string,
+ *   isUploader: boolean,
+ *   message: string
+ * }
+ */
+function checkOKRLockStatus(uploadId, userEmail) {
+  try {
+    console.log(`[checkOKRLockStatus] API called: uploadId=${uploadId}, user=${userEmail}`);
+
+    // Check editable status
+    const editStatus = checkOKREditableStatus(uploadId, userEmail);
+
+    if (!editStatus.success) {
+      console.warn(`[checkOKRLockStatus] Error checking status: ${editStatus.reason}`);
+      return {
+        success: false,
+        uploadId: uploadId,
+        isLocked: true, // Default to locked for safety
+        isScored: false,
+        canEdit: false,
+        editReason: editStatus.reason,
+        lastScoredAt: null,
+        lastScoredBy: null,
+        isUploader: false,
+        message: editStatus.reason,
+        error: editStatus.reason
+      };
+    }
+
+    console.log(`[checkOKRLockStatus] Result: editable=${editStatus.isEditable}, isScored=${editStatus.lockDetails?.isScored}`);
+
+    return {
+      success: true,
+      uploadId: uploadId,
+      isLocked: editStatus.lockDetails?.isLocked || false,
+      isScored: editStatus.lockDetails?.isScored || false,
+      canEdit: editStatus.isEditable,
+      editReason: editStatus.reason,
+      lastScoredAt: editStatus.lockDetails?.lastScoredAt || null,
+      lastScoredBy: editStatus.lockDetails?.lastScoredBy || null,
+      isUploader: editStatus.ownership?.isUploader || false,
+      message: editStatus.reason
+    };
+  } catch (e) {
+    console.error(`[checkOKRLockStatus] Error: ${e.message}`);
+    return {
+      success: false,
+      uploadId: uploadId,
+      isLocked: true,
+      isScored: false,
+      canEdit: false,
+      editReason: `Error checking lock status: ${e.message}`,
+      lastScoredAt: null,
+      lastScoredBy: null,
+      isUploader: false,
+      message: `Error: ${e.message}`,
+      error: e.message
+    };
+  }
+}
+
+/**
+ * TASK 5: Public API endpoint to delete OKR upload.
+ * Called from frontend to remove uploaded OKR file.
+ * Called from frontend: google.script.run.deleteOKRUpload(...)
+ * 
+ * @param {string} uploadId - OKR upload ID
+ * @param {string} userEmail - Current user email (must be uploader)
+ * @returns {Object} {
+ *   success: boolean,
+ *   uploadId: string,
+ *   message: string,
+ *   error?: string
+ * }
+ */
+function deleteOKRUpload(uploadId, userEmail) {
+  try {
+    console.log(`[deleteOKRUpload] API called: uploadId=${uploadId}, user=${userEmail}`);
+
+    // HYPERCARE: SPOC role verification removed — any user with DATA_SPOC role can delete
+    // Previously: Required verifyUserRoleFromDatabase(userEmail, 'DATA_SPOC')
+    // Now: Only uploader ownership check remains (critical for data integrity)
+    console.log(`[deleteOKRUpload] Note: SPOC department restriction removed (hypercare feature)`);
+
+    // Check if user can edit (must be uploader) — CRITICAL: ownership check remains
+    const editStatus = checkOKREditableStatus(uploadId, userEmail);
+    if (!editStatus.ownership?.isUploader) {
+      console.warn(`[deleteOKRUpload] User is not the uploader`);
+      return {
+        success: false,
+        uploadId: uploadId,
+        message: 'Only the uploader can delete this OKR',
+        error: 'Permission denied'
+      };
+    }
+
+    // Get upload record
+    const sheet = getSheet_(SHEETS.OKR_UPLOAD);
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    let uploadRecord = null;
+    let rowIndex = -1;
+    values.forEach((row, i) => {
+      const rowObj = rowToObject_(row, Object.keys(headers));
+      if (rowObj.uploadId === uploadId) {
+        uploadRecord = rowObj;
+        rowIndex = i;
+      }
+    });
+
+    if (!uploadRecord) {
+      return {
+        success: false,
+        uploadId: uploadId,
+        message: 'Upload record not found',
+        error: 'Record not found'
+      };
+    }
+
+    // Delete from Google Drive
+    if (uploadRecord.googleDriveFileId) {
+      try {
+        const driveDelete = deleteOKRFileFromDrive(uploadRecord.googleDriveFileId, userEmail);
+        if (!driveDelete.success) {
+          console.warn(`[deleteOKRUpload] Drive delete failed: ${driveDelete.message}`);
+          // Continue anyway - delete from DB
+        }
+      } catch (e) {
+        console.warn(`[deleteOKRUpload] Error deleting from Drive: ${e.message}`);
+      }
+    }
+
+    // Delete from database
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      throw new Error('Could not acquire lock for deletion');
+    }
+
+    try {
+      const sheet = getSheet_(SHEETS.OKR_UPLOAD);
+      sheet.deleteRow(rowIndex + 2);
+      console.log(`[deleteOKRUpload] Deleted upload ${uploadId} from database`);
+    } finally {
+      lock.releaseLock();
+    }
+
+    return {
+      success: true,
+      uploadId: uploadId,
+      message: 'OKR upload deleted successfully'
+    };
+  } catch (e) {
+    console.error(`[deleteOKRUpload] Error: ${e.message}`);
+    return {
+      success: false,
+      uploadId: uploadId,
+      message: `Error deleting OKR upload: ${e.message}`,
+      error: e.message
+    };
+  }
+}
+
+/**
+ * TASK 5: Public API endpoint to get user's OKR upload history.
+ * Called from frontend to show Data SPOC their uploads.
+ * Called from frontend: google.script.run.getUserOKRHistory(...)
+ * 
+ * @param {string} userEmail - Data SPOC email
+ * @returns {Object} {
+ *   success: boolean,
+ *   userEmail: string,
+ *   uploads: [...],  (see getUserOKRUploads return format)
+ *   summary: { totalUploads, uploadedCount, scoredCount, lockedCount },
+ *   message: string
+ * }
+ */
+function getUserOKRHistory(userEmail) {
+  try {
+    console.log(`[getUserOKRHistory] API called: user=${userEmail}`);
+
+    // HYPERCARE: SPOC role verification removed — any user can view own history
+    // Previously: Required verifyUserRoleFromDatabase(userEmail, 'DATA_SPOC')
+    // Now: Role is still verified at portal entry point (verifyDataSPOCAccess), not here
+    console.log(`[getUserOKRHistory] Note: SPOC department restriction removed (hypercare feature)`);
+
+    // Get uploads
+    const uploadHistory = getUserOKRUploads(userEmail);
+    return uploadHistory;
+  } catch (e) {
+    console.error(`[getUserOKRHistory] Error: ${e.message}`);
+    return {
+      success: false,
+      userEmail: userEmail,
+      uploads: [],
+      summary: { totalUploads: 0 },
+      message: `Error retrieving upload history: ${e.message}`,
+      error: e.message
+    };
+  }
+}
+
+/**
+ * TASK 5: Public API endpoint to verify user role.
+ * Called from frontend to authenticate Data SPOC portal access.
+ * Called from frontend: google.script.run.verifyDataSPOCAccess(...)
+ * 
+ * @param {string} userEmail - User email
+ * @returns {Object} {
+ *   success: boolean,
+ *   hasAccess: boolean,
+ *   role: string,
+ *   employeeId: number,
+ *   message: string
+ * }
+ */
+function verifyDataSPOCAccess(userEmail) {
+  try {
+    console.log(`[verifyDataSPOCAccess] API called: user=${userEmail}`);
+
+    const verification = verifyUserRoleFromDatabase(userEmail, 'DATA_SPOC');
+
+    if (!verification.success) {
+      console.warn(`[verifyDataSPOCAccess] Verification failed: ${verification.message}`);
+      return {
+        success: false,
+        hasAccess: false,
+        role: null,
+        employeeId: null,
+        message: verification.message
+      };
+    }
+
+    return {
+      success: true,
+      hasAccess: true,
+      role: verification.role,
+      employeeId: verification.employeeId,
+      message: 'Access granted'
+    };
+  } catch (e) {
+    console.error(`[verifyDataSPOCAccess] Error: ${e.message}`);
+    return {
+      success: false,
+      hasAccess: false,
+      role: null,
+      employeeId: null,
+      message: `Error verifying access: ${e.message}`
+    };
+  }
+}

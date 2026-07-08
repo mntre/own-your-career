@@ -1489,3 +1489,351 @@ function getEmployeeSelfAssessment(employeeId) {
     return null;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                      OKR UPLOAD HIERARCHY OPERATIONS                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Saves OKR CSV file metadata with hierarchy information.
+ * Called after Data SPOC uploads a CSV file to Google Drive.
+ * 
+ * @param {Object} okrUploadData - OKR upload metadata
+ * @property {string} okrUploadData.corporate - Corporate name (e.g., "Converge ICT Solutions")
+ * @property {string} okrUploadData.group - Group name (e.g., "People & Culture")
+ * @property {string} okrUploadData.department - Department name (nullable)
+ * @property {string} okrUploadData.team - Team name (nullable)
+ * @property {string} okrUploadData.userEmail - Email of Data SPOC who uploaded
+ * @property {string} okrUploadData.googleDriveFileId - Google Drive file ID
+ * @property {string} okrUploadData.fileName - Original CSV file name
+ * @property {string} okrUploadData.csvContent - Full CSV content (large text)
+ * @returns {Object} { success: boolean, message: string, uploadId: string }
+ */
+function saveOKRHierarchyUpload(okrUploadData) {
+  try {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      throw new Error('Could not acquire lock for OKR upload');
+    }
+
+    // Ensure OKR_UPLOAD sheet exists, create if needed
+    let sheet;
+    try {
+      sheet = getSheet_(SHEETS.OKR_UPLOAD);
+    } catch (e) {
+      console.log(`[Database] OKR_UPLOAD sheet doesn't exist, creating it...`);
+      sheet = createOKRUploadSheet_();
+    }
+
+    const headers = getHeaderMap_(sheet);
+    const now = new Date().toISOString();
+
+    // Create upload record
+    const uploadRecord = {
+      uploadId: Utilities.getUuid(),
+      corporate: okrUploadData.corporate || '',
+      group: okrUploadData.group || '',
+      department: okrUploadData.department || '',
+      team: okrUploadData.team || '',
+      userEmail: okrUploadData.userEmail || '',
+      googleDriveFileId: okrUploadData.googleDriveFileId || '',
+      fileName: okrUploadData.fileName || '',
+      uploadedAt: now,
+      status: 'UPLOADED', // Status: UPLOADED, SCORED, LOCKED
+      lastScoredAt: null,
+      lastScoredBy: null,
+      csvContent: okrUploadData.csvContent || ''
+    };
+
+    // Append new row to sheet
+    const lastRow = sheet.getLastRow() + 1;
+    const headerKeys = Object.keys(headers);
+    const rowData = headerKeys.map(key => uploadRecord[key] || '');
+
+    const newRange = sheet.getRange(lastRow, 1, 1, headerKeys.length);
+    newRange.setValues([rowData]);
+
+    lock.releaseLock();
+
+    console.log(`[Database] OKR upload saved: ID=${uploadRecord.uploadId}, Corporate=${okrUploadData.corporate}, Group=${okrUploadData.group}`);
+
+    return {
+      success: true,
+      message: 'OKR upload recorded successfully',
+      uploadId: uploadRecord.uploadId,
+      timestamp: now
+    };
+  } catch (e) {
+    console.error(`[Database] Error saving OKR hierarchy upload: ${e.message}`);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+/**
+ * Checks if OKR has already been uploaded for a specific Corp|Group|Department|Team combo.
+ * 
+ * @param {string} corporate - Corporate name
+ * @param {string} group - Group name
+ * @param {string} department - Department name (can be empty string)
+ * @param {string} team - Team name (can be empty string)
+ * @returns {Object|null} Upload record if found, null if not
+ */
+function getOKRUploadByHierarchy(corporate, group, department, team) {
+  try {
+    const sheet = getSheet_(SHEETS.OKR_UPLOAD);
+    const headers = getHeaderMap_(sheet);
+
+    if (sheet.getLastRow() < 2) {
+      return null; // No uploads yet
+    }
+
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    const row = values.find(r => {
+      const rowObj = rowToObject_(r, Object.keys(headers));
+      return (
+        rowObj.corporate === corporate &&
+        rowObj.group === group &&
+        rowObj.department === department &&
+        rowObj.team === team
+      );
+    });
+
+    if (row) {
+      const uploadRecord = rowToObject_(row, Object.keys(headers));
+      console.log(`[Database] Found OKR upload: ${corporate} / ${group} / ${department} / ${team}`);
+      return uploadRecord;
+    }
+
+    console.log(`[Database] No OKR upload found for: ${corporate} / ${group} / ${department} / ${team}`);
+    return null;
+  } catch (e) {
+    console.error(`[Database] Error getting OKR upload by hierarchy: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Checks if an OKR has been scored (lastScoredAt has a value).
+ * Used to determine if OKR is locked from editing.
+ * 
+ * @param {string} uploadId - The OKR upload ID
+ * @returns {Object} { isScored: boolean, lastScoredAt: string, lastScoredBy: string }
+ */
+function checkOKRScoredStatus(uploadId) {
+  try {
+    const sheet = getSheet_(SHEETS.OKR_UPLOAD);
+    const headers = getHeaderMap_(sheet);
+
+    if (sheet.getLastRow() < 2) {
+      return { isScored: false, lastScoredAt: null, lastScoredBy: null };
+    }
+
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    const row = values.find(r => {
+      const rowObj = rowToObject_(r, Object.keys(headers));
+      return rowObj.uploadId === uploadId;
+    });
+
+    if (row) {
+      const uploadRecord = rowToObject_(row, Object.keys(headers));
+      const isScored = !!uploadRecord.lastScoredAt;
+      
+      console.log(`[Database] OKR ${uploadId} scored status: ${isScored}`);
+      return {
+        isScored: isScored,
+        lastScoredAt: uploadRecord.lastScoredAt || null,
+        lastScoredBy: uploadRecord.lastScoredBy || null,
+        status: uploadRecord.status || 'UPLOADED'
+      };
+    }
+
+    return { isScored: false, lastScoredAt: null, lastScoredBy: null };
+  } catch (e) {
+    console.error(`[Database] Error checking OKR scored status: ${e.message}`);
+    return { isScored: false, lastScoredAt: null, lastScoredBy: null, error: e.message };
+  }
+}
+
+/**
+ * Gets all employees in a specific department hierarchy level.
+ * Used to populate "Uploading Status" table in Data SPOC Portal.
+ * 
+ * @param {string} corporate - Corporate name
+ * @param {string} group - Group name (optional filter)
+ * @param {string} department - Department name (optional filter)
+ * @param {string} team - Team name (optional filter)
+ * @returns {Object[]} Array of employees matching the hierarchy
+ */
+function getEmployeesByHierarchy(corporate, group, department, team) {
+  try {
+    const allEmployees = getAllEmployees();
+    
+    const filtered = allEmployees.filter(emp => {
+      const empCorp = emp.Corporate || emp.corporate || '';
+      const empGroup = emp.Group || emp.group || '';
+      const empDept = emp.Department || emp.department || '';
+      const empTeam = emp.Team || emp.team || '';
+
+      // Match on all provided criteria
+      if (corporate && empCorp !== corporate) return false;
+      if (group && empGroup !== group) return false;
+      if (department && empDept !== department) return false;
+      if (team && empTeam !== team) return false;
+
+      return true;
+    });
+
+    console.log(`[Database] Found ${filtered.length} employees matching: Corp=${corporate}, Group=${group}, Dept=${department}, Team=${team}`);
+
+    return filtered;
+  } catch (e) {
+    console.error(`[Database] Error getting employees by hierarchy: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Gets uploading status for all employees in a specific hierarchy.
+ * Combines employee data with OKR upload status.
+ * 
+ * @param {string} corporate - Corporate name
+ * @param {string} group - Group name
+ * @param {string} department - Department name (nullable)
+ * @param {string} team - Team name (nullable)
+ * @returns {Object[]} Array of employee status objects
+ */
+function getUploadingStatusByHierarchy(corporate, group, department, team) {
+  try {
+    const employees = getEmployeesByHierarchy(corporate, group, department, team);
+    
+    // Get the upload record for this hierarchy combo
+    const uploadRecord = getOKRUploadByHierarchy(corporate, group, department, team);
+
+    return employees.map(emp => {
+      const empId = emp.EmployeeID || emp.employeeId || emp.ID || emp.id;
+      const empName = emp.Name || emp.name || emp.FullName || emp.fullName || '';
+      const empDept = emp.Department || emp.department || '';
+      
+      let okrStatus = 'Pending';
+      let lastUpdated = '—';
+      
+      if (uploadRecord) {
+        // Check if this employee's OKR has been submitted in the upload
+        okrStatus = uploadRecord.status === 'SCORED' ? 'Scored' : 'Uploaded';
+        lastUpdated = uploadRecord.uploadedAt || '—';
+      }
+
+      return {
+        employeeId: empId,
+        name: empName,
+        department: empDept,
+        okrStatus: okrStatus,
+        lastUpdated: lastUpdated,
+        uploadedAt: uploadRecord?.uploadedAt || null,
+        uploadId: uploadRecord?.uploadId || null
+      };
+    });
+  } catch (e) {
+    console.error(`[Database] Error getting uploading status by hierarchy: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Updates OKR upload status to mark it as scored.
+ * Called after manager/admin enters actual results and OKR is calculated.
+ * 
+ * @param {string} uploadId - The upload ID
+ * @param {string} scoredByEmail - Email of person who scored
+ * @returns {boolean} True if successful
+ */
+function markOKRUploadAsScored(uploadId, scoredByEmail) {
+  try {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      throw new Error('Could not acquire lock for OKR score update');
+    }
+
+    const sheet = getSheet_(SHEETS.OKR_UPLOAD);
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    let rowIndex = -1;
+    values.forEach((row, i) => {
+      const rowObj = rowToObject_(row, Object.keys(headers));
+      if (rowObj.uploadId === uploadId) {
+        rowIndex = i;
+      }
+    });
+
+    if (rowIndex < 0) {
+      lock.releaseLock();
+      return false; // Upload not found
+    }
+
+    const now = new Date().toISOString();
+    const row = values[rowIndex];
+    const rowObj = rowToObject_(row, Object.keys(headers));
+
+    rowObj.status = 'SCORED';
+    rowObj.lastScoredAt = now;
+    rowObj.lastScoredBy = scoredByEmail;
+
+    const rowData = Object.keys(headers).map(key => rowObj[key] || '');
+    const updateRange = sheet.getRange(rowIndex + 2, 1, 1, Object.keys(headers).length);
+    updateRange.setValues([rowData]);
+
+    lock.releaseLock();
+
+    console.log(`[Database] Marked OKR ${uploadId} as SCORED by ${scoredByEmail}`);
+    return true;
+  } catch (e) {
+    console.error(`[Database] Error marking OKR as scored: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Creates the OKRUpload sheet if it doesn't exist.
+ * @returns {Sheet} The created or existing sheet
+ * @private
+ */
+function createOKRUploadSheet_() {
+  try {
+    const ss = getSpreadsheet_();
+    const sheet = ss.insertSheet(SHEETS.OKR_UPLOAD);
+
+    // Set up headers
+    const headers = [
+      'uploadId',
+      'corporate',
+      'group',
+      'department',
+      'team',
+      'userEmail',
+      'googleDriveFileId',
+      'fileName',
+      'uploadedAt',
+      'status',
+      'lastScoredAt',
+      'lastScoredBy',
+      'csvContent'
+    ];
+
+    sheet.appendRow(headers);
+
+    console.log(`[Database] Created OKRUpload sheet with headers: ${headers.join(', ')}`);
+    return sheet;
+  } catch (e) {
+    console.error(`[Database] Error creating OKRUpload sheet: ${e.message}`);
+    throw e;
+  }
+}
