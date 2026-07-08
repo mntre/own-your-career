@@ -675,511 +675,156 @@ A6: Organizational Hierarchy Setup
 - Merged PR #12 (xremy23: Manager portal team view bug fix)
 
 ---
----
 
-## Database Query & Reporting
 
-The system uses **SQLite** for data persistence, which allows easy querying and reporting. The database file is located at `src/backend-converge/data/oyc.db` (created on first run).
+## Login & Portal Access Flow
 
-### Querying the Database
+### Authentication Method
+- **Google SSO** (Google Identity Services) — corporate email only
+- System verifies email against employee database
+- No manual role selection at login — system determines access automatically
 
-#### 1. **Direct SQLite CLI Access**
-```bash
-# Install SQLite if not already installed
-# Windows: Download from https://sqlite.org/download.html
-# Linux/Mac: sudo apt-get install sqlite3 / brew install sqlite
+### Multi-Role Logic
 
-# Connect to the database
-sqlite3 src/backend-converge/data/oyc.db
+Every person in the system has a **primary role** (from the role derivation process) but may also have **implicit roles**:
 
-# Run queries
-sqlite> .tables  # List all tables
-sqlite> SELECT COUNT(*) FROM employees;
-sqlite> SELECT full_name, email, department_label FROM employees LIMIT 10;
-sqlite> .exit     # Exit SQLite
+| Primary Role | Implicit Roles | Total Portals Accessible |
+|--------------|---------------|--------------------------|
+| EMPLOYEE (Team Member) | — | 1 (Employee Portal only) |
+| MANAGER | + EMPLOYEE | 2 (Manager Portal + Employee Portal) |
+| DATA_SPOC | + EMPLOYEE | 2 (Data SPOC Portal + Employee Portal) |
+| ADMIN | + EMPLOYEE (+ MANAGER if applicable) | 2-4 (Admin + Employee + others if assigned) |
+
+**Why?** Every Manager/SPOC/Admin is also an employee who needs to complete their own review (Steps 3, 6, 7).
+
+### Login Flow
+
+```
+User clicks "Sign in with Google"
+  ↓
+Google SSO verifies corporate email
+  ↓
+System: SELECT * FROM employees WHERE email = [user email]
+  ↓
+Found? → Get primary role + determine all accessible portals
+Not Found? → "Access denied — contact your admin" (not in employee database)
+  ↓
+Count accessible portals:
+  ↓
+IF 1 portal  → Auto-redirect to that portal (no picker page)
+IF 2+ portals → Show Portal Picker homepage
 ```
 
-#### 2. **Using DB Browser for SQLite (GUI)**
-- Download DB Browser for SQLite: https://sqlitebrowser.org/
-- Open `oyc.db` file
-- Browse tables, run queries, export reports
+### Portal Picker Page (Multi-Role Users)
 
-#### 3. **VS Code SQLite Extensions**
-- Install "SQLite" extension from marketplace
-- Right-click `.db` file → "Open Database"
-- Use SQL Explorer panel to run queries
-
-#### 4. **Node.js Scripts via Existing API**
-You can use the existing `db.js` API for programmatic access:
-```javascript
-const { initDB, Employees, Workflow } = require('./src/backend-converge/db');
-
-(async () => {
-  await initDB();
-  
-  // Get all employees
-  const allEmployees = Employees.getAll();
-  console.log(`Total employees: ${allEmployees.length}`);
-  
-  // Get workflow progress stats
-  const stats = Workflow.getProgressStats();
-  console.log(`Completion rate: ${stats.completionRate}%`);
-})();
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Welcome, Luigi Gabriel Espiritu                                 │
+│  luigi.espiritu@convergeict.com                                  │
+│                                                                   │
+│  Select a portal:                                                │
+│                                                                   │
+│  ┌───────────────────┐  ┌───────────────────┐                   │
+│  │  👔 MANAGER       │  │  👤 EMPLOYEE      │                   │
+│  │  PORTAL           │  │  PORTAL           │                   │
+│  │                   │  │                   │                   │
+│  │  Steps 1, 4, 5   │  │  Steps 3, 6, 7   │                   │
+│  │  Team assessment  │  │  My own review   │                   │
+│  │  & feed forward   │  │  & self-assess   │                   │
+│  └───────────────────┘  └───────────────────┘                   │
+│                                                                   │
+│  ┌───────────────────┐                                           │
+│  │  ⚙️ ADMIN         │                                           │
+│  │  PORTAL           │                                           │
+│  │                   │                                           │
+│  │  System config,   │                                           │
+│  │  progress, export │                                           │
+│  └───────────────────┘                                           │
+│                                                                   │
+│  [Sign Out]                                                      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Common Reports & Queries
+### Auto-Redirect (Single-Role Users)
 
-#### Employee Report
-```sql
-SELECT 
-  employee_no,
-  full_name,
-  email,
-  department_label as department,
-  business_group_label as group,
-  position_title,
-  immediate_supervisor as manager,
-  role
-FROM employees 
-WHERE is_active = 1
-ORDER BY department_label, full_name;
+```
+Pure Team Member (EMPLOYEE only):
+  Login → Auto-redirect to Employee Portal → Steps 3, 6, 7
+
+No picker shown. Seamless experience.
 ```
 
-#### Workflow Progress Report
-```sql
-SELECT 
-  e.employee_no,
-  e.full_name,
-  e.department_label,
-  w.step1_complete as step1,
-  w.step2_complete as step2,
-  w.step3_complete as step3,
-  w.step4_complete as step4,
-  w.step5_complete as step5,
-  w.step6_complete as step6,
-  w.step7_complete as step7,
-  CASE 
-    WHEN w.step7_complete = 1 THEN 'COMPLETE'
-    WHEN w.step1_complete = 0 THEN 'NOT_STARTED'
-    ELSE 'IN_PROGRESS'
-  END as status
-FROM employees e
-LEFT JOIN workflow_status w ON e.employee_no = w.employee_no
-WHERE e.is_active = 1
-ORDER BY e.department_label, e.full_name;
-```
+### Portal Access Matrix
 
-#### Department-wise Completion
-```sql
-SELECT 
-  e.department_label as department,
-  COUNT(*) as total_employees,
-  SUM(CASE WHEN w.step1_complete = 1 THEN 1 ELSE 0 END) as step1_completed,
-  SUM(CASE WHEN w.step2_complete = 1 THEN 1 ELSE 0 END) as step2_completed,
-  SUM(CASE WHEN w.step3_complete = 1 THEN 1 ELSE 0 END) as step3_completed,
-  SUM(CASE WHEN w.step7_complete = 1 THEN 1 ELSE 0 END) as completed_reviews
-FROM employees e
-LEFT JOIN workflow_status w ON e.employee_no = w.employee_no
-WHERE e.is_active = 1
-GROUP BY e.department_label
-ORDER BY completed_reviews DESC;
-```
+| User Example | Primary Role | Portals Shown | Picker? |
+|-------------|-------------|---------------|---------|
+| Rachel Abacan (Team Member) | EMPLOYEE | Employee Portal | ❌ No — direct redirect |
+| Luigi Espiritu (Sr. Manager + Admin) | ADMIN | Admin + Manager + Employee | ✅ Yes — picker |
+| JC Claudio (Supervisor) | MANAGER | Manager + Employee | ✅ Yes — picker |
+| Zaira Bajar (Data Analyst, assigned SPOC) | DATA_SPOC | Data SPOC + Employee | ✅ Yes — picker |
+| Charvin Penaverde (Supervisor) | MANAGER | Manager + Employee | ✅ Yes — picker |
+| Jeremy Carino (Team Member) | EMPLOYEE | Employee Portal | ❌ No — direct redirect |
 
-#### Export to CSV
-```bash
-# Using SQLite CLI
-sqlite3 -header -csv src/backend-converge/data/oyc.db "SELECT * FROM employees;" > employees_report.csv
-sqlite3 -header -csv src/backend-converge/data/oyc.db "SELECT * FROM audit_log ORDER BY timestamp DESC;" > audit_log.csv
-```
-
-#### Audit Log Review
-```sql
-SELECT 
-  timestamp,
-  event,
-  user_email,
-  action,
-  details
-FROM audit_log
-ORDER BY timestamp DESC
-LIMIT 50;
-```
-
-### Database Maintenance
-
-#### Backup Database
-```bash
-# Simple file copy
-cp src/backend-converge/data/oyc.db src/backend-converge/data/oyc_backup_$(date +%Y%m%d).db
-
-# Export to SQL
-sqlite3 src/backend-converge/data/oyc.db .dump > database_backup.sql
-```
-
-#### Restore Database
-```bash
-# From backup file
-cp src/backend-converge/data/oyc_backup_20240707.db src/backend-converge/data/oyc.db
-
-# From SQL dump
-sqlite3 src/backend-converge/data/oyc.db < database_backup.sql
-```
-
-#### Database Integrity Check
-```bash
-sqlite3 src/backend-converge/data/oyc.db "PRAGMA integrity_check;"
-sqlite3 src/backend-converge/data/oyc.db "PRAGMA foreign_key_check;"
-```
-
-### Database Schema (11 Tables)
-
-1. **employees** - Master employee data (SAP upload)
-2. **system_config** - Configuration settings (hard lock date, thresholds)
-3. **skills_assessment** - Step 1: Manager skills ratings
-4. **okr_data** - Step 2: OKR upload data
-5. **self_assessment** - Step 3: Employee self-assessment
-6. **feed_forward** - Step 4: Manager feedback
-7. **acknowledgements** - Steps 5 & 7: Acknowledgements
-8. **workflow_status** - 7-step completion tracking
-9. **audit_log** - System audit trail
-10. **export_history** - Export records
-11. **skill_definitions** - Core & leadership skills definitions
-
-### EC2 Deployment Query Notes
-
-When deployed to EC2:
-1. **Database location**: `/var/www/own-your-career/src/backend-converge/data/oyc.db`
-2. **SSH access**: Connect via SSH and run queries directly
-3. **Backup strategy**: Schedule automated daily backups to S3
-4. **Monitoring**: Use CloudWatch logs for database operations
-
-```bash
-# EC2 SSH access example
-ssh -i your-key.pem ec2-user@3.106.202.130
-cd /var/www/own-your-career
-sqlite3 src/backend-converge/data/oyc.db
-```
-
----
-
-## Next Steps for Admin Portal
-
-The following sections of the Admin Portal still need implementation:
-
-### A2: Employee Database Viewer
-- **Status**: Design ready (placeholder card)
-- **Needs**: Searchable/filterable table, inline editing, export to CSV
-- **ETA**: July 9
-
-### A3: Core Skills Definition Upload  
-- **Status**: Design ready (placeholder card)
-- **Needs**: Form/CSV upload for 5 core skills, band-level requirements
-- **ETA**: July 9
-
-### A4: Leadership Skills Definition Upload
-- **Status**: Design ready (placeholder card)
-- **Needs**: Form/CSV upload for 5 leadership skills
-- **ETA**: July 9
-
-### A5: Role Assignment Management
-- **Status**: Design ready (placeholder card)
-- **Needs**: Role assignment UI, bulk CSV upload
-- **ETA**: July 9
-
-### A6: Organizational Hierarchy Setup
-- **Status**: Design ready (placeholder card)
-- **Needs**: Org structure tree view/nested dropdowns
-- **ETA**: July 9
-
-### Backend APIs (A7-A9)
-- **Status**: TODO
-- **Needs**: AppScript + Converge routes for employee/skills/role APIs
-- **ETA**: July 9
-
-
-## SQLite Database Query & Reporting
-
-The system uses **SQLite** for data persistence in the Converge backend, providing lightweight, file-based database operations that work well on EC2 free tier (low memory, no external dependencies).
-
-### Database Location
-- **Path:** `src/backend-converge/data/oyc.db`
-- **Auto-creation:** The database is automatically initialized on server startup
-- **Schema:** Includes 11 tables covering employees, skills, OKRs, performance data, and audit logs
-
-### Query Methods
-
-#### 1. Command Line Interface (CLI)
-```bash
-# Navigate to backend directory
-cd src/backend-converge
-
-# Open SQLite CLI
-sqlite3 data/oyc.db
-
-# Example queries:
-.tables                          # List all tables
-.schema employees                # Show table structure
-SELECT * FROM employees LIMIT 5; # View first 5 employees
-SELECT COUNT(*) FROM employees;  # Count total employees
-.exit                            # Exit CLI
-```
-
-#### 2. Database Browser Tools
-- **DB Browser for SQLite** (free GUI tool): Download from [sqlitebrowser.org](https://sqlitebrowser.org/)
-- **VS Code Extensions:** 
-  - "SQLite Viewer" by qwtel
-  - "SQLite" by alexcvzz
-- **SQLiteStudio** (cross-platform GUI)
-
-#### 3. Node.js Programmatic Access
-Use the existing `db.js` API for custom reporting scripts:
+### Role-to-Portal Mapping
 
 ```javascript
-// Example reporting script
-const db = require('./db.js');
+// Determine accessible portals based on role
+function getAccessiblePortals(employee) {
+  const portals = [];
 
-async function generateEmployeeReport() {
-  const employees = await db.getAllEmployees();
-  const stats = await db.getWorkflowStats();
-  
-  console.log(`Total Employees: ${employees.length}`);
-  console.log(`Step 1 Complete: ${stats.step1_complete}`);
-  console.log(`Step 2 Complete: ${stats.step2_complete}`);
-  // ... generate CSV or JSON report
-}
+  // Everyone gets Employee Portal (for their own review)
+  portals.push({ id: 'employee', label: 'Employee Portal', icon: '👤', desc: 'Steps 3, 6, 7 — My own review' });
 
-// Run via: node report-script.js
-```
+  // Role-specific portals
+  if (employee.role === 'MANAGER' || employee.role === 'ADMIN') {
+    portals.push({ id: 'manager', label: 'Manager Portal', icon: '👔', desc: 'Steps 1, 4, 5 — Team assessment' });
+  }
 
-#### 4. Admin Portal Reporting
-Use the Admin Portal's built-in reporting features:
-- **Progress Monitoring Tab:** Real-time completion statistics
-- **Data Management Tab:** Employee database viewer with export to CSV
-- **SFTP Export & Audit Tab:** Trigger bulk exports to SuccessFactors
+  if (employee.role === 'DATA_SPOC') {
+    portals.push({ id: 'dataspoc', label: 'Data SPOC Portal', icon: '📊', desc: 'Step 2 — OKR upload & rankings' });
+  }
 
-### Common Reports & Queries
+  if (employee.role === 'ADMIN') {
+    portals.push({ id: 'admin', label: 'Admin Portal', icon: '⚙️', desc: 'System config & monitoring' });
+  }
 
-#### Employee Completion Status
-```sql
-SELECT 
-  e.employee_name,
-  e.email,
-  e.department,
-  ws.step_1_completed,
-  ws.step_2_completed,
-  ws.step_3_completed,
-  ws.step_4_completed,
-  ws.step_5_completed,
-  ws.step_6_completed,
-  ws.step_7_completed,
-  ws.overall_completion_percentage
-FROM employees e
-LEFT JOIN workflow_status ws ON e.employee_id = ws.employee_id
-WHERE ws.overall_completion_percentage < 100
-ORDER BY ws.overall_completion_percentage ASC;
-```
-
-#### OKR Achievement Analysis
-```sql
-SELECT 
-  e.employee_name,
-  e.department,
-  e.band,
-  o.corporate_okr_score,
-  o.group_okr_score,
-  o.department_okr_score,
-  o.team_okr_score,
-  o.final_okr_score,
-  o.performance_bracket
-FROM employees e
-JOIN okr_assessments o ON e.employee_id = o.employee_id
-WHERE o.performance_bracket = 'Needs Improvement'
-ORDER BY o.final_okr_score ASC;
-```
-
-#### Skills Assessment Summary
-```sql
-SELECT 
-  e.department,
-  AVG(s.core_skills_score) as avg_core_skills,
-  AVG(s.leadership_skills_score) as avg_leadership,
-  COUNT(*) as total_assessments
-FROM employees e
-JOIN skills_assessments s ON e.employee_id = s.employee_id
-GROUP BY e.department
-ORDER BY avg_core_skills DESC;
-```
-
-#### Audit Trail Review
-```sql
-SELECT 
-  action_timestamp,
-  user_email,
-  action_type,
-  entity_type,
-  entity_id,
-  action_details
-FROM audit_log
-WHERE action_timestamp >= DATE('now', '-7 days')
-ORDER BY action_timestamp DESC
-LIMIT 100;
-```
-
-### Exporting Data
-
-#### Export to CSV (CLI)
-```bash
-# Export employees table to CSV
-sqlite3 -header -csv data/oyc.db "SELECT * FROM employees;" > employees_export.csv
-
-# Export workflow status
-sqlite3 -header -csv data/oyc.db "SELECT * FROM workflow_status;" > workflow_status_export.csv
-
-# Export multiple tables
-sqlite3 data/oyc.db <<EOF
-.headers on
-.mode csv
-.output combined_export.csv
-SELECT * FROM employees;
-.output stdout
-EOF
-```
-
-#### Programmatic Export (Node.js)
-```javascript
-const fs = require('fs');
-const db = require('./db.js');
-
-async function exportToCSV() {
-  const employees = await db.getAllEmployees();
-  const csv = 'EmployeeID,Name,Email,Department,Group,Role\n' +
-    employees.map(e => `${e.employee_id},${e.name},${e.email},${e.department},${e.group},${e.role}`)
-    .join('\n');
-  
-  fs.writeFileSync('employee_report.csv', csv);
-  console.log('Report exported to employee_report.csv');
+  return portals;
 }
 ```
 
-### Database Maintenance
+### Navigation Between Portals
 
-#### Backup Database
-```bash
-# Simple file copy (recommended for SQLite)
-cp src/backend-converge/data/oyc.db src/backend-converge/data/oyc_backup_$(date +%Y%m%d).db
+Once inside a portal, user can switch to another accessible portal via:
+- **Header nav** — Shows available portal links (only portals they have access to)
+- **No re-login required** — Session persists, just navigates to different page
 
-# SQL dump backup
-sqlite3 src/backend-converge/data/oyc.db .dump > oyc_backup_$(date +%Y%m%d).sql
-```
+### Security Rules
 
-#### Check Database Health
-```bash
-# Check database integrity
-sqlite3 data/oyc.db "PRAGMA integrity_check;"
+1. **Server-side gate**: Even if user navigates to a portal URL directly, backend verifies their role before returning data
+2. **No URL manipulation bypass**: `/manager-portal.html` checks RBAC before loading any team data
+3. **Session token**: Contains email + primary role, but portal access is checked against DB on every request
+4. **Admin override**: Admins can access all portals (for testing and support purposes)
 
-# Check table sizes
-sqlite3 data/oyc.db "SELECT name, COUNT(*) as row_count FROM sqlite_master WHERE type='table' GROUP BY name ORDER BY row_count DESC;"
+### Implementation Files
 
-# Check disk usage
-ls -lh src/backend-converge/data/oyc.db
-```
+| Component | File | Notes |
+|-----------|------|-------|
+| Google SSO login | `src/frontend/js/login.js` | Existing — needs multi-role wiring |
+| Portal picker page | `src/frontend/html/login.html` (or new section) | Picker UI after SSO |
+| Role-to-portal logic | `src/frontend/js/app.js` | getAccessiblePortals() |
+| Session handling | `src/frontend/js/app.js` | Token decode, redirect logic |
+| Server-side RBAC | `src/backend-converge/middleware/rbac.js` | Existing — already validates |
 
-### EC2-Specific Considerations
+### Implementation Status
 
-1. **Access via SSH:**
-   ```bash
-   ssh -i your-key.pem ec2-user@your-ec2-instance
-   cd /path/to/own-your-career/src/backend-converge
-   sqlite3 data/oyc.db
-   ```
-
-2. **Remote Queries (via API):**
-   The admin portal provides web-based query interfaces that work over HTTPS:
-   - Employee database viewer with filtering
-   - Progress dashboards with drill-down
-   - Export functionality to CSV/Excel
-
-3. **Automated Reports:**
-   Set up cron jobs for automated reporting:
-   ```bash
-   # Daily completion report
-   0 9 * * * cd /path/to/own-your-career && node scripts/daily-report.js
-   
-   # Weekly summary email
-   0 10 * * 1 cd /path/to/own-your-career && node scripts/weekly-summary.js
-   ```
-
-### Troubleshooting
-
-**Issue:** Database file not found
-```bash
-# Check if database exists
-ls -la src/backend-converge/data/
-
-# Initialize database if missing
-cd src/backend-converge
-node -e "require('./db.js').initDatabase()"
-```
-
-**Issue:** Database locked (concurrent access)
-```bash
-# Check for locking processes
-fuser src/backend-converge/data/oyc.db
-
-# Use WAL mode for better concurrency (already configured in db.js)
-sqlite3 data/oyc.db "PRAGMA journal_mode=WAL;"
-```
-
-**Issue:** Performance queries slow
-```bash
-# Add indexes for common queries
-sqlite3 data/oyc.db "
-CREATE INDEX IF NOT EXISTS idx_employees_email ON employees(email);
-CREATE INDEX IF NOT EXISTS idx_workflow_employee ON workflow_status(employee_id);
-CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(action_timestamp);
-"
-```
-
-### Security Notes
-
-1. **Access Control:**
-   - Database file should be readable/writable only by the application user
-   - Use `chmod 600` on EC2 for file permissions
-   - Never expose SQLite file via web server (keep in protected directory)
-
-2. **Backup Strategy:**
-   - Daily automated backups to S3 (recommended for EC2)
-   - Version database schema changes in migration scripts
-   - Test restore procedures regularly
-
-3. **Compliance:**
-   - Audit logs track all data access
-   - Export logs for compliance reporting
-   - Regular integrity checks for data validation
-
----
-
-## Recent Database Implementation (July 7, 2026)
-
-**Database:** SQLite (chosen for EC2 free tier compatibility)
-- ✅ **Schema:** 11 tables covering all workflow components
-- ✅ **Integration:** Admin portal fully wired to SQLite database
-- ✅ **Performance:** WAL mode enabled for better concurrency
-- ✅ **Backup:** File-based backup strategy documented
-- ✅ **Query Tools:** Multiple access methods provided (CLI, GUI, API)
-
-**Key Features:**
-- Employee data management via Admin Portal A1 upload
-- Workflow status tracking across 7 steps
-- Performance bracket calculations (OKR formulas)
-- Comprehensive audit logging
-- Real-time progress monitoring
-
-**Next Steps for Reporting:**
-1. Implement automated weekly report generation
-2. Add custom report builder in Admin Portal
-3. Create dashboard visualizations for management
-4. Set up email alerts for critical thresholds
+| Component | Status |
+|-----------|--------|
+| Google SSO login | ✅ EXISTS (test mode) |
+| Multi-role detection | 📋 DESIGNED |
+| Portal picker UI | 📋 DESIGNED |
+| Auto-redirect (single role) | 📋 DESIGNED |
+| Nav header portal switching | 📋 DESIGNED |
+| Server-side RBAC enforcement | ✅ EXISTS |
 
 ---
 
@@ -1204,130 +849,24 @@ Layer 2: Lookup Match (First Name + Last Name = Immediate Supervisor)
 Layer 3: Flag for Admin (show unresolved list in Admin Portal)
 ```
 
-### How It Works (Step by Step)
+### How It Works
 
 **On every employee CSV upload:**
 
 ```
-Admin uploads employee CSV
-  ↓
-Step 1: Insert all employees into `employees` table (existing logic)
-  ↓
-Step 2: Build lookup (inline, no separate table needed)
-        → For each employee: lookup_name = First Name + " " + Last Name
-        → Store in `lookup_name` column on employees table
-  ↓
+Step 1: Insert all employees into `employees` table
+Step 2: Build lookup_name = First Name + " " + Last Name (column on employees table)
 Step 3: Check override table FIRST
-        → If supervisor name exists in overrides → use that employee_no
-  ↓
 Step 4: Automatic matching (for non-overridden)
-        → Match Immediate Supervisor against lookup_name
-        → If EXACTLY 1 match → resolve to that employee_no ✅
-        → If 0 matches → flag as "external/unmatched" ⚠️
-        → If 2+ matches → flag as "duplicate — needs override" ⚠️
-  ↓
-Step 5: Store resolved supervisor_employee_no on each employee
-  ↓
+        → 1 match → resolve ✅
+        → 0 matches → flag "external/unmatched" ⚠️
+        → 2+ matches → flag "duplicate — needs override" ⚠️
+Step 5: Store supervisor_employee_no on each employee
 Step 6: Derive roles
-        → If employee_no appears as someone's supervisor_employee_no → MANAGER
-        → Otherwise → EMPLOYEE (default)
-        → DATA_SPOC → Manually assigned by admin only
-        → ADMIN → Manually assigned by admin only
-  ↓
-Step 7: Show results to admin
-        → X managers auto-detected
-        → X unresolved supervisors (need attention)
-        → X duplicates (need override)
+        → Has reports → MANAGER
+        → Default → EMPLOYEE
+        → DATA_SPOC / ADMIN → manual only (never auto-assigned)
 ```
-
-### Real Example (Your Team Data)
-
-```
-UPLOAD — Build Lookup:
-┌──────────────────────────────────────────────────────────────────────┐
-│ Emp No. │ First Name        │ Last Name   │ lookup_name               │
-│──────────────────────────────────────────────────────────────────────│
-│ 13534   │ Luigi Gabriel     │ Espiritu    │ Luigi Gabriel Espiritu    │
-│ 13743   │ Ma. Zaira Rodelle │ Bajar       │ Ma. Zaira Rodelle Bajar   │
-│ 14131   │ Juan Carlo        │ Claudio     │ Juan Carlo Claudio        │
-│ 13105   │ Michael Ryan      │ Escobilla   │ Michael Ryan Escobilla    │
-│ 14088   │ Charvin Kale      │ Peñaverde   │ Charvin Kale Peñaverde    │
-│ 14480   │ Jeremy Louise     │ Cariño      │ Jeremy Louise Cariño      │
-│ 14481   │ Ernica            │ Castronero  │ Ernica Castronero         │
-└──────────────────────────────────────────────────────────────────────┘
-
-RESOLVE — Match Immediate Supervisor:
-┌────────────────────────────────────────────────────────────────────────┐
-│ Emp No. │ Immediate Supervisor (raw)  │ Result                         │
-│────────────────────────────────────────────────────────────────────────│
-│ 13743   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
-│ 14480   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
-│ 14481   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
-│ 14131   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
-│ 13105   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
-│ 14088   │ Luigi Gabriel Espiritu      │ → 13534 ✅ (1 match)           │
-│ 13534   │ Mylene Sardinia             │ → ⚠️ NOT FOUND (external)     │
-└────────────────────────────────────────────────────────────────────────┘
-
-ROLE DERIVATION:
-│ 13534 (Luigi) → has 6 direct reports → role = MANAGER ✅
-│ Others        → no reports          → role = EMPLOYEE (default)
-│ Mylene        → not in system       → flagged as external supervisor
-```
-
-### Override Table (For Duplicates & Exceptions)
-
-**Purpose:** Admin manually resolves cases where automatic matching fails or produces ambiguity.
-
-**When is it needed?**
-- Two employees have same First + Last name (duplicate)
-- Supervisor name doesn't match any employee (typo, nickname, external)
-- Admin wants to force a specific mapping regardless of auto-match
-
-**Schema:**
-```sql
-CREATE TABLE IF NOT EXISTS supervisor_overrides (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  supervisor_name TEXT NOT NULL UNIQUE,   -- The name as it appears in "Immediate Supervisor" column
-  resolved_employee_no TEXT NOT NULL,     -- The employee number to use
-  reason TEXT,                            -- Admin's note (e.g., "Duplicate name — this is the Finance one")
-  created_by TEXT,                        -- Admin who set the override
-  created_at TEXT DEFAULT (datetime('now'))
-);
-```
-
-**Example override entries:**
-```
-| supervisor_name    | resolved_employee_no | reason                           |
-|--------------------|---------------------|----------------------------------|
-| Juan Carlo Cruz    | 14131               | People Transformation, not Finance |
-| Mylene Sardinia    | 10001               | VP not in team upload             |
-| Mike Santos        | 15200               | Goes by "Mike" not "Michael"      |
-```
-
-**Admin Portal UI (Override Management):**
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│ ⚠️ UNRESOLVED SUPERVISORS (3)                                           │
-│                                                                          │
-│ Supervisor Name      │ Employees Affected │ Action                       │
-│──────────────────────────────────────────────────────────────────────────│
-│ Mylene Sardinia      │ 1 (Luigi Espiritu) │ [Assign Employee No.] [Skip] │
-│ Juan Carlo Cruz      │ 4 (ambiguous)      │ [Pick: 14131 or 15002]       │
-│ Mike Santos          │ 2                  │ [Assign Employee No.] [Skip] │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-### Modified Employees Table
-
-```sql
--- Add these columns to existing employees table
-ALTER TABLE employees ADD COLUMN lookup_name TEXT;              -- "First Name" + " " + "Last Name"
-ALTER TABLE employees ADD COLUMN supervisor_employee_no TEXT;   -- Resolved supervisor emp no.
-ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT;  -- "matched" | "override" | "unresolved" | "external"
-```
-
-### Login & Access Flow (After Roles Derived)
 
 ### Role Assignment Rules
 
@@ -1342,70 +881,27 @@ ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT;  -- "matched" | "
 - Upload CSV → all employees default to `EMPLOYEE`
 - Auto-derive runs → detects managers from hierarchy → upgrades to `MANAGER`
 - `DATA_SPOC` and `ADMIN` are **never auto-assigned** — always manual admin decision
-- If admin removes someone's `DATA_SPOC` or `ADMIN` role, they revert to whatever the system derives (MANAGER or EMPLOYEE)
 - Re-uploading CSV does NOT overwrite manually assigned `DATA_SPOC` or `ADMIN` roles
 
-### Login & Access Flow (After Roles Derived)
+### Override Table (For Duplicates & Exceptions)
 
-```
-User logs in with Google SSO (email: luigi.espiritu@convergeict.com)
-  ↓
-System: SELECT * FROM employees WHERE email = 'luigi.espiritu@convergeict.com'
-  ↓
-Found: employee_no = 13534, role = MANAGER
-  ↓
-Redirect to Manager Portal
-  ↓
-Manager Portal loads "My Team":
-  SELECT * FROM employees WHERE supervisor_employee_no = '13534'
-  → Returns: Zaira, Jeremy, Ernica, JC, Mike, Charvin (6 direct reports)
+```sql
+CREATE TABLE IF NOT EXISTS supervisor_overrides (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  supervisor_name TEXT NOT NULL UNIQUE,
+  resolved_employee_no TEXT NOT NULL,
+  reason TEXT,
+  created_by TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
 ```
 
-### Risk Assessment (Updated)
+### Database Schema Additions
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|-----------|
-| Duplicate First+Last names | Low-Medium | Role misassignment | Override table resolves it permanently |
-| Supervisor not in upload (external) | High | No match found | Flag as "external" — admin skips or assigns |
-| SAP typo in supervisor name | Low | No match found | Override table with correct mapping |
-| Nicknames (Mike vs Michael) | Low | No match found | Override table handles it |
-| Special characters (ñ, accents) | None | N/A | Exact string match — SAP is consistent |
-
-### Smart Move Assessment
-
-**YES — this is the smartest approach because:**
-
-1. ✅ **Zero manual work for 99% of cases** — SAP data is consistent
-2. ✅ **Override table handles the 1%** — set once, persists across uploads
-3. ✅ **No separate lookup table needed** — just a computed column on employees
-4. ✅ **Employee number is the final reference** — no name queries at runtime
-5. ✅ **Self-healing** — re-runs on every upload, picks up new employees
-6. ✅ **Admin visibility** — unresolved cases are flagged, not silently ignored
-7. ✅ **Scales** — works for 7 employees or 3000+
-8. ✅ **Audit trail** — override table records who set what and why
-
-**Why not a separate lookup table?**
-- Adding `lookup_name` directly to the `employees` table is simpler
-- One fewer table to manage
-- Query joins are cleaner
-- Same result, less complexity
-
-**Why override table instead of just flagging?**
-- Flags require re-resolution every upload
-- Overrides persist — set once, never worry again
-- Admin doesn't have to re-fix the same issue every time they upload
-
-### Implementation Status
-
-| Component | Status |
-|-----------|--------|
-| `lookup_name` column on employees | 📋 DESIGNED |
-| `supervisor_employee_no` column | 📋 DESIGNED |
-| `supervisor_match_status` column | 📋 DESIGNED |
-| `supervisor_overrides` table | 📋 DESIGNED |
-| Auto-match logic (on upload) | 📋 DESIGNED |
-| Override check (priority 1) | 📋 DESIGNED |
-| Duplicate detection & flagging | 📋 DESIGNED |
-| Unresolved supervisor UI (admin) | 📋 DESIGNED |
-| Role derivation from resolved hierarchy | 📋 DESIGNED |
-| Login → role → portal routing | ✅ EXISTS (needs wiring to real DB) |
+```sql
+-- Add to existing employees table
+ALTER TABLE employees ADD COLUMN lookup_name TEXT;
+ALTER TABLE employees ADD COLUMN supervisor_employee_no TEXT;
+ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT;
+-- supervisor_match_status values: "matched" | "override" | "unresolved" | "external"
+```
