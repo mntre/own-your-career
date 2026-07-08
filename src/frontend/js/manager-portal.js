@@ -429,17 +429,51 @@ function createTeamTableRow(member) {
   // Support both nested and flat status structures
   const status = member.workflowStatus || {
     step1Complete: member.step1Complete || false,
+    step2Complete: member.step2Complete || false,
+    step3Complete: member.step3Complete || false,
     step4Complete: member.step4Complete || false,
     step5Complete: member.step5Complete || false
   };
 
   const step1Status = status.step1Complete ? '✓ Complete' : '○ Pending';
-  const step4Status = status.step4Complete ? '✓ Complete' : '○ Pending';
-  const step5Status = status.step5Complete ? '✓ Complete' : '○ Pending';
-
   const step1Class = status.step1Complete ? 'status-complete' : 'status-pending';
-  const step4Class = status.step4Complete ? 'status-complete' : 'status-pending';
-  const step5Class = status.step5Complete ? 'status-complete' : 'status-pending';
+
+  // Determine Step 4 status based on Step 3
+  let step4Status, step4Class;
+  if (status.step4Complete) {
+    step4Status = '✓ Complete';
+    step4Class = 'status-complete';
+  } else if (!status.step3Complete) {
+    // Step 3 is pending, so Step 4 is LOCKED
+    step4Status = '🔒 Locked';
+    step4Class = 'status-locked';
+  } else {
+    // Step 3 is complete, Step 4 is pending
+    step4Status = '○ Pending';
+    step4Class = 'status-pending';
+  }
+
+  // Determine Step 5 status based on Step 3 and Step 4
+  let step5Status, step5Class;
+  if (status.step5Complete) {
+    step5Status = '✓ Complete';
+    step5Class = 'status-complete';
+  } else if (!status.step3Complete) {
+    // Step 3 is pending, so Step 5 is LOCKED
+    step5Status = '🔒 Locked';
+    step5Class = 'status-locked';
+  } else if (status.step3Complete && !status.step4Complete) {
+    // Step 3 is complete but Step 4 is pending, so Step 5 is LOCKED
+    step5Status = '🔒 Locked';
+    step5Class = 'status-locked';
+  } else {
+    // Step 3 & 4 are complete, Step 5 is pending
+    step5Status = '○ Pending';
+    step5Class = 'status-pending';
+  }
+
+  // Determine action button and label based on workflow status
+  const actionButtonHTML = getActionButton(status, member.employeeId);
 
   row.innerHTML = `
     <td>${member.name || 'N/A'}</td>
@@ -449,12 +483,56 @@ function createTeamTableRow(member) {
     <td><span class="status-badge ${step4Class}">${step4Status}</span></td>
     <td><span class="status-badge ${step5Class}">${step5Status}</span></td>
     <td>
-      <button class="btn btn--small btn--secondary" onclick="viewEmployeeAssessments('${member.employeeId}')">View</button>
-      <button class="btn btn--small btn--secondary" onclick="viewSyncStatus('${member.employeeId}')">Sync Status</button>
+      ${actionButtonHTML}
     </td>
   `;
 
   return row;
+}
+
+/**
+ * Determines the action button and label based on workflow status.
+ * Logic considers Step 1 (Skills), Step 3 (Self-Assessment), Step 4 (Feed Forward), Step 5 (Acknowledgement):
+ * 
+ * - If Step 1 pending → "Assess Skills"
+ * - Else if Step 1 complete but Step 3 pending → Step 4 and 5 are LOCKED (no action button)
+ * - Else if Step 1 & 3 complete but Step 4 pending → "Feed Forward"
+ * - Else if Step 1 & 3 & 4 complete but Step 5 pending → "Acknowledgement"
+ * - Else (all complete) → "View"
+ * 
+ * @param {Object} status - Workflow status object
+ * @param {string} employeeId - Employee ID
+ * @returns {string} HTML for action button
+ */
+function getActionButton(status, employeeId) {
+  const step1Complete = status.step1Complete || false;
+  const step3Complete = status.step3Complete || false;
+  const step4Complete = status.step4Complete || false;
+  const step5Complete = status.step5Complete || false;
+
+  // Step 1 is pending
+  if (!step1Complete) {
+    return `<button class="btn btn--small btn--primary" onclick="startSkillsAssessment('${employeeId}')">Assess Skills</button>`;
+  }
+
+  // Step 1 complete but Step 3 (Self-Assessment) is pending
+  // Step 4 and 5 are LOCKED
+  if (step1Complete && !step3Complete) {
+    return `<span class="status-locked">🔒 Locked</span>`;
+  }
+
+  // Step 1 & 3 complete, Step 4 pending
+  if (step1Complete && step3Complete && !step4Complete) {
+    return `<button class="btn btn--small btn--primary" onclick="startFeedForward('${employeeId}')">Feed Forward</button>`;
+  }
+
+  // Step 1 & 3 & 4 complete, Step 5 pending
+  if (step1Complete && step3Complete && step4Complete && !step5Complete) {
+    return `<button class="btn btn--small btn--primary" onclick="startAcknowledgement('${employeeId}')">Acknowledgement</button>`;
+  }
+
+  // All steps complete
+  return `<button class="btn btn--small btn--secondary" onclick="viewEmployeeAssessments('${employeeId}')">View</button>`;
 }
 
 /* --------------------------------------------------------------------------
@@ -822,6 +900,13 @@ function handleSkillsFormSubmit(e) {
     google.script.run
       .withSuccessHandler((result) => {
         if (result.success) {
+          // Update placeholder data to mark step 1 as complete
+          const placeholderWorkflow = JSON.parse(localStorage.getItem('placeholderWorkflow')) || {};
+          if (placeholderWorkflow[ManagerPortal.selectedEmployee]) {
+            placeholderWorkflow[ManagerPortal.selectedEmployee].step1Complete = true;
+            localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
+          }
+          
           alert('Skills assessment saved successfully!');
           showTeamOverview();
           loadTeamMembersOverview();
@@ -837,6 +922,21 @@ function handleSkillsFormSubmit(e) {
         alert('Error saving skills assessment');
       })
       .saveSkillsAssessment(ManagerPortal.selectedEmployee, assessmentData);
+  } else {
+    // For Converge Cloud or offline testing - update locally
+    console.log('[ManagerPortal] Saving skills assessment offline (no APPSCRIPT backend)');
+    
+    // Update placeholder data to mark step 1 as complete
+    const placeholderWorkflow = JSON.parse(localStorage.getItem('placeholderWorkflow')) || {};
+    if (placeholderWorkflow[ManagerPortal.selectedEmployee]) {
+      placeholderWorkflow[ManagerPortal.selectedEmployee].step1Complete = true;
+      localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
+      console.log('[ManagerPortal] Workflow updated:', placeholderWorkflow[ManagerPortal.selectedEmployee]);
+    }
+    
+    alert('Skills assessment saved successfully!');
+    showTeamOverview();
+    loadTeamMembersOverview();
   }
 }
 
@@ -857,6 +957,14 @@ function handleFeedForwardFormSubmit(e) {
     google.script.run
       .withSuccessHandler((result) => {
         if (result.success) {
+          // Update placeholder data to mark step 4 as complete and step 5 as pending
+          const placeholderWorkflow = JSON.parse(localStorage.getItem('placeholderWorkflow')) || {};
+          if (placeholderWorkflow[ManagerPortal.selectedEmployee]) {
+            placeholderWorkflow[ManagerPortal.selectedEmployee].step4Complete = true;
+            placeholderWorkflow[ManagerPortal.selectedEmployee].step5Complete = false;
+            localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
+          }
+          
           alert('Feed forward saved successfully!');
           showTeamOverview();
           loadTeamMembersOverview();
@@ -872,6 +980,22 @@ function handleFeedForwardFormSubmit(e) {
         alert('Error saving feed forward');
       })
       .saveFeedForward(ManagerPortal.selectedEmployee, ManagerPortal.currentManager.employeeId, feedForwardData);
+  } else {
+    // For Converge Cloud or offline testing - update locally
+    console.log('[ManagerPortal] Saving feed forward offline (no APPSCRIPT backend)');
+    
+    // Update placeholder data to mark step 4 as complete and step 5 as pending
+    const placeholderWorkflow = JSON.parse(localStorage.getItem('placeholderWorkflow')) || {};
+    if (placeholderWorkflow[ManagerPortal.selectedEmployee]) {
+      placeholderWorkflow[ManagerPortal.selectedEmployee].step4Complete = true;
+      placeholderWorkflow[ManagerPortal.selectedEmployee].step5Complete = false;
+      localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
+      console.log('[ManagerPortal] Workflow updated:', placeholderWorkflow[ManagerPortal.selectedEmployee]);
+    }
+    
+    alert('Feed forward saved successfully!');
+    showTeamOverview();
+    loadTeamMembersOverview();
   }
 }
 
@@ -891,6 +1015,13 @@ function handleAcknowledgementFormSubmit(e) {
     google.script.run
       .withSuccessHandler((result) => {
         if (result.success) {
+          // Update placeholder data to mark step 5 as complete
+          const placeholderWorkflow = JSON.parse(localStorage.getItem('placeholderWorkflow')) || {};
+          if (placeholderWorkflow[ManagerPortal.selectedEmployee]) {
+            placeholderWorkflow[ManagerPortal.selectedEmployee].step5Complete = true;
+            localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
+          }
+          
           alert('Acknowledgement saved successfully!');
           showTeamOverview();
           loadTeamMembersOverview();
@@ -903,6 +1034,21 @@ function handleAcknowledgementFormSubmit(e) {
         alert('Error saving acknowledgement');
       })
       .saveAcknowledgement(ManagerPortal.selectedEmployee, ManagerPortal.currentManager.employeeId, ackData, 'MANAGER');
+  } else {
+    // For Converge Cloud or offline testing - update locally
+    console.log('[ManagerPortal] Saving acknowledgement offline (no APPSCRIPT backend)');
+    
+    // Update placeholder data to mark step 5 as complete
+    const placeholderWorkflow = JSON.parse(localStorage.getItem('placeholderWorkflow')) || {};
+    if (placeholderWorkflow[ManagerPortal.selectedEmployee]) {
+      placeholderWorkflow[ManagerPortal.selectedEmployee].step5Complete = true;
+      localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
+      console.log('[ManagerPortal] Workflow updated:', placeholderWorkflow[ManagerPortal.selectedEmployee]);
+    }
+    
+    alert('Acknowledgement saved successfully!');
+    showTeamOverview();
+    loadTeamMembersOverview();
   }
 }
 
@@ -976,7 +1122,7 @@ function loadPlaceholderTeamData() {
     EMP_002: {
       step1Complete: true,
       step2Complete: true,
-      step3Complete: false,
+      step3Complete: true,
       step4Complete: false,
       step5Complete: false,
       step6Complete: false,
@@ -1163,6 +1309,199 @@ function loadPlaceholderTeamData() {
   console.log('  - Team members:', placeholderTeam.length);
   console.log('  - Workflow statuses:', Object.keys(placeholderWorkflow).length);
   console.log('  - OKR data:', Object.keys(placeholderOKRs).length);
+}
+
+/* --------------------------------------------------------------------------
+   Step Navigation Functions
+   -------------------------------------------------------------------------- */
+
+/**
+ * Starts the Skills Assessment step for an employee.
+ * Loads employee data and shows the skills assessment form.
+ * @param {string} employeeId - Employee ID
+ */
+function startSkillsAssessment(employeeId) {
+  console.log(`[ManagerPortal] Starting Skills Assessment for employee: ${employeeId}`);
+  
+  ManagerPortal.selectedEmployee = employeeId;
+  
+  const employee = ManagerPortal.teamMembers.find(m => m.employeeId === employeeId);
+  if (!employee) {
+    console.error(`[ManagerPortal] Employee not found: ${employeeId}`);
+    alert('Employee not found');
+    return;
+  }
+
+  // Update employee display fields
+  document.getElementById('assessmentEmployeeName').textContent = employee.name;
+  document.getElementById('assessmentEmployeeBand').textContent = employee.band || 'N/A';
+
+  // Load existing skills assessment if available
+  if (PLATFORM === 'APPSCRIPT') {
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result.success && result.data) {
+          // Populate form with existing data
+          console.log('[ManagerPortal] Skills assessment data loaded:', result.data);
+          // TODO: Populate form fields with existing data
+        } else {
+          console.log('[ManagerPortal] No existing skills assessment found, showing empty form');
+        }
+        showAssessmentSection('skillsAssessmentSection');
+      })
+      .withFailureHandler((error) => {
+        console.error('[ManagerPortal] Error loading skills assessment:', error);
+        showAssessmentSection('skillsAssessmentSection');
+      })
+      .getSkillsAssessmentData(employeeId);
+  } else {
+    showAssessmentSection('skillsAssessmentSection');
+  }
+}
+
+/**
+ * Starts the Feed Forward step for an employee.
+ * Loads employee data and shows the feed forward form.
+ * @param {string} employeeId - Employee ID
+ */
+function startFeedForward(employeeId) {
+  console.log(`[ManagerPortal] Starting Feed Forward for employee: ${employeeId}`);
+  
+  ManagerPortal.selectedEmployee = employeeId;
+  
+  const employee = ManagerPortal.teamMembers.find(m => m.employeeId === employeeId);
+  if (!employee) {
+    console.error(`[ManagerPortal] Employee not found: ${employeeId}`);
+    alert('Employee not found');
+    return;
+  }
+
+  // Populate and auto-fill the employee selection dropdown
+  const employeeSelect = document.getElementById('feedForwardEmployeeSelect');
+  if (employeeSelect) {
+    // Clear existing options
+    employeeSelect.innerHTML = '';
+    
+    // Add option for selected employee
+    const option = document.createElement('option');
+    option.value = employeeId;
+    option.textContent = `${employee.name} (${employee.band})`;
+    option.selected = true;
+    employeeSelect.appendChild(option);
+    
+    // Disable the select so it cannot be changed
+    employeeSelect.disabled = true;
+  }
+
+  // Load employee feed forward data and summary
+  if (PLATFORM === 'APPSCRIPT') {
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result.success && result.data) {
+          console.log('[ManagerPortal] Feed Forward data loaded:', result.data);
+          
+          // Populate summary cards
+          document.getElementById('okrAchievementValue').textContent = 
+            result.data.okrScore ? result.data.okrScore + '%' : 'Pending';
+          document.getElementById('skillsAssessmentValue').textContent = 
+            result.data.skillsStatus || 'Pending';
+          document.getElementById('selfAssessmentStatus').textContent = 
+            result.data.selfAssessmentStatus || 'Pending';
+          
+          // If feed forward already exists, populate the form
+          if (result.data.feedForwardComments) {
+            document.getElementById('feedForwardComments').value = result.data.feedForwardComments;
+          }
+          if (result.data.performanceRating) {
+            document.getElementById('performanceRating').value = result.data.performanceRating;
+          }
+        } else {
+          console.log('[ManagerPortal] No existing feed forward data found');
+          document.getElementById('okrAchievementValue').textContent = 'Pending';
+          document.getElementById('skillsAssessmentValue').textContent = 'Pending';
+          document.getElementById('selfAssessmentStatus').textContent = 'Pending';
+        }
+        showAssessmentSection('feedForwardSection');
+      })
+      .withFailureHandler((error) => {
+        console.error('[ManagerPortal] Error loading feed forward data:', error);
+        showAssessmentSection('feedForwardSection');
+      })
+      .getFeedForwardData(employeeId);
+  } else {
+    showAssessmentSection('feedForwardSection');
+  }
+}
+
+/**
+ * Starts the Acknowledgement step for an employee.
+ * Loads employee data and shows the acknowledgement form.
+ * @param {string} employeeId - Employee ID
+ */
+function startAcknowledgement(employeeId) {
+  console.log(`[ManagerPortal] Starting Acknowledgement for employee: ${employeeId}`);
+  
+  ManagerPortal.selectedEmployee = employeeId;
+  
+  const employee = ManagerPortal.teamMembers.find(m => m.employeeId === employeeId);
+  if (!employee) {
+    console.error(`[ManagerPortal] Employee not found: ${employeeId}`);
+    alert('Employee not found');
+    return;
+  }
+
+  // Populate and auto-fill the employee selection dropdown
+  const employeeSelect = document.getElementById('acknowledgementEmployeeSelect');
+  if (employeeSelect) {
+    // Clear existing options
+    employeeSelect.innerHTML = '';
+    
+    // Add option for selected employee
+    const option = document.createElement('option');
+    option.value = employeeId;
+    option.textContent = `${employee.name} (${employee.band})`;
+    option.selected = true;
+    employeeSelect.appendChild(option);
+    
+    // Disable the select so it cannot be changed
+    employeeSelect.disabled = true;
+  }
+
+  // Load acknowledgement data
+  if (PLATFORM === 'APPSCRIPT') {
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result.success && result.data) {
+          console.log('[ManagerPortal] Acknowledgement data loaded:', result.data);
+          
+          // Populate summary cards
+          document.getElementById('ratingValue').textContent = 
+            result.data.performanceRating || 'Not rated';
+          document.getElementById('feedForwardStatusValue').textContent = 
+            result.data.feedForwardStatus || 'Pending';
+          
+          // If acknowledgement already exists, populate the form
+          if (result.data.acknowledgementComment) {
+            document.getElementById('acknowledgementComment').value = result.data.acknowledgementComment;
+          }
+          if (result.data.confirmed) {
+            document.getElementById('confirmAcknowledgement').checked = true;
+          }
+        } else {
+          console.log('[ManagerPortal] No existing acknowledgement data found');
+          document.getElementById('ratingValue').textContent = 'Not rated';
+          document.getElementById('feedForwardStatusValue').textContent = 'Pending';
+        }
+        showAssessmentSection('acknowledgementSection');
+      })
+      .withFailureHandler((error) => {
+        console.error('[ManagerPortal] Error loading acknowledgement data:', error);
+        showAssessmentSection('acknowledgementSection');
+      })
+      .getManagerAcknowledgementData(employeeId);
+  } else {
+    showAssessmentSection('acknowledgementSection');
+  }
 }
 
 /* --------------------------------------------------------------------------
