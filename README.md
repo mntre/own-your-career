@@ -675,3 +675,233 @@ A6: Organizational Hierarchy Setup
 - Merged PR #12 (xremy23: Manager portal team view bug fix)
 
 ---
+
+
+## Login & Portal Access Flow
+
+### Authentication Method
+- **Google SSO** (Google Identity Services) — corporate email only
+- System verifies email against employee database
+- No manual role selection at login — system determines access automatically
+
+### Multi-Role Logic
+
+Every person in the system has a **primary role** (from the role derivation process) but may also have **implicit roles**:
+
+| Primary Role | Implicit Roles | Total Portals Accessible |
+|--------------|---------------|--------------------------|
+| EMPLOYEE (Team Member) | — | 1 (Employee Portal only) |
+| MANAGER | + EMPLOYEE | 2 (Manager Portal + Employee Portal) |
+| DATA_SPOC | + EMPLOYEE | 2 (Data SPOC Portal + Employee Portal) |
+| ADMIN | + EMPLOYEE (+ MANAGER if applicable) | 2-4 (Admin + Employee + others if assigned) |
+
+**Why?** Every Manager/SPOC/Admin is also an employee who needs to complete their own review (Steps 3, 6, 7).
+
+### Login Flow
+
+```
+User clicks "Sign in with Google"
+  ↓
+Google SSO verifies corporate email
+  ↓
+System: SELECT * FROM employees WHERE email = [user email]
+  ↓
+Found? → Get primary role + determine all accessible portals
+Not Found? → "Access denied — contact your admin" (not in employee database)
+  ↓
+Count accessible portals:
+  ↓
+IF 1 portal  → Auto-redirect to that portal (no picker page)
+IF 2+ portals → Show Portal Picker homepage
+```
+
+### Portal Picker Page (Multi-Role Users)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Welcome, Luigi Gabriel Espiritu                                 │
+│  luigi.espiritu@convergeict.com                                  │
+│                                                                   │
+│  Select a portal:                                                │
+│                                                                   │
+│  ┌───────────────────┐  ┌───────────────────┐                   │
+│  │  👔 MANAGER       │  │  👤 EMPLOYEE      │                   │
+│  │  PORTAL           │  │  PORTAL           │                   │
+│  │                   │  │                   │                   │
+│  │  Steps 1, 4, 5   │  │  Steps 3, 6, 7   │                   │
+│  │  Team assessment  │  │  My own review   │                   │
+│  │  & feed forward   │  │  & self-assess   │                   │
+│  └───────────────────┘  └───────────────────┘                   │
+│                                                                   │
+│  ┌───────────────────┐                                           │
+│  │  ⚙️ ADMIN         │                                           │
+│  │  PORTAL           │                                           │
+│  │                   │                                           │
+│  │  System config,   │                                           │
+│  │  progress, export │                                           │
+│  └───────────────────┘                                           │
+│                                                                   │
+│  [Sign Out]                                                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Auto-Redirect (Single-Role Users)
+
+```
+Pure Team Member (EMPLOYEE only):
+  Login → Auto-redirect to Employee Portal → Steps 3, 6, 7
+
+No picker shown. Seamless experience.
+```
+
+### Portal Access Matrix
+
+| User Example | Primary Role | Portals Shown | Picker? |
+|-------------|-------------|---------------|---------|
+| Rachel Abacan (Team Member) | EMPLOYEE | Employee Portal | ❌ No — direct redirect |
+| Luigi Espiritu (Sr. Manager + Admin) | ADMIN | Admin + Manager + Employee | ✅ Yes — picker |
+| JC Claudio (Supervisor) | MANAGER | Manager + Employee | ✅ Yes — picker |
+| Zaira Bajar (Data Analyst, assigned SPOC) | DATA_SPOC | Data SPOC + Employee | ✅ Yes — picker |
+| Charvin Penaverde (Supervisor) | MANAGER | Manager + Employee | ✅ Yes — picker |
+| Jeremy Carino (Team Member) | EMPLOYEE | Employee Portal | ❌ No — direct redirect |
+
+### Role-to-Portal Mapping
+
+```javascript
+// Determine accessible portals based on role
+function getAccessiblePortals(employee) {
+  const portals = [];
+
+  // Everyone gets Employee Portal (for their own review)
+  portals.push({ id: 'employee', label: 'Employee Portal', icon: '👤', desc: 'Steps 3, 6, 7 — My own review' });
+
+  // Role-specific portals
+  if (employee.role === 'MANAGER' || employee.role === 'ADMIN') {
+    portals.push({ id: 'manager', label: 'Manager Portal', icon: '👔', desc: 'Steps 1, 4, 5 — Team assessment' });
+  }
+
+  if (employee.role === 'DATA_SPOC') {
+    portals.push({ id: 'dataspoc', label: 'Data SPOC Portal', icon: '📊', desc: 'Step 2 — OKR upload & rankings' });
+  }
+
+  if (employee.role === 'ADMIN') {
+    portals.push({ id: 'admin', label: 'Admin Portal', icon: '⚙️', desc: 'System config & monitoring' });
+  }
+
+  return portals;
+}
+```
+
+### Navigation Between Portals
+
+Once inside a portal, user can switch to another accessible portal via:
+- **Header nav** — Shows available portal links (only portals they have access to)
+- **No re-login required** — Session persists, just navigates to different page
+
+### Security Rules
+
+1. **Server-side gate**: Even if user navigates to a portal URL directly, backend verifies their role before returning data
+2. **No URL manipulation bypass**: `/manager-portal.html` checks RBAC before loading any team data
+3. **Session token**: Contains email + primary role, but portal access is checked against DB on every request
+4. **Admin override**: Admins can access all portals (for testing and support purposes)
+
+### Implementation Files
+
+| Component | File | Notes |
+|-----------|------|-------|
+| Google SSO login | `src/frontend/js/login.js` | Existing — needs multi-role wiring |
+| Portal picker page | `src/frontend/html/login.html` (or new section) | Picker UI after SSO |
+| Role-to-portal logic | `src/frontend/js/app.js` | getAccessiblePortals() |
+| Session handling | `src/frontend/js/app.js` | Token decode, redirect logic |
+| Server-side RBAC | `src/backend-converge/middleware/rbac.js` | Existing — already validates |
+
+### Implementation Status
+
+| Component | Status |
+|-----------|--------|
+| Google SSO login | ✅ EXISTS (test mode) |
+| Multi-role detection | 📋 DESIGNED |
+| Portal picker UI | 📋 DESIGNED |
+| Auto-redirect (single role) | 📋 DESIGNED |
+| Nav header portal switching | 📋 DESIGNED |
+| Server-side RBAC enforcement | ✅ EXISTS |
+
+---
+
+## Role Derivation Design: Supervisor Lookup + Override Table
+
+### Problem Statement
+The SAP employee export has an "Immediate Supervisor" column that stores the supervisor's name (e.g., `"Luigi Gabriel Espiritu"`), but the employee database stores names split across columns (`Last Name: "Espiritu"`, `First Name: "Luigi Gabriel"`). We need a reliable way to:
+1. Determine who is a MANAGER (has direct reports)
+2. Show a manager their team members
+3. Enforce role-based access (Manager Portal, Employee Portal, etc.)
+4. Handle duplicate names and edge cases gracefully
+
+### Solution: 3-Layer Matching System
+
+**Priority order for resolving `Immediate Supervisor` → `Employee No.`:**
+
+```
+Layer 1: Override Table (HIGHEST PRIORITY — admin-set exceptions always win)
+  ↓ If no override found...
+Layer 2: Lookup Match (First Name + Last Name = Immediate Supervisor)
+  ↓ If duplicate or no match...
+Layer 3: Flag for Admin (show unresolved list in Admin Portal)
+```
+
+### How It Works
+
+**On every employee CSV upload:**
+
+```
+Step 1: Insert all employees into `employees` table
+Step 2: Build lookup_name = First Name + " " + Last Name (column on employees table)
+Step 3: Check override table FIRST
+Step 4: Automatic matching (for non-overridden)
+        → 1 match → resolve ✅
+        → 0 matches → flag "external/unmatched" ⚠️
+        → 2+ matches → flag "duplicate — needs override" ⚠️
+Step 5: Store supervisor_employee_no on each employee
+Step 6: Derive roles
+        → Has reports → MANAGER
+        → Default → EMPLOYEE
+        → DATA_SPOC / ADMIN → manual only (never auto-assigned)
+```
+
+### Role Assignment Rules
+
+| Role | How Assigned | Who Assigns | Logic |
+|------|-------------|-------------|-------|
+| `EMPLOYEE` | **Automatic (default)** | System | Everyone starts as EMPLOYEE on upload |
+| `MANAGER` | **Auto-derived** | System | If employee_no appears as someone's supervisor_employee_no |
+| `DATA_SPOC` | **Manual only** | Admin / Superadmin | Admin assigns via Role Assignment UI (1-2 per group) |
+| `ADMIN` | **Manual only** | Superadmin | Superadmin assigns — highest privilege, never auto-assigned |
+
+**Key rules:**
+- Upload CSV → all employees default to `EMPLOYEE`
+- Auto-derive runs → detects managers from hierarchy → upgrades to `MANAGER`
+- `DATA_SPOC` and `ADMIN` are **never auto-assigned** — always manual admin decision
+- Re-uploading CSV does NOT overwrite manually assigned `DATA_SPOC` or `ADMIN` roles
+
+### Override Table (For Duplicates & Exceptions)
+
+```sql
+CREATE TABLE IF NOT EXISTS supervisor_overrides (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  supervisor_name TEXT NOT NULL UNIQUE,
+  resolved_employee_no TEXT NOT NULL,
+  reason TEXT,
+  created_by TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+```
+
+### Database Schema Additions
+
+```sql
+-- Add to existing employees table
+ALTER TABLE employees ADD COLUMN lookup_name TEXT;
+ALTER TABLE employees ADD COLUMN supervisor_employee_no TEXT;
+ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT;
+-- supervisor_match_status values: "matched" | "override" | "unresolved" | "external"
+```

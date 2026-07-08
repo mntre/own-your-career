@@ -32,81 +32,10 @@
       margin-bottom: 24px;
     }
 
-    .divider {
-      display: flex;
-      align-items: center;
-      text-align: center;
-      margin: 24px 0;
-    }
-
-    .divider::before,
-    .divider::after {
-      content: '';
-      flex: 1;
-      border-bottom: 1px solid var(--color-teal-soft);
-    }
-
-    .divider-text {
-      padding: 0 var(--spacing-sm);
-      color: #666;
-      font-size: 14px;
-    }
-
-    .role-selector {
-      margin-bottom: 24px;
-    }
-
-    .role-selector label {
-      display: block;
-      font-weight: 500;
-      margin-bottom: var(--spacing-xs);
-      color: var(--color-black);
-    }
-
-    .role-selector select {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid var(--color-teal-soft);
-      border-radius: var(--radius-md);
-      font-size: 16px;
-      font-family: var(--font-body);
-      background: white;
-    }
-
-    .role-selector select:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
-    }
-
-    .login-btn {
-      width: 100%;
-      padding: 14px;
-      background-color: var(--color-primary);
-      color: var(--color-white);
-      border: none;
-      border-radius: var(--radius-md);
-      font-size: 16px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      font-family: var(--font-body);
-    }
-
-    .login-btn:hover {
-      background-color: var(--color-teal-mid);
-    }
-
-    .login-btn:disabled {
-      background-color: var(--color-teal-soft);
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
     .error-message {
-      background: #fff3f3;
-      border: 1px solid var(--color-violet);
-      color: var(--color-violet);
+      background: #fde8e8;
+      border: 1px solid #c62828;
+      color: #c62828;
       padding: 12px 16px;
       border-radius: var(--radius-md);
       margin-bottom: 24px;
@@ -137,10 +66,6 @@
       font-size: 14px;
     }
 
-    .manual-login-form {
-      display: none;
-    }
-
     /* Google Button Styling */
     .google-btn {
       background-color: #fff;
@@ -169,6 +94,195 @@
       margin-bottom: 24px;
     }
 
+    /* Test Users Section */
+    .test-users-toggle {
+      width: 100%;
+      padding: 10px 16px;
+      background: none;
+      border: 1px dashed var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      color: #666;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: all 0.2s;
+    }
+
+    .test-users-toggle:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .test-users-panel {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-teal-soft);
+    }
+
+    .test-users-panel.visible {
+      display: block;
+    }
+
+    .test-user-card {
+      padding: 12px;
+      margin-bottom: 8px;
+      background: var(--color-white);
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .test-user-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .test-user-card:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .test-user-card__name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--color-black);
+      margin-bottom: 2px;
+    }
+
+    .test-user-card__email {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    .test-user-card__portals {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .test-user-card__portal-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      background: #e8f4fd;
+      color: var(--color-primary);
+      font-weight: 500;
+    }
+
+    /* Portal Picker */
+    .portal-picker {
+      display: none;
+    }
+
+    .portal-picker.visible {
+      display: block;
+    }
+
+    .portal-picker__welcome {
+      margin-bottom: 24px;
+    }
+
+    .portal-picker__welcome h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-black);
+      margin: 0 0 4px;
+    }
+
+    .portal-picker__welcome p {
+      color: #666;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .portal-picker__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .portal-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      background: var(--color-white);
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .portal-card:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    .portal-card__icon {
+      font-size: 32px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .portal-card__info {
+      flex: 1;
+    }
+
+    .portal-card__title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-teal-dark);
+      margin-bottom: 2px;
+    }
+
+    .portal-card__desc {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .portal-card__arrow {
+      font-size: 18px;
+      color: var(--color-teal-soft);
+      flex-shrink: 0;
+    }
+
+    .portal-picker__signout {
+      text-align: center;
+    }
+
+    .portal-picker__signout button {
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      padding: 8px 16px;
+    }
+
+    .portal-picker__signout button:hover {
+      color: var(--color-primary);
+    }
+
+    /* Loading state */
+    .login-loading {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .login-loading.visible {
+      display: block;
+    }
+
     /* Responsive */
     @media (max-width: 480px) {
       .login-container {
@@ -184,69 +298,125 @@
 </head>
 <body>
   <div class="login-container">
-    <div class="login-header">
-      <h1>Sign In</h1>
-      <p>Welcome to Own Your Career</p>
-    </div>
-
-    <div id="error-message" class="error-message"></div>
-
-    <!-- Google Sign-In Button Container -->
-    <div id="gsi-client" class="google-signin-container">
-      <div id="g_id_onload"
-           data-client_id="YOUR_GOOGLE_CLIENT_ID"
-           data-context="signin"
-           data-ux_mode="popup"
-           data-callback="handleGoogleCredential"
-           data-auto_select="false">
+    <!-- LOGIN SECTION (shown initially) -->
+    <div id="login-section">
+      <div class="login-header">
+        <h1>Sign In</h1>
+        <p>Welcome to Own Your Career</p>
       </div>
-      <div id="g_id_signin" class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left">
-        <div class="google-btn" style="display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 12px 24px; background: #fff; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px; font-weight: 500; font-family: var(--font-body); color: #1f1f1f; cursor: pointer; transition: background 0.2s;">
-          <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink: 0;">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 12.23-2.16 16.45-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.72 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            <path fill="none" d="M0 0h48v48H0z"/>
-          </svg>
-          Sign in with Google
+
+      <div id="error-message" class="error-message"></div>
+
+      <!-- Google Sign-In Button -->
+      <div id="gsi-client" class="google-signin-container">
+        <div id="g_id_onload"
+             data-client_id="585649952752-msc6tj328077nulh6cho9ui95171fns4.apps.googleusercontent.com"
+             data-context="signin"
+             data-ux_mode="popup"
+             data-callback="handleGoogleCredential"
+             data-auto_select="false">
+        </div>
+        <div id="g_id_signin" class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left">
+          <div class="google-btn">
+            <svg width="18" height="18" viewBox="0 0 48 48">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 12.23-2.16 16.45-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.72 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Sign in with Google
+          </div>
         </div>
       </div>
+
+      <div class="info-box">
+        <h4>Corporate SSO</h4>
+        <p>Sign in with your @convergeict.com Google account. Access is based on your role in the employee database.</p>
+      </div>
+
+      <!-- Test Users (Development Only) -->
+      <button class="test-users-toggle" id="test-users-toggle" aria-expanded="false" aria-controls="test-users-panel">
+        🧪 Test Users (Development Mode)
+      </button>
+
+      <div class="test-users-panel" id="test-users-panel" role="region" aria-label="Test users">
+        <div class="test-user-card" data-email="luigi.espiritu@convergeict.com" data-role="ADMIN">
+          <div class="test-user-card__name">Luigi Espiritu</div>
+          <div class="test-user-card__email">luigi.espiritu@convergeict.com</div>
+          <div class="test-user-card__portals">
+            <span class="test-user-card__portal-badge">Admin</span>
+            <span class="test-user-card__portal-badge">Manager</span>
+            <span class="test-user-card__portal-badge">Employee</span>
+          </div>
+        </div>
+        <div class="test-user-card" data-email="juan.claudio@convergeict.com" data-role="MANAGER">
+          <div class="test-user-card__name">Juan Carlo Claudio</div>
+          <div class="test-user-card__email">juan.claudio@convergeict.com</div>
+          <div class="test-user-card__portals">
+            <span class="test-user-card__portal-badge">Manager</span>
+            <span class="test-user-card__portal-badge">Employee</span>
+          </div>
+        </div>
+        <div class="test-user-card" data-email="ma.bajar@convergeict.com" data-role="DATA_SPOC">
+          <div class="test-user-card__name">Ma. Zaira Bajar</div>
+          <div class="test-user-card__email">ma.bajar@convergeict.com</div>
+          <div class="test-user-card__portals">
+            <span class="test-user-card__portal-badge">Data SPOC</span>
+            <span class="test-user-card__portal-badge">Employee</span>
+          </div>
+        </div>
+        <div class="test-user-card" data-email="p.jeremy.carino@convergeict.com" data-role="EMPLOYEE">
+          <div class="test-user-card__name">Jeremy Cariño</div>
+          <div class="test-user-card__email">p.jeremy.carino@convergeict.com</div>
+          <div class="test-user-card__portals">
+            <span class="test-user-card__portal-badge">Employee</span>
+          </div>
+        </div>
+        <p class="test-users-panel__note">Click a user to simulate login</p>
+      </div>
     </div>
 
-    <div class="info-box">
-      <h4>SSO Login</h4>
-      <p>This system uses Google OAuth 2.0 authentication. Your email will be verified against an allowlist before granting access.</p>
+    <!-- LOADING STATE -->
+    <div id="login-loading" class="login-loading">
+      <p>Verifying access...</p>
+    </div>
+
+    <!-- PORTAL PICKER (shown after login if user has 2+ portals) -->
+    <div id="portal-picker" class="portal-picker">
+      <div class="portal-picker__welcome">
+        <h2 id="picker-welcome-name">Welcome</h2>
+        <p id="picker-welcome-email"></p>
+      </div>
+
+      <div class="portal-picker__grid" id="portal-picker-grid">
+        <!-- Populated dynamically by JS -->
+      </div>
+
+      <div class="portal-picker__signout">
+        <button onclick="logout()">Sign out</button>
+      </div>
     </div>
   </div>
 
   <!-- Scripts (in order) -->
-  <!-- 1. Platform detection (must be first) -->
   <script src="../js/platform.js"></script>
-  
-  <!-- 2. Platform-specific API implementations -->
   <script src="../js/api-converge.js"></script>
   <script src="../js/api-appscript.js"></script>
-  
-  <!-- 3. API adapter (routes to platform-specific impl) -->
   <script src="../js/api-adapter.js"></script>
-  
-  <!-- 4. Core app logic (uses API object) -->
   <script src="../js/app.js"></script>
   <script src="../js/login.js"></script>
-  
-  <!-- Legacy api.js (used as fallback for Phase 1 local testing) -->
-  <!-- Only loaded if API object not created by adapter -->
+
+  <!-- Legacy api.js fallback -->
   <script>
     if (typeof API === 'undefined') {
-      console.log('[Login] API not created by adapter, loading legacy api.js for Phase 1 local testing');
+      console.log('[Login] API not created by adapter, loading legacy api.js');
       const script = document.createElement('script');
       script.src = '../js/api.js';
       document.head.appendChild(script);
     }
   </script>
 
-  <!-- Google Identity Services (for Phase 2+) -->
+  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>

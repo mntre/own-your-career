@@ -56,22 +56,36 @@ const API = (() => {
           { email: 'manager@example.com', role: 'MANAGER', name: 'Sample Manager', department: 'Sales' },
           { email: 'employee@example.com', role: 'EMPLOYEE', name: 'Sample Employee', department: 'Sales' },
           { email: 'dataspoc@example.com', role: 'DATA_SPOC', name: 'Sample Data SPOC', department: 'People Operations' },
-          { email: 'admin@example.com', role: 'ADMIN', name: 'Sample Admin', department: 'People Operations' }
+          { email: 'admin@example.com', role: 'ADMIN', name: 'Sample Admin', department: 'People Operations' },
+          { email: 'luigi.espiritu@convergeict.com', role: 'ADMIN', name: 'Luigi Gabriel Espiritu', department: 'People Transformation' },
+          { email: 'juan.claudio@convergeict.com', role: 'MANAGER', name: 'Juan Carlo Claudio', department: 'People Transformation' },
+          { email: 'ma.bajar@convergeict.com', role: 'DATA_SPOC', name: 'Ma. Zaira Rodelle Bajar', department: 'People Transformation' },
+          { email: 'michael.escobilla@convergeict.com', role: 'MANAGER', name: 'Michael Ryan Escobilla', department: 'People Transformation' },
+          { email: 'charvin.penaverde@convergeict.com', role: 'MANAGER', name: 'Charvin Kale Peñaverde', department: 'People Transformation' },
+          { email: 'p.jeremy.carino@convergeict.com', role: 'EMPLOYEE', name: 'Jeremy Louise Cariño', department: 'People Productivity' },
+          { email: 'p.ernica.castronero@convergeict.com', role: 'EMPLOYEE', name: 'Ernica Castronero', department: 'People Productivity' }
         ];
         
-        const user = MOCK_ALLOWLIST.find(u => u.email === email && u.role === role);
+        // Match by email first (for SSO flow where role is not provided)
+        // If role is provided, match both email + role (legacy test mode)
+        let user;
+        if (role) {
+          user = MOCK_ALLOWLIST.find(u => u.email === email && u.role === role);
+        } else {
+          user = MOCK_ALLOWLIST.find(u => u.email === email);
+        }
         
         if (!user) {
           return {
             success: false,
-            message: `Invalid credentials. Try: manager@, employee@, dataspoc@, admin@example.com`
+            message: 'Access denied. Email not found in employee database.'
           };
         }
         
         // Generate mock JWT
         const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
         const payload = btoa(JSON.stringify({
-          sub: email, email: email, role: role,
+          sub: email, email: email, role: user.role,
           iat: Math.floor(Date.now() / 1000),
           exp: Math.floor(Date.now() / 1000) + (30 * 60)
         }));
