@@ -122,7 +122,7 @@ async function verifyGoogleIdToken(idToken) {
 /**
  * Authenticates user via Google OAuth 2.0 with allowlist validation
  * @param {string} email - User email from Google token
- * @param {string} role - User role (EMPLOYEE, MANAGER, DATA_SPOC)
+ * @param {string} role - User role (EMPLOYEE, MANAGER, DATA_SPOC) — optional fallback
  * @param {string} idToken - Google ID token
  * @returns {Promise<Object>} Auth result with success status and token
  */
@@ -131,33 +131,50 @@ async function authenticateUser(email, role, idToken) {
   const isTestingMode = process.env.NODE_ENV !== 'production';
   
   if (isTestingMode) {
-    // Phase 1B Testing Mode: Accept predefined test users
+    // Accept predefined test users (generic + real team emails)
     const testAllowlist = [
-      { email: 'manager@example.com', role: 'MANAGER' },
-      { email: 'employee@example.com', role: 'EMPLOYEE' },
-      { email: 'dataspoc@example.com', role: 'DATA_SPOC' },
-      { email: 'admin@example.com', role: 'ADMIN' }
+      { email: 'manager@example.com', role: 'MANAGER', name: 'Sample Manager', department: 'Sales' },
+      { email: 'employee@example.com', role: 'EMPLOYEE', name: 'Sample Employee', department: 'Sales' },
+      { email: 'dataspoc@example.com', role: 'DATA_SPOC', name: 'Sample Data SPOC', department: 'People Operations' },
+      { email: 'admin@example.com', role: 'ADMIN', name: 'Sample Admin', department: 'People Operations' },
+      { email: 'luigi.espiritu@convergeict.com', role: 'ADMIN', name: 'Luigi Gabriel Espiritu', department: 'People Transformation' },
+      { email: 'juan.claudio@convergeict.com', role: 'MANAGER', name: 'Juan Carlo Claudio', department: 'People Transformation' },
+      { email: 'ma.bajar@convergeict.com', role: 'DATA_SPOC', name: 'Ma. Zaira Rodelle Bajar', department: 'People Transformation' },
+      { email: 'michael.escobilla@convergeict.com', role: 'MANAGER', name: 'Michael Ryan Escobilla', department: 'People Transformation' },
+      { email: 'charvin.penaverde@convergeict.com', role: 'MANAGER', name: 'Charvin Kale Peñaverde', department: 'People Transformation' },
+      { email: 'p.jeremy.carino@convergeict.com', role: 'EMPLOYEE', name: 'Jeremy Louise Cariño', department: 'People Productivity' },
+      { email: 'p.ernica.castronero@convergeict.com', role: 'EMPLOYEE', name: 'Ernica Castronero', department: 'People Productivity' }
     ];
     
-    const testUser = testAllowlist.find(u => u.email === email && u.role === role);
+    // Match by email (role-agnostic) — system determines role
+    let testUser;
+    if (role) {
+      testUser = testAllowlist.find(u => u.email === email && u.role === role);
+    }
+    if (!testUser) {
+      testUser = testAllowlist.find(u => u.email === email);
+    }
     
     if (!testUser) {
       return {
         success: false,
-        message: 'Test user not found. Use: manager@, employee@, dataspoc@, admin@example.com'
+        message: 'Access denied. Email not found in employee database.'
       };
     }
     
-    // Generate session token
-    const token = generateToken(email, role);
+    // Generate session token using the user's actual role from DB/allowlist
+    const userRole = testUser.role;
+    const token = generateToken(email, userRole);
     
     return {
       success: true,
-      message: 'Authentication successful (Phase 1B Testing Mode)',
+      message: 'Authentication successful (Testing Mode)',
       token: token,
       user: {
         email: email,
-        role: role
+        role: userRole,
+        name: testUser.name || '',
+        department: testUser.department || ''
       }
     };
   }
@@ -195,25 +212,9 @@ async function authenticateUser(email, role, idToken) {
     };
   }
 
-  // Validate role
-  const validRoles = ['EMPLOYEE', 'MANAGER', 'DATA_SPOC', 'ADMIN'];
-  if (!validRoles.includes(role)) {
-    return {
-      success: false,
-      message: 'Invalid role selected'
-    };
-  }
-
-  // Check allowlist
-  if (!isEmailOnAllowlist(email)) {
-    return {
-      success: false,
-      message: 'Access denied. Your email is not authorized to access this system.'
-    };
-  }
-
-  // Generate session token
-  const token = generateToken(email, role);
+  // Generate session token (role comes from DB lookup in routes.js)
+  const userRole = role || 'EMPLOYEE';
+  const token = generateToken(email, userRole);
 
   return {
     success: true,
@@ -221,7 +222,7 @@ async function authenticateUser(email, role, idToken) {
     token: token,
     user: {
       email: email,
-      role: role
+      role: userRole
     }
   };
 }

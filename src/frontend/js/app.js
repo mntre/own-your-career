@@ -35,7 +35,7 @@ const App = {
 
   /**
    * Check if user has an active session
-   * Redirect to login if not
+   * Redirect to login if not, or deny portal access if wrong role
    */
   checkSession: function() {
     const user = sessionStorage.getItem(this.SESSION_KEY);
@@ -80,6 +80,48 @@ const App = {
     // Parse and store user
     this.currentUser = JSON.parse(user);
     console.log('[App] Session active for:', this.currentUser.email, 'role:', this.currentUser.role);
+
+    // Verify portal access — does this user's role allow them on this page?
+    this.verifyPortalAccess(currentPage);
+  },
+
+  /**
+   * Verify user has access to the current portal page.
+   * If not, redirect to login.html (which shows portal picker if multi-role).
+   * 
+   * Access rules:
+   * - admin-portal.html → ADMIN only
+   * - manager-portal.html → MANAGER or ADMIN
+   * - dataspoc-portal.html → DATA_SPOC only
+   * - employee-portal.html → Everyone (all roles have employee access)
+   * 
+   * @param {string} currentPage - Current page identifier
+   */
+  verifyPortalAccess: function(currentPage) {
+    if (!this.currentUser || currentPage === 'login' || currentPage === 'unknown') {
+      return; // Nothing to verify
+    }
+
+    const role = this.currentUser.role;
+    const allowedRolesMap = {
+      admin: ['ADMIN'],
+      manager: ['MANAGER', 'ADMIN'],
+      dataspoc: ['DATA_SPOC'],
+      employee: ['EMPLOYEE', 'MANAGER', 'DATA_SPOC', 'ADMIN']
+    };
+
+    const allowedRoles = allowedRolesMap[currentPage];
+
+    if (!allowedRoles) {
+      console.warn('[App] Unknown page for access check:', currentPage);
+      return;
+    }
+
+    if (!allowedRoles.includes(role)) {
+      console.warn(`[App] Access denied: ${this.currentUser.email} (${role}) cannot access ${currentPage} portal`);
+      // Redirect to login — portal picker will show their actual options
+      this.redirectToLogin();
+    }
   },
 
   /**

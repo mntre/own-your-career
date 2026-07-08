@@ -23,34 +23,36 @@ const { Employees, SystemConfig, Workflow, AuditLog, ExportHistory } = require('
  * POST /api/login
  * User login via SSO (Google or corporate email)
  * No authentication required (public endpoint)
+ * 
+ * Accepts:
+ * - email (required): User email
+ * - role (optional): If provided, validates against DB. If not, looks up from DB.
+ * - googleCredential (optional): Google ID token for SSO verification
+ * 
+ * Returns: { success, token, user: { email, role, name, department } }
  */
 router.post('/api/login', async (req, res) => {
   try {
     const { email, role, googleCredential } = req.body;
 
-    if (!role) {
+    if (!email) {
       return res.status(400).json({
         success: false,
-        message: 'Role is required'
+        message: 'Email is required'
       });
     }
 
     // If Google credential is provided, verify it
     if (googleCredential && googleCredential.trim() !== '') {
       try {
-        // Decode the JWT credential
         const payload = JSON.parse(Buffer.from(googleCredential.split('.')[1], 'base64').toString('utf8'));
         
-        // Verify the email matches
-        if (payload.email !== email) {
+        if (payload.email && payload.email.toLowerCase() !== email.toLowerCase()) {
           return res.status(400).json({
             success: false,
             message: 'Email mismatch in credential'
           });
         }
-
-        // In production, verify the ID token with Google's servers
-        // For now, we trust the frontend-provided credential (should validate on server)
       } catch (error) {
         console.error('Invalid Google credential:', error);
         return res.status(400).json({
@@ -60,21 +62,52 @@ router.post('/api/login', async (req, res) => {
       }
     }
 
-    const result = await auth.authenticateUser(email, role, googleCredential);
+    // Look up employee in database by email
+    const employee = Employees.getByEmail(email.toLowerCase());
 
-    if (result.success) {
-      res.json({
+    if (employee) {
+      // Found in DB — use their stored role
+      const userRole = employee.role || 'EMPLOYEE';
+      const token = auth.generateToken(email, userRole);
+
+      AuditLog.add('LOGIN', email, 'User logged in', `Role: ${userRole}, Source: ${googleCredential ? 'Google SSO' : 'Test mode'}`);
+
+      return res.json({
         success: true,
-        message: result.message,
-        token: result.token,
-        user: result.user
-      });
-    } else {
-      res.status(401).json({
-        success: false,
-        message: result.message
+        message: 'Authentication successful',
+        token: token,
+        user: {
+          email: email,
+          role: userRole,
+          name: employee.full_name || '',
+          department: employee.department_label || '',
+          employeeNo: employee.employee_no || ''
+        }
       });
     }
+
+    // Not in DB — check test mode allowlist (development only)
+    const isTestingMode = process.env.NODE_ENV !== 'production';
+
+    if (isTestingMode) {
+      const result = await auth.authenticateUser(email, role || 'EMPLOYEE', googleCredential);
+      if (result.success) {
+        return res.json({
+          success: true,
+          message: result.message,
+          token: result.token,
+          user: result.user
+        });
+      }
+    }
+
+    // Not found anywhere — deny access
+    AuditLog.add('LOGIN_DENIED', email, 'Access denied — email not in employee database', '');
+
+    return res.status(401).json({
+      success: false,
+      message: 'Access denied. Your email is not registered in the system. Please contact your Admin or HR team to have your account added.'
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({
