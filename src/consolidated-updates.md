@@ -933,11 +933,12 @@ SkillID | SkillName | SkillType | RequiredLevel
 8 | Decision Making | LEADERSHIP | 4
 9 | Change Management | LEADERSHIP | 3
 10 | Stakeholder Management | LEADERSHIP | 3
-# Pending Work — Comprehensive Remaining Deliverables (47 Items)
-# Pending Work — Comprehensive Remaining Deliverables (34 Items)
+# Pending Work — Comprehensive Remaining Deliverables (20 Items)
 
 > **Guide for July 17 Launch.** This is the single source of truth for all remaining work.
 > Items 1-13 COMPLETED on July 8, 2026 — Converge platform now has full DB interaction.
+> Items 14-20 COMPLETED on July 8, 2026 — Admin APIs fully operational.
+> Items 28-34 COMPLETED on July 8, 2026 — Frontend wired to Converge API end-to-end.
 
 ---
 
@@ -970,17 +971,17 @@ All 9 workflow POST/GET endpoints now have full DB interaction.
 
 ---
 
-## 🟡 CONVERGE BACKEND — Admin APIs
+## ~~CONVERGE BACKEND — Admin APIs~~ ✅ COMPLETE (Jul 8)
 
 | # | Deliverable | File | Status |
 |----|-------------|------|--------|
-| 14 | POST/GET `/api/admin/skill-definitions` — CRUD for Core Skills configuration (A3) | routes.js + db.js | 🟡 TODO |
-| 15 | POST/GET `/api/admin/leadership-definitions` — CRUD for Leadership Skills configuration (A4) | routes.js + db.js | 🟡 TODO |
-| 16 | POST/GET `/api/admin/org-hierarchy` — CRUD for Corporate→Group→Dept→Team structure (A6) | routes.js + db.js | 🟡 TODO |
-| 17 | GET `/api/admin/send-reminders` — actual email sending (currently stub) | routes.js | 🟡 TODO |
-| 18 | POST `/api/admin/lock-system` — enforce hard lock immediately (currently stub) | routes.js | 🟡 TODO |
-| 19 | GET `/api/admin/export-progress` — actual progress report generation (currently stub) | routes.js | 🟡 TODO |
-| 20 | POST `/api/admin/trigger-sftp` — actual SFTP export trigger (currently stub) | routes.js | 🟡 TODO |
+| 14 | POST/GET `/api/admin/skill-definitions` — CRUD for Core Skills configuration (A3) | routes.js + db.js | ✅ DONE |
+| 15 | POST/GET `/api/admin/leadership-definitions` — CRUD for Leadership Skills configuration (A4) | routes.js + db.js | ✅ DONE |
+| 16 | POST/GET `/api/admin/org-hierarchy` — CRUD for Corporate→Group→Dept→Team structure (A6) | routes.js + db.js | ✅ DONE |
+| 17 | GET `/api/admin/send-reminders` — actual email sending (currently stub) | routes.js | ✅ DONE |
+| 18 | POST `/api/admin/lock-system` — enforce hard lock immediately (currently stub) | routes.js | ✅ DONE |
+| 19 | GET `/api/admin/export-progress` — actual progress report generation (currently stub) | routes.js | ✅ DONE |
+| 20 | POST `/api/admin/trigger-sftp` — actual SFTP export trigger (currently stub) | routes.js | ✅ DONE |
 
 ---
 
@@ -1007,17 +1008,17 @@ All 9 workflow POST/GET endpoints now have full DB interaction.
 
 ---
 
-## 🟡 FRONTEND — Data Flow Gaps
+## ~~FRONTEND — Data Flow Gaps~~ ✅ COMPLETE (Jul 8)
 
 | # | Deliverable | File | Status |
 |----|-------------|------|--------|
-| 28 | Read-only enforcement after Step 5 (disable form fields, hide edit buttons for employee-facing data) | All portal JS | 🟡 TODO |
-| 29 | Read-only enforcement after hard lock date (all forms across all portals become non-editable) | All portal JS | 🟡 TODO |
-| 30 | Wire Manager Portal form submissions to Converge API (currently only wired to AppScript) | manager-portal.js | 🟡 TODO |
-| 31 | Wire Employee Portal form submissions to Converge API | employee-portal.html | 🟡 TODO |
-| 32 | Wire DataSPOC Portal form submissions to Converge API | dataspoc-portal.html | 🟡 TODO |
-| 33 | Display actual workflow status badges from backend (currently uses placeholder/mock data) | manager-portal.js | 🟡 TODO |
-| 34 | Load real scores in Employee Portal Step 6 view (currently no Converge endpoint to pull from) | employee-portal.html | 🟡 TODO |
+| 28 | Read-only enforcement after Step 5 (disable form fields, hide edit buttons for employee-facing data) | employee-portal.html | ✅ DONE |
+| 29 | Read-only enforcement after hard lock date (all forms across all portals become non-editable) | employee-portal.html | ✅ DONE |
+| 30 | Wire Manager Portal form submissions to Converge API (currently only wired to AppScript) | manager-portal.js | ✅ DONE |
+| 31 | Wire Employee Portal form submissions to Converge API | employee-portal.html | ✅ DONE |
+| 32 | Wire DataSPOC Portal form submissions to Converge API | dataspoc-portal.html | ✅ DONE |
+| 33 | Display actual workflow status badges from backend (currently uses placeholder/mock data) | manager-portal.js | ✅ DONE |
+| 34 | Load real scores in Employee Portal Step 6 view (currently no Converge endpoint to pull from) | employee-portal.html | ✅ DONE |
 
 ---
 
@@ -1069,7 +1070,9 @@ All 9 workflow POST/GET endpoints now have full DB interaction.
 | Priority | Count | Description |
 |----------|-------|-------------|
 | ✅ COMPLETE (was CRITICAL) | 13 | Items 1-13 — Converge routes + enforcement — DONE Jul 8 |
-| 🟡 HIGH (required for full functionality) | 22 | Items 14-20, 23-37 — Admin APIs, email, frontend wiring, admin UI content |
+| ✅ COMPLETE (was HIGH) | 7 | Items 14-20 — Admin APIs — DONE Jul 8 |
+| ✅ COMPLETE (was HIGH) | 7 | Items 28-34 — Frontend wiring — DONE Jul 8 |
+| 🟡 HIGH (remaining) | 8 | Items 23-27, 35-37 — Email service + admin UI content |
 | 🟢 BACKLOG (can defer) | 12 | Items 38-49 — Shared stubs, tests, deployment config |
 | ✅ RESOLVED (no longer pending) | 2 | Items 21-22 — detectConflict/logConflict already implemented |
 

@@ -299,6 +299,44 @@ function loadTeamMembersOverview() {
         alert('Error loading team members: ' + error.toString());
       })
       .getTeamMembersWithStatusData(ManagerPortal.currentManager.employeeId);
+  } else {
+    // Converge Cloud — call API.getTeam()
+    console.log('[ManagerPortal] Loading team via Converge API');
+    
+    API.getTeam(ManagerPortal.currentManager.employeeId)
+      .then(result => {
+        if (result.success) {
+          console.log('[ManagerPortal] Loaded', result.teamCount, 'team members from API');
+          
+          // Map API response to expected format
+          const teamData = result.team.map(member => ({
+            employeeId: member.employeeNo,
+            name: member.fullName,
+            email: member.email,
+            department: member.department,
+            position: member.position,
+            band: member.band,
+            step1Complete: member.workflowStatus ? member.workflowStatus.step1Complete : false,
+            step2Complete: member.workflowStatus ? member.workflowStatus.step2Complete : false,
+            step3Complete: member.workflowStatus ? member.workflowStatus.step3Complete : false,
+            step4Complete: member.workflowStatus ? member.workflowStatus.step4Complete : false,
+            step5Complete: member.workflowStatus ? member.workflowStatus.step5Complete : false,
+            step6Complete: member.workflowStatus ? member.workflowStatus.step6Complete : false,
+            step7Complete: member.workflowStatus ? member.workflowStatus.step7Complete : false
+          }));
+          
+          ManagerPortal.teamMembers = teamData;
+          displayTeamOverview(teamData);
+        } else {
+          console.error('[ManagerPortal] API error:', result.message);
+          // Fall back to placeholder if API fails
+          loadPlaceholderTeamData();
+        }
+      })
+      .catch(error => {
+        console.error('[ManagerPortal] Network error:', error);
+        loadPlaceholderTeamData();
+      });
   }
 }
 
@@ -923,20 +961,40 @@ function handleSkillsFormSubmit(e) {
       })
       .saveSkillsAssessment(ManagerPortal.selectedEmployee, assessmentData);
   } else {
-    // For Converge Cloud or offline testing - update locally
-    console.log('[ManagerPortal] Saving skills assessment offline (no APPSCRIPT backend)');
+    // Converge Cloud — call the API
+    console.log('[ManagerPortal] Saving skills assessment via Converge API');
     
-    // Update placeholder data to mark step 1 as complete
-    const placeholderWorkflow = JSON.parse(localStorage.getItem('placeholderWorkflow')) || {};
-    if (placeholderWorkflow[ManagerPortal.selectedEmployee]) {
-      placeholderWorkflow[ManagerPortal.selectedEmployee].step1Complete = true;
-      localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
-      console.log('[ManagerPortal] Workflow updated:', placeholderWorkflow[ManagerPortal.selectedEmployee]);
+    // Build skills array from form data
+    const skills = [];
+    const formEntries = Object.entries(assessmentData);
+    for (const [key, value] of formEntries) {
+      if (key.startsWith('core_') || key.startsWith('leadership_')) {
+        const parts = key.split('_');
+        const skillType = parts[0] === 'core' ? 'CORE' : 'LEADERSHIP';
+        const skillName = parts.slice(1).join(' ');
+        skills.push({ skillType, skillName, rating: parseInt(value) || 0 });
+      }
     }
-    
-    alert('Skills assessment saved successfully!');
-    showTeamOverview();
-    loadTeamMembersOverview();
+
+    // If no parsed skills, send raw form data as a single entry
+    if (skills.length === 0) {
+      skills.push({ skillType: 'CORE', skillName: 'General Assessment', rating: 3, remarks: JSON.stringify(assessmentData) });
+    }
+
+    API.saveSkillsAssessment(ManagerPortal.selectedEmployee, skills)
+      .then(result => {
+        if (result.success) {
+          alert('Skills assessment saved successfully!');
+          showTeamOverview();
+          loadTeamMembersOverview();
+        } else {
+          alert('Error saving skills assessment: ' + result.message);
+        }
+      })
+      .catch(error => {
+        console.error('[ManagerPortal] API error:', error);
+        alert('Error saving skills assessment');
+      });
   }
 }
 
@@ -981,21 +1039,29 @@ function handleFeedForwardFormSubmit(e) {
       })
       .saveFeedForward(ManagerPortal.selectedEmployee, ManagerPortal.currentManager.employeeId, feedForwardData);
   } else {
-    // For Converge Cloud or offline testing - update locally
-    console.log('[ManagerPortal] Saving feed forward offline (no APPSCRIPT backend)');
+    // Converge Cloud — call the API
+    console.log('[ManagerPortal] Saving feed forward via Converge API');
     
-    // Update placeholder data to mark step 4 as complete and step 5 as pending
-    const placeholderWorkflow = JSON.parse(localStorage.getItem('placeholderWorkflow')) || {};
-    if (placeholderWorkflow[ManagerPortal.selectedEmployee]) {
-      placeholderWorkflow[ManagerPortal.selectedEmployee].step4Complete = true;
-      placeholderWorkflow[ManagerPortal.selectedEmployee].step5Complete = false;
-      localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
-      console.log('[ManagerPortal] Workflow updated:', placeholderWorkflow[ManagerPortal.selectedEmployee]);
-    }
-    
-    alert('Feed forward saved successfully!');
-    showTeamOverview();
-    loadTeamMembersOverview();
+    API.saveFeedForward({
+      employeeNo: ManagerPortal.selectedEmployee,
+      comments: feedForwardData.comments || feedForwardData.feedback || '',
+      performanceRating: feedForwardData.performanceRating || feedForwardData.rating || '',
+      strengths: feedForwardData.strengths || '',
+      areasForImprovement: feedForwardData.areasForImprovement || feedForwardData.areas_for_improvement || ''
+    })
+      .then(result => {
+        if (result.success) {
+          alert('Feed forward saved successfully!');
+          showTeamOverview();
+          loadTeamMembersOverview();
+        } else {
+          alert('Error saving feed forward: ' + result.message);
+        }
+      })
+      .catch(error => {
+        console.error('[ManagerPortal] API error:', error);
+        alert('Error saving feed forward');
+      });
   }
 }
 
@@ -1035,20 +1101,23 @@ function handleAcknowledgementFormSubmit(e) {
       })
       .saveAcknowledgement(ManagerPortal.selectedEmployee, ManagerPortal.currentManager.employeeId, ackData, 'MANAGER');
   } else {
-    // For Converge Cloud or offline testing - update locally
-    console.log('[ManagerPortal] Saving acknowledgement offline (no APPSCRIPT backend)');
+    // Converge Cloud — call the API
+    console.log('[ManagerPortal] Saving acknowledgement via Converge API');
     
-    // Update placeholder data to mark step 5 as complete
-    const placeholderWorkflow = JSON.parse(localStorage.getItem('placeholderWorkflow')) || {};
-    if (placeholderWorkflow[ManagerPortal.selectedEmployee]) {
-      placeholderWorkflow[ManagerPortal.selectedEmployee].step5Complete = true;
-      localStorage.setItem('placeholderWorkflow', JSON.stringify(placeholderWorkflow));
-      console.log('[ManagerPortal] Workflow updated:', placeholderWorkflow[ManagerPortal.selectedEmployee]);
-    }
-    
-    alert('Acknowledgement saved successfully!');
-    showTeamOverview();
-    loadTeamMembersOverview();
+    API.saveAcknowledgement(ManagerPortal.selectedEmployee, 5, ackData.comment || '')
+      .then(result => {
+        if (result.success) {
+          alert('Acknowledgement saved successfully!');
+          showTeamOverview();
+          loadTeamMembersOverview();
+        } else {
+          alert('Error saving acknowledgement: ' + result.message);
+        }
+      })
+      .catch(error => {
+        console.error('[ManagerPortal] API error:', error);
+        alert('Error saving acknowledgement');
+      });
   }
 }
 

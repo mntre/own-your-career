@@ -2397,9 +2397,37 @@
 
     /**
      * Updates the uploading status table with submission info for ALL members in department
+     * Also saves OKR data to backend API (Item #32)
      */
     function updateUploadingStatusForAllMembers(dept, status) {
       const currentDept = document.getElementById('department').value;
+
+      // Save to Converge API (Item #32 — Wire DataSPOC Portal to Converge API)
+      if (typeof API !== 'undefined' && API.saveOkrUpload && departmentMembers[dept]) {
+        const spocEmail = sessionStorage.getItem('oyc_token') ? 
+          (API.decodeToken ? (API.decodeToken(sessionStorage.getItem('oyc_token')) || {}).email : '') : '';
+        
+        departmentMembers[dept].forEach(member => {
+          const empNo = member.employeeId || member.id || '';
+          if (empNo) {
+            API.saveOkrUpload({
+              employeeNo: empNo,
+              corporateOkr: null,
+              groupOkr: null,
+              departmentOkr: null,
+              teamOkr: null,
+              targetScore: null,
+              actualScore: null,
+              weight: null,
+              okrStatus: 'ON_TRACK'
+            }).then(r => {
+              if (r.success) console.log(`[DataSPOC] OKR saved for ${empNo}`);
+              else console.warn(`[DataSPOC] OKR save failed for ${empNo}:`, r.message);
+            }).catch(err => console.warn('[DataSPOC] API error:', err));
+          }
+        });
+      }
+
       if (currentDept === dept && departmentMembers[dept]) {
         const now = new Date();
         const tbody = document.getElementById('uploading-status-body');

@@ -212,6 +212,64 @@ const API = (() => {
           updated: data.rows.length,
           errors: []
         };
+      },
+
+      // Workflow methods (Steps 1-7)
+      saveSkillsAssessment: async function(employeeNo, skills) {
+        console.log('[Mock API] saveSkillsAssessment:', employeeNo, skills.length, 'skills');
+        return { success: true, message: 'Skills assessment saved (mock)', skillsCount: skills.length };
+      },
+
+      saveOkrUpload: async function(okrData) {
+        console.log('[Mock API] saveOkrUpload:', okrData.employeeNo);
+        return { success: true, message: 'OKR data uploaded (mock)' };
+      },
+
+      saveSelfAssessment: async function(employeeNo, q1, q2, q3, q4) {
+        console.log('[Mock API] saveSelfAssessment:', employeeNo);
+        return { success: true, message: 'Self-assessment submitted (mock)' };
+      },
+
+      saveFeedForward: async function(feedForward) {
+        console.log('[Mock API] saveFeedForward:', feedForward.employeeNo);
+        return { success: true, message: 'Feed forward submitted (mock)' };
+      },
+
+      saveAcknowledgement: async function(employeeNo, step, comment) {
+        console.log('[Mock API] saveAcknowledgement:', employeeNo, 'step', step);
+        return { success: true, message: `Step ${step} acknowledgement recorded (mock)` };
+      },
+
+      getWorkflowStatus: async function(employeeNo) {
+        console.log('[Mock API] getWorkflowStatus:', employeeNo);
+        return { success: true, employeeNo, status: { step1Complete: false, step2Complete: false, step3Complete: false, step4Complete: false, step5Complete: false, step6Complete: false, step7Complete: false }, isLocked: false };
+      },
+
+      getScores: async function(employeeNo) {
+        console.log('[Mock API] getScores:', employeeNo);
+        return { success: true, employeeNo, scores: { skills: [], okr: null, feedForward: null, selfAssessment: null, performanceBracket: null } };
+      },
+
+      getTeam: async function(managerId) {
+        console.log('[Mock API] getTeam:', managerId);
+        return { success: true, managerId, managerName: 'Mock Manager', team: [], teamCount: 0 };
+      },
+
+      getOrgData: async function(spocId) {
+        console.log('[Mock API] getOrgData:', spocId);
+        return { success: true, hierarchy: {}, groups: [], departments: [] };
+      },
+
+      getSkillDefinitions: async function() {
+        return { success: true, skills: [] };
+      },
+
+      getLeadershipDefinitions: async function() {
+        return { success: true, skills: [] };
+      },
+
+      getOrgHierarchy: async function() {
+        return { success: true, hierarchy: [], groupCount: 0, departmentCount: 0 };
       }
     };
   }

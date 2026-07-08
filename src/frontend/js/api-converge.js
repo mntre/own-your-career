@@ -350,6 +350,122 @@ const APIConverge = {
    */
   updateRolesBulk: async function(data) {
     return this.request('POST', '/admin/update-roles-bulk', data);
+  },
+
+  /* --------------------------------------------------------------------------
+     WORKFLOW API METHODS (Steps 1-7)
+     -------------------------------------------------------------------------- */
+
+  /**
+   * Save skills assessment (Step 1)
+   * @param {string} employeeNo - Employee being assessed
+   * @param {Object[]} skills - Array of { skillType, skillName, rating, remarks }
+   * @returns {Promise<Object>} {success, message}
+   */
+  saveSkillsAssessment: async function(employeeNo, skills) {
+    return this.request('POST', '/skills-assessment', { employeeNo, skills });
+  },
+
+  /**
+   * Upload OKR data (Step 2)
+   * @param {Object} okrData - { employeeNo, corporateOkr, groupOkr, departmentOkr, teamOkr, targetScore, actualScore, weight, okrStatus }
+   * @returns {Promise<Object>} {success, message}
+   */
+  saveOkrUpload: async function(okrData) {
+    return this.request('POST', '/okr-upload', okrData);
+  },
+
+  /**
+   * Submit self-assessment (Step 3)
+   * @param {string} employeeNo
+   * @param {string} q1 - Answer to question 1
+   * @param {string} q2 - Answer to question 2
+   * @param {string} q3 - Answer to question 3
+   * @param {string} q4 - Answer to question 4
+   * @returns {Promise<Object>} {success, message}
+   */
+  saveSelfAssessment: async function(employeeNo, q1, q2, q3, q4) {
+    return this.request('POST', '/self-assessment', { employeeNo, q1, q2, q3, q4 });
+  },
+
+  /**
+   * Submit feed forward / manager assessment (Step 4)
+   * @param {Object} feedForward - { employeeNo, comments, performanceRating, strengths, areasForImprovement }
+   * @returns {Promise<Object>} {success, message}
+   */
+  saveFeedForward: async function(feedForward) {
+    return this.request('POST', '/feed-forward', feedForward);
+  },
+
+  /**
+   * Submit acknowledgement (Step 5 or Step 7)
+   * @param {string} employeeNo
+   * @param {number} step - 5 (Manager) or 7 (Employee)
+   * @param {string} [comment] - Optional comment
+   * @returns {Promise<Object>} {success, message}
+   */
+  saveAcknowledgement: async function(employeeNo, step, comment) {
+    return this.request('POST', '/acknowledgement', { employeeNo, step, comment });
+  },
+
+  /**
+   * Get workflow status for an employee (gate checking)
+   * @param {string} employeeNo
+   * @returns {Promise<Object>} {success, status: { step1Complete, ..., step7Complete }, isLocked}
+   */
+  getWorkflowStatus: async function(employeeNo) {
+    return this.request('GET', `/workflow-status/${encodeURIComponent(employeeNo)}`);
+  },
+
+  /**
+   * Get all scores for an employee (Step 6 - read only)
+   * @param {string} employeeNo
+   * @returns {Promise<Object>} {success, scores: { skills, okr, feedForward, selfAssessment, performanceBracket }}
+   */
+  getScores: async function(employeeNo) {
+    return this.request('GET', `/scores/${encodeURIComponent(employeeNo)}`);
+  },
+
+  /**
+   * Get team list for a manager (with workflow status per member)
+   * @param {string} managerId - Manager email or employee number
+   * @returns {Promise<Object>} {success, team: [], teamCount}
+   */
+  getTeam: async function(managerId) {
+    return this.request('GET', `/team/${encodeURIComponent(managerId)}`);
+  },
+
+  /**
+   * Get organizational hierarchy data (for DataSPOC dropdowns)
+   * @param {string} spocId - SPOC email or employee number
+   * @returns {Promise<Object>} {success, hierarchy, groups, departments}
+   */
+  getOrgData: async function(spocId) {
+    return this.request('GET', `/org-data/${encodeURIComponent(spocId)}`);
+  },
+
+  /**
+   * Get skill definitions (core skills)
+   * @returns {Promise<Object>} {success, skills}
+   */
+  getSkillDefinitions: async function() {
+    return this.request('GET', '/admin/skill-definitions');
+  },
+
+  /**
+   * Get leadership skill definitions
+   * @returns {Promise<Object>} {success, skills}
+   */
+  getLeadershipDefinitions: async function() {
+    return this.request('GET', '/admin/leadership-definitions');
+  },
+
+  /**
+   * Get org hierarchy (admin view)
+   * @returns {Promise<Object>} {success, hierarchy}
+   */
+  getOrgHierarchy: async function() {
+    return this.request('GET', '/admin/org-hierarchy');
   }
 };
 
