@@ -209,6 +209,19 @@
       background-color: var(--color-aquamarine);
     }
 
+    /* Back to Grid Button */
+    .back-to-grid-btn {
+      background-color: var(--color-teal-soft);
+      color: var(--color-black);
+      padding: 8px 16px;
+      font-size: 13px;
+      margin-left: auto;
+    }
+
+    .back-to-grid-btn:hover {
+      background-color: var(--color-aquamarine);
+    }
+
     /* Action Buttons */
     .action-buttons {
       display: flex;
@@ -523,6 +536,256 @@
         opacity: 1;
       }
     }
+
+    /* --------------------------------------------------------------------------
+       A2: Employee Database Viewer
+       -------------------------------------------------------------------------- */
+
+    .dashboard-card__subtitle {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .db-stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .db-stat {
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+
+    .db-stat__value {
+      display: block;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    .db-stat__label {
+      display: block;
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .db-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .db-search {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .db-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .db-results-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--spacing-sm);
+      font-size: 13px;
+      color: #666;
+    }
+
+    .db-table-wrapper {
+      overflow-x: auto;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .db-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .db-table th {
+      background: var(--color-teal-dark);
+      color: var(--color-white);
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .db-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--color-teal-soft);
+    }
+
+    .db-table tr:hover td {
+      background: rgba(154, 192, 195, 0.15);
+    }
+
+    .db-table__empty {
+      text-align: center;
+      color: #999;
+      padding: 40px 20px;
+    }
+
+    .db-pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .btn--sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .form-select {
+      padding: 8px 12px;
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      background: var(--color-white);
+      min-width: 140px;
+    }
+
+    .form-select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+    }
+
+    /* --------------------------------------------------------------------------
+       A5: Role Assignment
+       -------------------------------------------------------------------------- */
+
+    .role-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .role-summary__item {
+      padding: 14px;
+      border-radius: var(--radius-md);
+      text-align: center;
+      border-left: 4px solid transparent;
+    }
+
+    .role-summary__item--manager {
+      background: #e8f4fd;
+      border-left-color: #2196F3;
+    }
+
+    .role-summary__item--spoc {
+      background: #fff3e0;
+      border-left-color: #FF9800;
+    }
+
+    .role-summary__item--employee {
+      background: #e6f9f0;
+      border-left-color: #4CAF50;
+    }
+
+    .role-summary__item--admin {
+      background: #f3e5f5;
+      border-left-color: var(--color-violet);
+    }
+
+    .role-summary__count {
+      display: block;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--color-black);
+    }
+
+    .role-summary__label {
+      display: block;
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .role-info-banner {
+      padding: 12px 16px;
+      background: #e8f4fd;
+      border: 1px solid #bbdefb;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      color: #1565c0;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .role-search {
+      margin-bottom: var(--spacing-md);
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .role-badge--manager {
+      background: #e8f4fd;
+      color: #1565c0;
+    }
+
+    .role-badge--spoc {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .role-badge--employee {
+      background: #e6f9f0;
+      color: #0a7c42;
+    }
+
+    .role-badge--admin {
+      background: #f3e5f5;
+      color: #6a1b9a;
+    }
+
+    .role-action-select {
+      padding: 4px 8px;
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .role-bulk-section {
+      margin-top: var(--spacing-lg);
+      padding-top: var(--spacing-lg);
+      border-top: 1px solid var(--color-teal-soft);
+    }
+
+    .role-bulk-section__title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-teal-dark);
+      margin: 0 0 8px 0;
+    }
+
+    .role-bulk-section__desc {
+      font-size: 13px;
+      color: #666;
+      margin: 0 0 12px 0;
+    }
   </style>
 </head>
 <body>
@@ -756,6 +1019,38 @@
         <!-- Upload Result -->
         <div id="employee-upload-result" style="display: none; margin-top: 16px; padding: 16px; border-radius: var(--radius-md);">
         </div>
+
+        <!-- Role Derivation Section (appears after upload) -->
+        <div id="role-derivation-section" style="display: none; margin-top: 24px; padding: 16px; background: #f5f5f5; border-radius: var(--radius-md); border-left: 4px solid #2196F3;">
+          <div style="margin-bottom: 16px;">
+            <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #333;">Step 2: Assign Roles Based on Hierarchy</h3>
+            <p style="margin: 0; color: #666; font-size: 13px;">The system detected employee hierarchies from the "Immediate Supervisor" field. Managers were auto-detected.</p>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px;">
+              <div style="padding: 12px; background: white; border-radius: 6px; text-align: center;">
+                <div id="role-count-manager" style="font-size: 18px; font-weight: bold; color: #2196F3;">0</div>
+                <div style="font-size: 11px; color: #666; margin-top: 4px;">Managers Auto-Detected</div>
+              </div>
+              <div style="padding: 12px; background: white; border-radius: 6px; text-align: center;">
+                <div id="role-count-spoc" style="font-size: 18px; font-weight: bold; color: #FF9800;">0</div>
+                <div style="font-size: 11px; color: #666; margin-top: 4px;">Data SPOCs (to assign)</div>
+              </div>
+              <div style="padding: 12px; background: white; border-radius: 6px; text-align: center;">
+                <div id="role-count-employee" style="font-size: 18px; font-weight: bold; color: #4CAF50;">0</div>
+                <div style="font-size: 11px; color: #666; margin-top: 4px;">Team Members</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <button id="derive-roles-btn" class="btn btn--primary" style="margin-right: 8px;">Auto-Derive Roles from Hierarchy</button>
+            <button id="assign-roles-btn" class="btn btn--secondary">Assign Roles Manually</button>
+          </div>
+
+          <div id="role-derivation-result" style="display: none; margin-top: 12px; padding: 12px; border-radius: 6px; background: #e6f9f0; border: 1px solid #0a7c42; color: #0a7c42; font-size: 13px;"></div>
+        </div>
       </div>
       </div>
 
@@ -764,11 +1059,82 @@
         <div class="dashboard-card">
           <div class="dashboard-card__header">
             <h2>Employee Database</h2>
-            <span style="font-size: 12px; color: #666;">View, search, filter & edit employee records</span>
+            <span class="dashboard-card__subtitle">View, search, filter & edit employee records</span>
           </div>
-          <p style="color: #666; margin-bottom: 16px;">Search and manage all uploaded employee records. Edit individual records before the hard lock date.</p>
-          <div style="text-align: center; color: #999; padding: 40px 20px;">
-            <p>Employee Database Viewer — Coming Soon</p>
+
+          <!-- Stats Row -->
+          <div class="db-stats-row">
+            <div class="db-stat">
+              <span id="db-total-count" class="db-stat__value">0</span>
+              <span class="db-stat__label">Total Employees</span>
+            </div>
+            <div class="db-stat">
+              <span id="db-manager-count" class="db-stat__value">0</span>
+              <span class="db-stat__label">Managers</span>
+            </div>
+            <div class="db-stat">
+              <span id="db-spoc-count" class="db-stat__value">0</span>
+              <span class="db-stat__label">Data SPOCs</span>
+            </div>
+            <div class="db-stat">
+              <span id="db-employee-count" class="db-stat__value">0</span>
+              <span class="db-stat__label">Team Members</span>
+            </div>
+          </div>
+
+          <!-- Search & Filter -->
+          <div class="db-controls">
+            <div class="db-search">
+              <input type="text" id="db-search-input" class="form-input" placeholder="Search by name, email, or employee no." aria-label="Search employees">
+            </div>
+            <div class="db-filters">
+              <select id="db-filter-department" class="form-select" aria-label="Filter by department">
+                <option value="">All Departments</option>
+              </select>
+              <select id="db-filter-role" class="form-select" aria-label="Filter by role">
+                <option value="">All Roles</option>
+                <option value="MANAGER">Manager</option>
+                <option value="DATA_SPOC">Data SPOC</option>
+                <option value="EMPLOYEE">Employee</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+              <select id="db-filter-group" class="form-select" aria-label="Filter by group">
+                <option value="">All Groups</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Results Info -->
+          <div class="db-results-info">
+            <span id="db-results-count">Showing 0 employees</span>
+            <button id="db-export-csv-btn" class="btn btn--secondary btn--sm">Export CSV</button>
+          </div>
+
+          <!-- Employee Table -->
+          <div class="db-table-wrapper">
+            <table class="db-table" id="db-employee-table">
+              <thead>
+                <tr>
+                  <th>Employee No.</th>
+                  <th>Full Name</th>
+                  <th>Email</th>
+                  <th>Department</th>
+                  <th>Band</th>
+                  <th>Role</th>
+                  <th>Supervisor</th>
+                </tr>
+              </thead>
+              <tbody id="db-employee-tbody">
+                <tr><td colspan="7" class="db-table__empty">No employees loaded. Upload a CSV first.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="db-pagination">
+            <button id="db-prev-btn" class="btn btn--secondary btn--sm" disabled>← Previous</button>
+            <span id="db-page-info">Page 1</span>
+            <button id="db-next-btn" class="btn btn--secondary btn--sm" disabled>Next →</button>
           </div>
         </div>
       </div>
@@ -806,11 +1172,71 @@
         <div class="dashboard-card">
           <div class="dashboard-card__header">
             <h2>Role Assignment</h2>
-            <span style="font-size: 12px; color: #666;">Assign roles to employees (Manager, Data SPOC, Employee, Admin)</span>
+            <span class="dashboard-card__subtitle">Assign DATA SPOC and ADMIN roles manually</span>
           </div>
-          <p style="color: #666; margin-bottom: 16px;">Assign or reassign roles for each employee. Update roles via CSV bulk upload or individual assignment.</p>
-          <div style="text-align: center; color: #999; padding: 40px 20px;">
-            <p>Role Assignment Management — Coming Soon</p>
+
+          <!-- Role Summary -->
+          <div class="role-summary">
+            <div class="role-summary__item role-summary__item--manager">
+              <span id="ra-manager-count" class="role-summary__count">0</span>
+              <span class="role-summary__label">Managers (auto-derived)</span>
+            </div>
+            <div class="role-summary__item role-summary__item--spoc">
+              <span id="ra-spoc-count" class="role-summary__count">0</span>
+              <span class="role-summary__label">Data SPOCs (manual)</span>
+            </div>
+            <div class="role-summary__item role-summary__item--employee">
+              <span id="ra-employee-count" class="role-summary__count">0</span>
+              <span class="role-summary__label">Team Members</span>
+            </div>
+            <div class="role-summary__item role-summary__item--admin">
+              <span id="ra-admin-count" class="role-summary__count">0</span>
+              <span class="role-summary__label">Admins (manual)</span>
+            </div>
+          </div>
+
+          <!-- Info Banner -->
+          <div class="role-info-banner">
+            <strong>How roles work:</strong> MANAGER is auto-detected from hierarchy. DATA_SPOC and ADMIN must be assigned manually here. Use the search below to find employees and change their role.
+          </div>
+
+          <!-- Search -->
+          <div class="role-search">
+            <input type="text" id="ra-search-input" class="form-input" placeholder="Search employee to assign role..." aria-label="Search employee for role assignment">
+          </div>
+
+          <!-- Role Assignment Table -->
+          <div class="db-table-wrapper">
+            <table class="db-table" id="ra-table">
+              <thead>
+                <tr>
+                  <th>Employee No.</th>
+                  <th>Full Name</th>
+                  <th>Email</th>
+                  <th>Department</th>
+                  <th>Current Role</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="ra-tbody">
+                <tr><td colspan="6" class="db-table__empty">No employees loaded. Upload a CSV first.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="db-pagination">
+            <button id="ra-prev-btn" class="btn btn--secondary btn--sm" disabled>← Previous</button>
+            <span id="ra-page-info">Page 1</span>
+            <button id="ra-next-btn" class="btn btn--secondary btn--sm" disabled>Next →</button>
+          </div>
+
+          <!-- Bulk Upload -->
+          <div class="role-bulk-section">
+            <h3 class="role-bulk-section__title">Bulk Role Assignment (CSV)</h3>
+            <p class="role-bulk-section__desc">Upload a CSV with columns: Employee No., Role (EMPLOYEE, MANAGER, DATA_SPOC, ADMIN)</p>
+            <input type="file" id="ra-bulk-csv-input" accept=".csv" class="form-input">
+            <button id="ra-bulk-upload-btn" class="btn btn--secondary" disabled>Upload Role CSV</button>
           </div>
         </div>
       </div>

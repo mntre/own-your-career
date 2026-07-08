@@ -266,6 +266,44 @@ const APIConverge = {
    */
   uploadEmployeeDatabase: async function(data) {
     return this.request('POST', '/admin/upload-employees', data);
+  },
+
+  /**
+   * Auto-derive MANAGER roles from immediate_supervisor field
+   * @returns {Promise<Object>} {success, message, managersAutoDetected, roles}
+   */
+  deriveRolesFromHierarchy: async function() {
+    return this.request('POST', '/admin/derive-roles');
+  },
+
+  /**
+   * Get all employees with current roles for role assignment UI
+   * @returns {Promise<Object>} {success, employees, roleCount}
+   */
+  getRoleAssignmentData: async function() {
+    return this.request('GET', '/admin/role-assignment');
+  },
+
+  /**
+   * Update role for a single employee
+   * @param {string} employeeNo - Employee number
+   * @param {string} newRole - New role (EMPLOYEE, MANAGER, DATA_SPOC, ADMIN)
+   * @returns {Promise<Object>} {success, message, employeeNo, newRole}
+   */
+  updateEmployeeRole: async function(employeeNo, newRole) {
+    return this.request('POST', '/admin/update-role', {
+      employeeNo: employeeNo,
+      newRole: newRole
+    });
+  },
+
+  /**
+   * Bulk update roles for multiple employees via CSV
+   * @param {Object} data - { headers: string[], rows: Object[] }
+   * @returns {Promise<Object>} {success, message, updated, errors}
+   */
+  updateRolesBulk: async function(data) {
+    return this.request('POST', '/admin/update-roles-bulk', data);
   }
 };
 

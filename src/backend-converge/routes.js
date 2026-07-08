@@ -398,4 +398,178 @@ router.post('/api/admin/upload-employees', rbac.requireAdmin(), (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/derive-roles
+ * Auto-derive MANAGER roles from immediate_supervisor field in employee data
+ * After upload, system auto-detects which employees have reports and marks them as MANAGER
+ * RBAC: ADMIN role only
+ */
+router.post('/api/admin/derive-roles', rbac.requireAdmin(), (req, res) => {
+  try {
+    const result = Employees.autoDerivRoles();
+
+    const userEmail = req.user ? req.user.email : 'admin';
+    AuditLog.add('ROLE_DERIVATION', userEmail, `Auto-detected ${result.managersAutoDetected} managers`, 
+      JSON.stringify(result.roles));
+
+    res.json({
+      success: true,
+      message: `Role derivation complete: ${result.managersAutoDetected} managers auto-detected`,
+      managersAutoDetected: result.managersAutoDetected,
+      roles: result.roles
+    });
+  } catch (error) {
+    console.error('[Admin] Error deriving roles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deriving roles: ' + error.message
+    });
+  }
+});
+
+/**
+ * GET /api/admin/role-assignment
+ * Get all employees with current roles for role assignment UI
+ * RBAC: ADMIN role only
+ */
+router.get('/api/admin/role-assignment', rbac.requireAdmin(), (req, res) => {
+  try {
+    const employees = Employees.getRoleAssignmentList();
+
+    res.json({
+      success: true,
+      employees,
+      roleCount: {
+        'MANAGER': employees.filter(e => e.role === 'MANAGER').length,
+        'DATA_SPOC': employees.filter(e => e.role === 'DATA_SPOC').length,
+        'EMPLOYEE': employees.filter(e => e.role === 'EMPLOYEE').length,
+        'ADMIN': employees.filter(e => e.role === 'ADMIN').length
+      }
+    });
+  } catch (error) {
+    console.error('[Admin] Error loading role assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error loading role assignment: ' + error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/update-role
+ * Update role for a single employee
+ * RBAC: ADMIN role only
+ * Body: { employeeNo, newRole }
+ */
+router.post('/api/admin/update-role', rbac.requireAdmin(), (req, res) => {
+  try {
+    const { employeeNo, newRole } = req.body;
+
+    if (!employeeNo || !newRole) {
+      return res.status(400).json({
+        success: false,
+        message: 'Employee number and new role are required'
+      });
+    }
+
+    const validRoles = ['EMPLOYEE', 'MANAGER', 'DATA_SPOC', 'ADMIN'];
+    if (!validRoles.includes(newRole)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid role. Must be one of: ${validRoles.join(', ')}`
+      });
+    }
+
+    Employees.updateRole(employeeNo, newRole);
+
+    const userEmail = req.user ? req.user.email : 'admin';
+    AuditLog.add('ROLE_UPDATE', userEmail, `Updated role for ${employeeNo}`, `New role: ${newRole}`);
+
+    res.json({
+      success: true,
+      message: `Role updated successfully for ${employeeNo}`,
+      employeeNo,
+      newRole
+    });
+  } catch (error) {
+    console.error('[Admin] Error updating role:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating role: ' + error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/update-roles-bulk
+ * Bulk update roles for multiple employees via CSV
+ * RBAC: ADMIN role only
+ * Body: { headers, rows } where rows have EmployeeNo and Role columns
+ */
+router.post('/api/admin/update-roles-bulk', rbac.requireAdmin(), (req, res) => {
+  try {
+    const { headers, rows } = req.body;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No role data provided'
+      });
+    }
+
+    let updated = 0;
+    const errors = [];
+
+    rows.forEach((row, index) => {
+      try {
+        // Find employee number column (case-insensitive)
+        let empNo = null;
+        let newRole = null;
+
+        for (const key of Object.keys(row)) {
+          if (key.toLowerCase().includes('employee')) {
+            empNo = row[key];
+          }
+          if (key.toLowerCase().includes('role')) {
+            newRole = row[key];
+          }
+        }
+
+        if (!empNo || !newRole) {
+          errors.push(`Row ${index + 1}: Missing Employee No. or Role`);
+          return;
+        }
+
+        const validRoles = ['EMPLOYEE', 'MANAGER', 'DATA_SPOC', 'ADMIN'];
+        if (!validRoles.includes(newRole.toUpperCase())) {
+          errors.push(`Row ${index + 1}: Invalid role "${newRole}"`);
+          return;
+        }
+
+        Employees.updateRole(empNo, newRole.toUpperCase());
+        updated++;
+      } catch (err) {
+        errors.push(`Row ${index + 1}: ${err.message}`);
+      }
+    });
+
+    const userEmail = req.user ? req.user.email : 'admin';
+    AuditLog.add('ROLE_UPDATE_BULK', userEmail, `Bulk role update: ${updated} employees`, 
+      `${errors.length} errors`);
+
+    res.json({
+      success: true,
+      message: `${updated} roles updated successfully`,
+      updated,
+      errors: errors.slice(0, 20)
+    });
+  } catch (error) {
+    console.error('[Admin] Error bulk updating roles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error bulk updating roles: ' + error.message
+    });
+  }
+});
+
 module.exports = router;

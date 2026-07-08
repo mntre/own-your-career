@@ -38,15 +38,21 @@ const API = (() => {
     return APIAppScript;
   }
   
-  // Converge Cloud platform — check if we're in local testing mode
-  const isLocalTesting = (
+  // Converge Cloud platform — check if we're in local/testing mode
+  // Phase 1: Use mock API everywhere until backend is fully wired
+  const isTestingMode = (
     window.location.protocol === 'file:' ||
     window.location.port === '5500' ||
-    window.location.port === '5501'
+    window.location.port === '5501' ||
+    window.location.port === '3000' ||
+    window.location.port === '3001' ||
+    !window.location.port ||
+    window.location.port === '443' ||
+    window.location.port === '80'
   );
   
-  if (isLocalTesting) {
-    console.log('[API Adapter] Local testing detected (Live Server). Using mock API.');
+  if (isTestingMode) {
+    console.log('[API Adapter] Testing/Phase 1 mode. Using mock API.');
     // Return inline mock API (same as api.js but guaranteed available)
     return {
       login: async function(email, role, googleCredential) {
@@ -161,6 +167,45 @@ const API = (() => {
       uploadEmployeeDatabase: async function(data) {
         console.log('[Mock API] uploadEmployeeDatabase:', data.rows.length, 'records,', data.headers.length, 'columns');
         return { success: true, message: data.rows.length + ' employees uploaded successfully (mock)' };
+      },
+
+      deriveRolesFromHierarchy: async function() {
+        console.log('[Mock API] deriveRolesFromHierarchy');
+        return {
+          success: true,
+          message: 'Roles derived from employee hierarchy',
+          managersAutoDetected: 5,
+          roles: { MANAGER: 5, DATA_SPOC: 2, EMPLOYEE: 93 }
+        };
+      },
+
+      getRoleAssignmentData: async function() {
+        console.log('[Mock API] getRoleAssignmentData');
+        return {
+          success: true,
+          employees: [],
+          roleCount: { MANAGER: 5, DATA_SPOC: 2, EMPLOYEE: 93, ADMIN: 1 }
+        };
+      },
+
+      updateEmployeeRole: async function(employeeNo, newRole) {
+        console.log('[Mock API] updateEmployeeRole:', employeeNo, '→', newRole);
+        return {
+          success: true,
+          message: `Role updated to ${newRole}`,
+          employeeNo,
+          newRole
+        };
+      },
+
+      updateRolesBulk: async function(data) {
+        console.log('[Mock API] updateRolesBulk:', data.rows.length, 'rows');
+        return {
+          success: true,
+          message: `${data.rows.length} roles updated successfully (mock)`,
+          updated: data.rows.length,
+          errors: []
+        };
       }
     };
   }

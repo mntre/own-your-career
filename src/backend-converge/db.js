@@ -538,6 +538,64 @@ const Employees = {
   },
 
   /**
+   * Auto-derive roles from employee data (after upload)
+   * Rule: If employee has reports (appears in other's immediate_supervisor), mark as MANAGER
+   * @returns {{ managersAutoDetected: number, roles: Object }}
+   */
+  autoDerivRoles: function() {
+    const managers = new Set();
+    const allEmps = queryAll('SELECT employee_no, full_name, immediate_supervisor FROM employees WHERE is_active = 1');
+
+    // Find all unique supervisor names
+    allEmps.forEach(emp => {
+      if (emp.immediate_supervisor && emp.immediate_supervisor.trim()) {
+        managers.add(emp.immediate_supervisor);
+      }
+    });
+
+    // Update roles for detected managers
+    let count = 0;
+    managers.forEach(supervisorName => {
+      // Find employee by name match
+      const mgr = queryOne(
+        'SELECT employee_no FROM employees WHERE full_name = $name AND is_active = 1',
+        { $name: supervisorName }
+      );
+      if (mgr) {
+        execute('UPDATE employees SET role = $role, updated_at = datetime(\'now\') WHERE employee_no = $emp', {
+          $role: 'MANAGER',
+          $emp: mgr.employee_no
+        });
+        count++;
+      }
+    });
+
+    saveDB();
+
+    return {
+      managersAutoDetected: count,
+      roles: {
+        'MANAGER': count,
+        'DATA_SPOC': queryOne('SELECT COUNT(*) as count FROM employees WHERE role = $role AND is_active = 1', { $role: 'DATA_SPOC' })?.count || 0,
+        'EMPLOYEE': queryOne('SELECT COUNT(*) as count FROM employees WHERE role = $role AND is_active = 1', { $role: 'EMPLOYEE' })?.count || 0
+      }
+    };
+  },
+
+  /**
+   * Get all employees with roles for assignment UI
+   * @returns {Object[]} Array with employee_no, full_name, email, department, role
+   */
+  getRoleAssignmentList: function() {
+    return queryAll(`
+      SELECT employee_no, full_name, email, department_label as department, role 
+      FROM employees 
+      WHERE is_active = 1 
+      ORDER BY role DESC, full_name ASC
+    `);
+  },
+
+  /**
    * Get total employee count
    * @returns {number}
    */
