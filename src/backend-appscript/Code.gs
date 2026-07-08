@@ -33,6 +33,60 @@ function logAccessAttempt(user, role, result, details) {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * TASK 1: Parses roles from a Role column (handles multiple roles).
+ * Accepts pipe (|) or comma (,) separated role strings.
+ * Returns normalized array of valid role names.
+ * 
+ * Examples:
+ * - "MANAGER|DATA_SPOC" → ["MANAGER", "DATA_SPOC"]
+ * - "MANAGER, DATA_SPOC" → ["MANAGER", "DATA_SPOC"]
+ * - "MANAGER" → ["MANAGER"]
+ * - "" → []
+ * - null → []
+ * 
+ * @param {string|null|undefined} rolesString - Role string from database
+ * @returns {string[]} Array of normalized role names (uppercase, trimmed)
+ */
+function parseRoles(rolesString) {
+  try {
+    // Handle null/undefined
+    if (rolesString === null || rolesString === undefined) {
+      console.log(`[parseRoles] Null/undefined input, returning empty array`);
+      return [];
+    }
+    
+    // Convert to string and trim
+    const trimmed = String(rolesString).trim();
+    
+    // Return empty array if empty string
+    if (trimmed === '') {
+      console.log(`[parseRoles] Empty string input, returning empty array`);
+      return [];
+    }
+    
+    // Split by pipe or comma
+    const splitRoles = trimmed.split(/[,|]/).map(role => role.trim().toUpperCase()).filter(role => role !== '');
+    
+    console.log(`[parseRoles] Input: "${rolesString}" → Output: [${splitRoles.join(', ')}]`);
+    
+    // Validate each role is recognized
+    const validRoles = ['ADMIN', 'MANAGER', 'DATA_SPOC', 'EMPLOYEE'];
+    const result = splitRoles.filter(role => {
+      const isValid = validRoles.includes(role);
+      if (!isValid) {
+        console.warn(`[parseRoles] Unrecognized role: "${role}" — filtered out`);
+      }
+      return isValid;
+    });
+    
+    return result;
+  } catch (e) {
+    console.error(`[parseRoles] Error parsing roles "${rolesString}": ${e.message}`);
+    return [];
+  }
+}
+
+/**
  * TASK 1: Normalizes employee/manager IDs to a consistent numeric format.
  * Handles type coercion for both strings and numbers.
  * This fixes type mismatches like 1 vs "1" in ID comparisons.
@@ -1819,6 +1873,7 @@ function getSelfAssessment(employeeId) {
     };
   }
 }
+
 /* -------------------------------------------------------------------------- */
 /*                      SKILL DEFINITIONS (Task 9 Prep)                       */
 /* -------------------------------------------------------------------------- */
@@ -1949,5 +2004,122 @@ function getSystemConfigValue(key) {
   } catch (e) {
     console.error(`[getSystemConfigValue] Error: ${e.message}`);
     return null;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                     TASK 4 & 5: PORTAL ROUTING FUNCTIONS                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * TASK 5: Routes user to the selected portal.
+ * Called from portal-selector.html when user clicks a portal card.
+ * Validates the role and returns the portal URL for client-side redirect.
+ * 
+ * @param {string} selectedRole - The role user selected (MANAGER, DATA_SPOC, EMPLOYEE, ADMIN)
+ * @returns {Object} { success: boolean, portalUrl: string, message: string }
+ */
+function routeToPortal(selectedRole) {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    console.log(`[routeToPortal] User ${userEmail} selected role: ${selectedRole}`);
+    
+    if (!userEmail) {
+      console.warn(`[routeToPortal] No user email found`);
+      return {
+        success: false,
+        portalUrl: '',
+        message: 'Authentication error. Please log in again.'
+      };
+    }
+    
+    if (!selectedRole || typeof selectedRole !== 'string') {
+      console.warn(`[routeToPortal] Invalid role: ${selectedRole}`);
+      return {
+        success: false,
+        portalUrl: '',
+        message: 'Invalid portal selection.'
+      };
+    }
+    
+    // Get employee record
+    const employee = getEmployeeByEmail_(userEmail);
+    if (!employee) {
+      console.warn(`[routeToPortal] Employee not found for ${userEmail}`);
+      return {
+        success: false,
+        portalUrl: '',
+        message: 'Employee record not found.'
+      };
+    }
+    
+    // Parse and validate user's roles
+    const userRoles = parseRoles(employee.Role || '');
+    console.log(`[routeToPortal] User's available roles:`, userRoles);
+    
+    // Verify selected role is in user's available roles
+    if (!userRoles.includes(selectedRole.toUpperCase())) {
+      console.error(`[routeToPortal] UNAUTHORIZED: User ${userEmail} tried to access role ${selectedRole} but only has [${userRoles.join(',')}]`);
+      logAccessAttempt(userEmail, selectedRole, 'DENIED', `Attempted to access unauthorized role`);
+      return {
+        success: false,
+        portalUrl: '',
+        message: 'You do not have permission to access this portal.'
+      };
+    }
+    
+    // Log successful routing
+    console.log(`[routeToPortal] AUTHORIZED: Routing ${userEmail} to ${selectedRole} portal`);
+    logAccessAttempt(userEmail, selectedRole, 'GRANTED', `Portal route confirmed`);
+    
+    // Build portal URL based on role
+    // In Apps Script, we return a redirect URL that the client will navigate to
+    // The client will use: window.location.href = result.portalUrl
+    // This will trigger a new doGet() call on the server
+    const scriptUrl = ScriptApp.getService().getUrl();
+    const portalUrl = scriptUrl + '?portal=' + encodeURIComponent(selectedRole.toUpperCase());
+    
+    console.log(`[routeToPortal] Returning portal URL: ${portalUrl}`);
+    
+    return {
+      success: true,
+      portalUrl: portalUrl,
+      message: `Routing to ${selectedRole} portal`
+    };
+  } catch (e) {
+    console.error(`[routeToPortal] Error: ${e.message}`);
+    console.error(`[routeToPortal] Stack: ${e.stack}`);
+    logAccessAttempt(Session.getActiveUser().getEmail(), 'UNKNOWN', 'ERROR', `routeToPortal error: ${e.message}`);
+    return {
+      success: false,
+      portalUrl: '',
+      message: `Error: ${e.message}`
+    };
+  }
+}
+
+/**
+ * TASK 4: Logout function.
+ * Called when user clicks sign-out link in portal selector.
+ * Simple confirmation endpoint (session cleanup happens on client/browser side).
+ * 
+ * @returns {Object} { success: boolean, message: string }
+ */
+function logout() {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    console.log(`[logout] User ${userEmail} logging out`);
+    logAccessAttempt(userEmail, 'UNKNOWN', 'GRANTED', 'User logout confirmed');
+    
+    return {
+      success: true,
+      message: 'Logout successful'
+    };
+  } catch (e) {
+    console.error(`[logout] Error: ${e.message}`);
+    return {
+      success: false,
+      message: `Logout error: ${e.message}`
+    };
   }
 }

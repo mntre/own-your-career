@@ -250,6 +250,35 @@
     .heat-map-row.amber { border-left-color: #f9a825; }
     .heat-map-row.red { border-left-color: #c62828; }
 
+    /* Footer with Sign Out */
+    .portal-footer {
+      background: var(--color-white);
+      border-top: 1px solid var(--color-teal-soft);
+      padding: var(--spacing-lg) var(--spacing-xl);
+      text-align: right;
+      margin-top: var(--spacing-2xl);
+    }
+
+    .sign-out-link {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .sign-out-link:hover {
+      color: var(--color-teal-mid);
+      text-decoration: underline;
+    }
+
+    .sign-out-link:focus-visible {
+      outline: 2px solid var(--color-aquamarine);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
     @media (max-width: 768px) {
       .portal-main { padding: var(--spacing-md); }
       .employee-info { grid-template-columns: 1fr; }
@@ -484,11 +513,16 @@
     </section>
   </main>
 
+  <!-- Footer with Sign Out -->
+  <footer class="portal-footer">
+    <a href="#" class="sign-out-link" onclick="handleSignOut(event)">Sign out</a>
+  </footer>
+
   <script>
     // === PLATFORM DETECTION (AppScript) ===
     window.PLATFORM = 'APPSCRIPT';
     window.oyc_userEmail = '<?= userEmail ?>';
-    window.oyc_userEmployeeID = <?= employeeId ?>;
+    window.oyc_userEmployeeID = '<?= employeeId ?>';
 
     console.log('[ManagerPortal] Platform:', window.PLATFORM);
     console.log('[ManagerPortal] User Email:', window.oyc_userEmail);
@@ -962,6 +996,24 @@
         });
       }
     };
+
+    // Handle sign-out action
+    function handleSignOut(event) {
+      event.preventDefault();
+      console.log('Sign out clicked');
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('Signed out successfully');
+          // Redirect back to app entry point (will show portal selector for multi-role, or go directly to portal for single-role)
+          window.location.href = window.location.href.split('?')[0];
+        })
+        .withFailureHandler(function(error) {
+          console.error(`Error signing out: ${error}`);
+          alert('Error signing out. Please try again.');
+        })
+        .logout();
+    }
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {

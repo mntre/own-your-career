@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Own Your Career — Portal Selection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-primary: #038F8D;
+      --color-black: #000000;
+      --color-white: #FFFFFF;
+      --color-teal-dark: #024645;
+      --color-teal-mid: #027574;
+      --color-aquamarine: #49D7D1;
+      --color-teal-soft: #9AC0C3;
+      --color-violet: #8965F5;
+      --font-heading: 'Funnel Display', sans-serif;
+      --font-body: 'Funnel Sans', 'DM Sans', sans-serif;
+      --spacing-xs: 0.25rem;
+      --spacing-sm: 0.5rem;
+      --spacing-md: 1rem;
+      --spacing-lg: 1.5rem;
+      --spacing-xl: 2rem;
+      --spacing-2xl: 3rem;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: var(--font-body);
+      color: var(--color-black);
+      background-color: #f5f5f5;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 700; line-height: 1.2; }
+    h1 { font-size: 2rem; color: var(--color-black); }
+    h2 { font-size: 1.5rem; color: var(--color-black); }
+    p { margin-bottom: var(--spacing-md); }
+
+    /* Header Section */
+    .header {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-teal-dark) 100%);
+      color: var(--color-white);
+      padding: var(--spacing-2xl) var(--spacing-xl);
+      text-align: center;
+      box-shadow: var(--shadow-md);
+    }
+
+    .header__title {
+      font-size: 1.75rem;
+      margin-bottom: var(--spacing-xs);
+      font-weight: 700;
+    }
+
+    .header__subtitle {
+      font-size: 0.95rem;
+      opacity: 0.95;
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .header__email {
+      font-size: 0.85rem;
+      opacity: 0.85;
+      font-style: italic;
+    }
+
+    /* Main Container */
+    .main-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-2xl) var(--spacing-xl);
+    }
+
+    .portal-selector {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+      width: 100%;
+      max-width: 650px;
+    }
+
+    /* Portal Card */
+    .portal-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: var(--spacing-lg);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .portal-card:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .portal-card:focus-visible {
+      outline: 3px solid var(--color-aquamarine);
+      outline-offset: 2px;
+    }
+
+    .portal-card__icon {
+      font-size: 2.5rem;
+      min-width: 3rem;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .portal-card__content {
+      flex: 1;
+    }
+
+    .portal-card__title {
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-teal-dark);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .portal-card__description {
+      font-size: 0.95rem;
+      color: #666;
+      margin-bottom: 0;
+    }
+
+    .portal-card__arrow {
+      font-size: 1.5rem;
+      color: var(--color-primary);
+      align-self: center;
+      margin-left: auto;
+      opacity: 0.6;
+      transition: opacity 0.3s ease;
+    }
+
+    .portal-card:hover .portal-card__arrow {
+      opacity: 1;
+    }
+
+    /* Loading State */
+    .portal-card.loading {
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .portal-card.loading .portal-card__arrow {
+      display: none;
+    }
+
+    .portal-card.loading::after {
+      content: '';
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid var(--color-teal-soft);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: auto;
+      align-self: center;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Footer */
+    .footer {
+      background: var(--color-white);
+      border-top: 1px solid var(--color-teal-soft);
+      padding: var(--spacing-lg) var(--spacing-xl);
+      text-align: center;
+    }
+
+    .sign-out-link {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .sign-out-link:hover {
+      color: var(--color-teal-mid);
+      text-decoration: underline;
+    }
+
+    .sign-out-link:focus-visible {
+      outline: 2px solid var(--color-aquamarine);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    /* Error Message */
+    .error-message {
+      background: #fde8e8;
+      border: 1px solid #f5c6cb;
+      border-radius: var(--radius-md);
+      padding: var(--spacing-md);
+      color: #721c24;
+      margin-bottom: var(--spacing-lg);
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header {
+        padding: var(--spacing-xl) var(--spacing-md);
+      }
+
+      .header__title {
+        font-size: 1.5rem;
+      }
+
+      .header__subtitle {
+        font-size: 0.9rem;
+      }
+
+      .main-container {
+        padding: var(--spacing-lg) var(--spacing-md);
+      }
+
+      .portal-selector {
+        max-width: 100%;
+      }
+
+      .portal-card {
+        padding: var(--spacing-md);
+        gap: var(--spacing-md);
+      }
+
+      .portal-card__icon {
+        font-size: 2rem;
+        min-width: 2.5rem;
+      }
+
+      .portal-card__title {
+        font-size: 1.1rem;
+      }
+
+      .portal-card__description {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header Section -->
+  <div class="header">
+    <div class="header__title">Welcome, <?= userName ?></div>
+    <div class="header__email"><?= userEmail ?></div>
+    <div class="header__subtitle">Select your portal to continue</div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-container">
+    <div class="portal-selector">
+      <!-- Error Message (initially hidden) -->
+      <div class="error-message" id="errorMessage"></div>
+
+      <!-- Portal Cards (dynamically generated) -->
+      <div id="portalCardsContainer"></div>
+    </div>
+  </div>
+
+  <!-- Footer Section -->
+  <div class="footer">
+    <a href="#" class="sign-out-link" onclick="handleSignOut(event)">Sign out</a>
+  </div>
+
+  <script>
+    /**
+     * Portal card metadata
+     */
+    const PORTAL_METADATA = {
+      ADMIN: {
+        icon: '👤',
+        title: 'Admin Portal',
+        description: 'System profile, progress monitoring, SFTP export'
+      },
+      MANAGER: {
+        icon: '👔',
+        title: 'Manager Portal',
+        description: 'Steps 1, 4, 5 — Team skills assessment & feed forward'
+      },
+      DATA_SPOC: {
+        icon: '📊',
+        title: 'Data SPOC Portal',
+        description: 'Step 2 — OKR uploading & organizational data'
+      },
+      EMPLOYEE: {
+        icon: '👤',
+        title: 'Employee Portal',
+        description: 'Steps 3, 6, 7 — Self-assessment & view scores'
+      }
+    };
+
+    /**
+     * Renders portal cards based on user's available roles
+     */
+    function renderPortalCards() {
+      const container = document.getElementById('portalCardsContainer');
+      const roles = <?= JSON.stringify(userRoles) ?>;
+
+      if (!Array.isArray(roles) || roles.length === 0) {
+        showError('No roles found. Please contact your administrator.');
+        return;
+      }
+
+      container.innerHTML = roles.map(role => {
+        const metadata = PORTAL_METADATA[role];
+        if (!metadata) {
+          console.warn(`Unknown role: ${role}`);
+          return '';
+        }
+
+        return `
+          <div class="portal-card" role="button" tabindex="0" data-role="${role}" onclick="selectPortal('${role}')" onkeypress="handleCardKeypress(event, '${role}')">
+            <div class="portal-card__icon">${metadata.icon}</div>
+            <div class="portal-card__content">
+              <div class="portal-card__title">${metadata.title}</div>
+              <div class="portal-card__description">${metadata.description}</div>
+            </div>
+            <div class="portal-card__arrow">→</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /**
+     * Handles portal card selection
+     */
+    function selectPortal(role) {
+      console.log(`Portal selected: ${role}`);
+
+      // Mark card as loading
+      const card = document.querySelector(`[data-role="${role}"]`);
+      if (card) {
+        card.classList.add('loading');
+      }
+
+      // Call server-side function to route to portal
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            console.log(`Redirecting to portal: ${result.portalUrl}`);
+            window.location.href = result.portalUrl;
+          } else {
+            showError(result.message || 'Failed to select portal. Please try again.');
+            if (card) {
+              card.classList.remove('loading');
+            }
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error(`Error selecting portal: ${error}`);
+          showError('An error occurred. Please try again.');
+          if (card) {
+            card.classList.remove('loading');
+          }
+        })
+        .routeToPortal(role);
+    }
+
+    /**
+     * Handles keyboard navigation (Enter/Space to select card)
+     */
+    function handleCardKeypress(event, role) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        selectPortal(role);
+      }
+    }
+
+    /**
+     * Handles sign-out action
+     */
+    function handleSignOut(event) {
+      event.preventDefault();
+      console.log('Sign out clicked');
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('Signed out successfully');
+          // Redirect to app's main page or login
+          window.location.href = window.location.href.split('?')[0];
+        })
+        .withFailureHandler(function(error) {
+          console.error(`Error signing out: ${error}`);
+          alert('Error signing out. Please try again.');
+        })
+        .logout();
+    }
+
+    /**
+     * Shows error message
+     */
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.classList.add('show');
+        console.error(`Portal Selector Error: ${message}`);
+      }
+    }
+
+    /**
+     * Initialize portal cards on page load
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+      renderPortalCards();
+    });
+  </script>
+</body>
+</html>

@@ -26,10 +26,13 @@ const TEMPLATES = {
 
 /**
  * Handles GET requests — serves the appropriate portal HTML.
- * Implements authorization routing based on user role and org hierarchy.
+ * TASK 3: Implements HYBRID routing based on user roles:
+ * - 0 roles → Access denied
+ * - 1 role → Auto-redirect to that portal (skip selector)
+ * - 2+ roles → Serve portal selector page
  * 
  * @param {Object} e - Event object with parameters
- * @returns {HtmlOutput} HTML page for the user's portal or access denied page
+ * @returns {HtmlOutput} HTML page for the user's portal, selector, or access denied
  */
 function doGet(e) {
   try {
@@ -56,63 +59,45 @@ function doGet(e) {
     
     // Handle case variation in EmployeeID column name
     const employeeId = employee.EmployeeID || employee.employeeId;
+    const userName = employee.Name || employee.name || 'User';
     console.log(`[doGet] employeeId extracted: ${employeeId} (type: ${typeof employeeId})`);
+    console.log(`[doGet] userName extracted: ${userName}`);
     
-    // Step 3: Determine user role
-    const userRole = employee.Role || 'EMPLOYEE';
-    console.log(`[doGet] Employee.Role value: "${employee.Role}"`);
-    console.log(`[doGet] User role after default: "${userRole}"`);
+    // TASK 3: Step 3 — Parse roles from Role column (supports multi-role)
+    const roleString = employee.Role || '';
+    const userRoles = parseRoles(roleString);
+    console.log(`[doGet] Parsed roles from "${roleString}":`, userRoles);
     
-    // Step 4: Authorize (for now, allow all authenticated users)
-    const isAuthorized = true;
-    
-    console.log(`[doGet] Authorization: ${isAuthorized}`);
-    if (isAuthorized) {
-      logAccessAttempt(userEmail, userRole, 'GRANTED', `Portal access granted`);
+    // TASK 3: Step 4 — Routing decision based on number of roles
+    if (userRoles.length === 0) {
+      // NO ROLES: Deny access
+      console.log(`[doGet] Decision: NO ROLES → Access Denied`);
+      logAccessAttempt(userEmail, 'NONE', 'DENIED', 'No roles assigned to user');
+      return deniedAccess_('No roles assigned to your account. Please contact your HR administrator.');
     }
     
-    // Step 5: Route to correct portal
-    console.log(`[doGet] Routing to portal based on role: "${userRole}"`);
-    
-    let templateName = TEMPLATES.EMPLOYEE_PORTAL;
-    let title = 'Own Your Career — Employee Portal';
-    
-    if (userRole === 'MANAGER') {
-      templateName = TEMPLATES.MANAGER_PORTAL;
-      title = 'Own Your Career — Manager Portal';
-      console.log(`[doGet] Routing to MANAGER portal`);
-    } else if (userRole === 'DATA_SPOC') {
-      templateName = TEMPLATES.DATA_SPOC_PORTAL;
-      title = 'Own Your Career — Data SPOC Portal';
-      console.log(`[doGet] Routing to DATA_SPOC portal`);
-    } else {
-      console.log(`[doGet] Routing to EMPLOYEE portal`);
+    if (userRoles.length === 1) {
+      // SINGLE ROLE: Auto-redirect to that portal (bypass selector)
+      const singleRole = userRoles[0];
+      console.log(`[doGet] Decision: SINGLE ROLE (${singleRole}) → Auto-redirect to portal`);
+      logAccessAttempt(userEmail, singleRole, 'GRANTED', `Single role auto-redirect`);
+      
+      return redirectToPortal_(singleRole, userEmail, employeeId, userName);
     }
     
-    // Step 6: Load and serve the template
-    console.log(`[doGet] Preparing to serve portal template`);
+    // MULTIPLE ROLES: Serve portal selector page
+    console.log(`[doGet] Decision: MULTIPLE ROLES → Serve Portal Selector`);
+    logAccessAttempt(userEmail, userRoles.join('|'), 'GRANTED', `Multi-role selector served`);
     
-    let htmlFile = '';
-    if (userRole === 'MANAGER') {
-      htmlFile = 'manager-portal';
-    } else if (userRole === 'DATA_SPOC') {
-      htmlFile = 'dataspoc-portal';
-    } else {
-      htmlFile = 'employee-portal';
-    }
+    const selectorTemplate = HtmlService.createTemplateFromFile('portal-selector');
+    selectorTemplate.userEmail = userEmail;
+    selectorTemplate.userName = userName;
+    selectorTemplate.userRoles = userRoles;
     
-    // Load the backend-appscript template (contains template variables <?= ?>)
-    const template = HtmlService.createTemplateFromFile(htmlFile);
+    console.log(`[doGet] Portal Selector template variables set: email=${selectorTemplate.userEmail}, name=${selectorTemplate.userName}, roles=[${selectorTemplate.userRoles.join(',')}]`);
     
-    // Ensure employeeId is a number for template substitution
-    template.userEmail = userEmail;
-    template.employeeId = typeof employeeId === 'number' ? employeeId : parseInt(employeeId, 10) || 0;
-    
-    console.log(`[doGet] Template variables set: email=${template.userEmail}, employeeId=${template.employeeId} (type: ${typeof template.employeeId})`);
-    
-    // Evaluate template - this will replace <?= userEmail ?> and <?= employeeId ?> with actual values
-    const htmlOutput = template.evaluate()
-      .setTitle(title)
+    const htmlOutput = selectorTemplate.evaluate()
+      .setTitle('Own Your Career — Portal Selection')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     
@@ -131,7 +116,66 @@ function doGet(e) {
 }
 
 /**
- * Handles POST requests (if needed for form submissions).
+ * TASK 3: Helper function to redirect user to a specific portal.
+ * Routes based on the provided role name.
+ * 
+ * @param {string} role - User role (MANAGER, DATA_SPOC, EMPLOYEE, ADMIN)
+ * @param {string} userEmail - User's email address
+ * @param {number|string} employeeId - User's employee ID
+ * @param {string} userName - User's full name
+ * @returns {HtmlOutput} HTML page for the requested portal
+ */
+function redirectToPortal_(role, userEmail, employeeId, userName) {
+  try {
+    console.log(`[redirectToPortal_] Redirecting to ${role} portal for ${userEmail}`);
+    
+    let templateName = 'employee-portal';
+    let title = 'Own Your Career — Employee Portal';
+    
+    switch(role.toUpperCase()) {
+      case 'MANAGER':
+        templateName = 'manager-portal';
+        title = 'Own Your Career — Manager Portal';
+        console.log(`[redirectToPortal_] Loading MANAGER portal`);
+        break;
+      case 'DATA_SPOC':
+        templateName = 'dataspoc-portal';
+        title = 'Own Your Career — Data SPOC Portal';
+        console.log(`[redirectToPortal_] Loading DATA_SPOC portal`);
+        break;
+      case 'ADMIN':
+        // TODO: Create admin-portal.html when ready
+        templateName = 'employee-portal'; // Fallback for now
+        title = 'Own Your Career — Admin Portal';
+        console.log(`[redirectToPortal_] Loading ADMIN portal (not yet implemented, using fallback)`);
+        break;
+      case 'EMPLOYEE':
+      default:
+        templateName = 'employee-portal';
+        title = 'Own Your Career — Employee Portal';
+        console.log(`[redirectToPortal_] Loading EMPLOYEE portal`);
+        break;
+    }
+    
+    // Load and evaluate template
+    const template = HtmlService.createTemplateFromFile(templateName);
+    template.userEmail = userEmail;
+    template.employeeId = typeof employeeId === 'number' ? employeeId : parseInt(employeeId, 10) || 0;
+    template.userName = userName;
+    
+    console.log(`[redirectToPortal_] Template set: email=${template.userEmail}, employeeId=${template.employeeId}, name=${template.userName}`);
+    
+    const htmlOutput = template.evaluate()
+      .setTitle(title)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    return htmlOutput;
+  } catch (e) {
+    console.error(`[redirectToPortal_] Error: ${e.message}`);
+    return HtmlService.createHtmlOutput(`<h1>Error</h1><p>Failed to load portal. Error: ${e.message}</p>`);
+  }
+}
  * @param {Object} e - Event object with postData
  * @returns {Object} JSON response
  */
