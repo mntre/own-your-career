@@ -84,7 +84,7 @@ const API = (() => {
         if (!user) {
           return {
             success: false,
-            message: 'Access denied. Email not found in employee database.'
+            message: 'Access denied. Your email is not registered in the system. Please contact your Admin or HR team to have your account added.'
           };
         }
         
