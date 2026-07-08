@@ -33,6 +33,60 @@ function logAccessAttempt(user, role, result, details) {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * TASK 1: Parses roles from a Role column (handles multiple roles).
+ * Accepts pipe (|) or comma (,) separated role strings.
+ * Returns normalized array of valid role names.
+ * 
+ * Examples:
+ * - "MANAGER|DATA_SPOC" → ["MANAGER", "DATA_SPOC"]
+ * - "MANAGER, DATA_SPOC" → ["MANAGER", "DATA_SPOC"]
+ * - "MANAGER" → ["MANAGER"]
+ * - "" → []
+ * - null → []
+ * 
+ * @param {string|null|undefined} rolesString - Role string from database
+ * @returns {string[]} Array of normalized role names (uppercase, trimmed)
+ */
+function parseRoles(rolesString) {
+  try {
+    // Handle null/undefined
+    if (rolesString === null || rolesString === undefined) {
+      console.log(`[parseRoles] Null/undefined input, returning empty array`);
+      return [];
+    }
+    
+    // Convert to string and trim
+    const trimmed = String(rolesString).trim();
+    
+    // Return empty array if empty string
+    if (trimmed === '') {
+      console.log(`[parseRoles] Empty string input, returning empty array`);
+      return [];
+    }
+    
+    // Split by pipe or comma
+    const splitRoles = trimmed.split(/[,|]/).map(role => role.trim().toUpperCase()).filter(role => role !== '');
+    
+    console.log(`[parseRoles] Input: "${rolesString}" → Output: [${splitRoles.join(', ')}]`);
+    
+    // Validate each role is recognized
+    const validRoles = ['ADMIN', 'MANAGER', 'DATA_SPOC', 'EMPLOYEE'];
+    const result = splitRoles.filter(role => {
+      const isValid = validRoles.includes(role);
+      if (!isValid) {
+        console.warn(`[parseRoles] Unrecognized role: "${role}" — filtered out`);
+      }
+      return isValid;
+    });
+    
+    return result;
+  } catch (e) {
+    console.error(`[parseRoles] Error parsing roles "${rolesString}": ${e.message}`);
+    return [];
+  }
+}
+
+/**
  * TASK 1: Normalizes employee/manager IDs to a consistent numeric format.
  * Handles type coercion for both strings and numbers.
  * This fixes type mismatches like 1 vs "1" in ID comparisons.
@@ -1733,6 +1787,256 @@ function getSelfAssessment(employeeId) {
       success: false,
       data: null,
       message: `Error retrieving self-assessment: ${e.message}`
+    };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                      SKILL DEFINITIONS (Task 9 Prep)                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Fetches skill definitions from the SystemConfig sheet.
+ * Returns all 10 skills (5 core + 5 leadership) with required levels per band.
+ * 
+ * @returns {Object} { success: boolean, data: Object[], message: string }
+ */
+function getSkillDefinitions() {
+  try {
+    console.log(`[getSkillDefinitions] Fetching skill definitions from SystemConfig`);
+    
+    const sheet = getSheet_('SystemConfig');
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, Math.max(1, sheet.getLastRow() - 1), sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    // Filter for skill definition rows (skillType = 'CORE' or 'LEADERSHIP')
+    const skillDefinitions = [];
+    
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      const rowObj = {};
+      Object.entries(headers).forEach(([colName, colIndex]) => {
+        rowObj[colName] = row[colIndex];
+      });
+      
+      // Check if this is a skill definition row
+      const skillType = rowObj.SkillType || rowObj.skillType;
+      if (skillType === 'CORE' || skillType === 'LEADERSHIP') {
+        skillDefinitions.push({
+          skillId: rowObj.SkillID || rowObj.skillId || i,
+          skillName: rowObj.SkillName || rowObj.skillName || 'Unnamed Skill',
+          skillType: skillType,
+          requiredLevel: rowObj.RequiredLevel || rowObj.requiredLevel || 3,
+          description: rowObj.Description || rowObj.description || ''
+        });
+      }
+    }
+    
+    console.log(`[getSkillDefinitions] Found ${skillDefinitions.length} skill definitions`);
+    
+    if (skillDefinitions.length === 0) {
+      console.warn(`[getSkillDefinitions] WARNING: No skill definitions found in SystemConfig`);
+      // Return default skills as fallback
+      return {
+        success: true,
+        data: getDefaultSkillDefinitions(),
+        message: 'Using default skill definitions (none found in database)'
+      };
+    }
+    
+    // Separate into core and leadership
+    const coreSkills = skillDefinitions.filter(s => s.skillType === 'CORE');
+    const leadershipSkills = skillDefinitions.filter(s => s.skillType === 'LEADERSHIP');
+    
+    console.log(`[getSkillDefinitions] Core skills: ${coreSkills.length}, Leadership skills: ${leadershipSkills.length}`);
+    
+    return {
+      success: true,
+      data: skillDefinitions,
+      message: `Loaded ${skillDefinitions.length} skill definitions`
+    };
+  } catch (e) {
+    console.error(`[getSkillDefinitions] Error: ${e.message}`);
+    console.error(`[getSkillDefinitions] Stack: ${e.stack}`);
+    return {
+      success: false,
+      data: getDefaultSkillDefinitions(),
+      message: `Error loading skill definitions: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Returns default skill definitions (fallback when database has no data).
+ * This ensures the form always has skills to display.
+ * 
+ * @returns {Object[]} Array of skill definition objects
+ */
+function getDefaultSkillDefinitions() {
+  return [
+    // Core Skills
+    { skillId: 1, skillName: 'Communication', skillType: 'CORE', requiredLevel: 3, description: 'Ability to express ideas clearly and listen effectively' },
+    { skillId: 2, skillName: 'Problem Solving', skillType: 'CORE', requiredLevel: 4, description: 'Ability to analyze issues and develop solutions' },
+    { skillId: 3, skillName: 'Teamwork', skillType: 'CORE', requiredLevel: 3, description: 'Ability to collaborate and support team goals' },
+    { skillId: 4, skillName: 'Customer Focus', skillType: 'CORE', requiredLevel: 3, description: 'Commitment to meeting customer needs' },
+    { skillId: 5, skillName: 'Innovation', skillType: 'CORE', requiredLevel: 2, description: 'Willingness to embrace new ideas and improvements' },
+    // Leadership Skills
+    { skillId: 6, skillName: 'Strategic Thinking', skillType: 'LEADERSHIP', requiredLevel: 3, description: 'Ability to align actions with long-term vision' },
+    { skillId: 7, skillName: 'People Development', skillType: 'LEADERSHIP', requiredLevel: 3, description: 'Commitment to developing others and fostering growth' },
+    { skillId: 8, skillName: 'Decision Making', skillType: 'LEADERSHIP', requiredLevel: 4, description: 'Ability to make sound decisions with available information' },
+    { skillId: 9, skillName: 'Change Management', skillType: 'LEADERSHIP', requiredLevel: 3, description: 'Ability to lead teams through organizational change' },
+    { skillId: 10, skillName: 'Stakeholder Management', skillType: 'LEADERSHIP', requiredLevel: 3, description: 'Ability to build and maintain effective relationships' }
+  ];
+}
+
+/**
+ * Gets system configuration value by key.
+ * Helper function to retrieve settings from SystemConfig sheet.
+ * 
+ * @param {string} key - Configuration key (e.g., 'HARD_LOCK_DATE', 'FORM_PERIOD_START')
+ * @returns {string|null} Configuration value or null if not found
+ */
+function getSystemConfigValue(key) {
+  try {
+    const sheet = getSheet_('SystemConfig');
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, Math.max(1, sheet.getLastRow() - 1), sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      const rowObj = {};
+      Object.entries(headers).forEach(([colName, colIndex]) => {
+        rowObj[colName] = row[colIndex];
+      });
+      
+      if ((rowObj.ConfigKey || rowObj.configKey) === key) {
+        return rowObj.ConfigValue || rowObj.configValue || null;
+      }
+    }
+    
+    console.warn(`[getSystemConfigValue] Configuration key not found: ${key}`);
+    return null;
+  } catch (e) {
+    console.error(`[getSystemConfigValue] Error: ${e.message}`);
+    return null;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                     TASK 4 & 5: PORTAL ROUTING FUNCTIONS                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * TASK 5: Routes user to the selected portal.
+ * Called from portal-selector.html when user clicks a portal card.
+ * Validates the role and returns the portal URL for client-side redirect.
+ * 
+ * @param {string} selectedRole - The role user selected (MANAGER, DATA_SPOC, EMPLOYEE, ADMIN)
+ * @returns {Object} { success: boolean, portalUrl: string, message: string }
+ */
+function routeToPortal(selectedRole) {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    console.log(`[routeToPortal] User ${userEmail} selected role: ${selectedRole}`);
+    
+    if (!userEmail) {
+      console.warn(`[routeToPortal] No user email found`);
+      return {
+        success: false,
+        portalUrl: '',
+        message: 'Authentication error. Please log in again.'
+      };
+    }
+    
+    if (!selectedRole || typeof selectedRole !== 'string') {
+      console.warn(`[routeToPortal] Invalid role: ${selectedRole}`);
+      return {
+        success: false,
+        portalUrl: '',
+        message: 'Invalid portal selection.'
+      };
+    }
+    
+    // Get employee record
+    const employee = getEmployeeByEmail_(userEmail);
+    if (!employee) {
+      console.warn(`[routeToPortal] Employee not found for ${userEmail}`);
+      return {
+        success: false,
+        portalUrl: '',
+        message: 'Employee record not found.'
+      };
+    }
+    
+    // Parse and validate user's roles
+    const userRoles = parseRoles(employee.Role || '');
+    console.log(`[routeToPortal] User's available roles:`, userRoles);
+    
+    // Verify selected role is in user's available roles
+    if (!userRoles.includes(selectedRole.toUpperCase())) {
+      console.error(`[routeToPortal] UNAUTHORIZED: User ${userEmail} tried to access role ${selectedRole} but only has [${userRoles.join(',')}]`);
+      logAccessAttempt(userEmail, selectedRole, 'DENIED', `Attempted to access unauthorized role`);
+      return {
+        success: false,
+        portalUrl: '',
+        message: 'You do not have permission to access this portal.'
+      };
+    }
+    
+    // Log successful routing
+    console.log(`[routeToPortal] AUTHORIZED: Routing ${userEmail} to ${selectedRole} portal`);
+    logAccessAttempt(userEmail, selectedRole, 'GRANTED', `Portal route confirmed`);
+    
+    // Build portal URL based on role
+    // In Apps Script, we return a redirect URL that the client will navigate to
+    // The client will use: window.location.href = result.portalUrl
+    // This will trigger a new doGet() call on the server
+    const scriptUrl = ScriptApp.getService().getUrl();
+    const portalUrl = scriptUrl + '?portal=' + encodeURIComponent(selectedRole.toUpperCase());
+    
+    console.log(`[routeToPortal] Returning portal URL: ${portalUrl}`);
+    
+    return {
+      success: true,
+      portalUrl: portalUrl,
+      message: `Routing to ${selectedRole} portal`
+    };
+  } catch (e) {
+    console.error(`[routeToPortal] Error: ${e.message}`);
+    console.error(`[routeToPortal] Stack: ${e.stack}`);
+    logAccessAttempt(Session.getActiveUser().getEmail(), 'UNKNOWN', 'ERROR', `routeToPortal error: ${e.message}`);
+    return {
+      success: false,
+      portalUrl: '',
+      message: `Error: ${e.message}`
+    };
+  }
+}
+
+/**
+ * TASK 4: Logout function.
+ * Called when user clicks sign-out link in portal selector.
+ * Simple confirmation endpoint (session cleanup happens on client/browser side).
+ * 
+ * @returns {Object} { success: boolean, message: string }
+ */
+function logout() {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    console.log(`[logout] User ${userEmail} logging out`);
+    logAccessAttempt(userEmail, 'UNKNOWN', 'GRANTED', 'User logout confirmed');
+    
+    return {
+      success: true,
+      message: 'Logout successful'
+    };
+  } catch (e) {
+    console.error(`[logout] Error: ${e.message}`);
+    return {
+      success: false,
+      message: `Logout error: ${e.message}`
     };
   }
 }
