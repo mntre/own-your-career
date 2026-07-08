@@ -206,6 +206,68 @@ const App = {
     if (userDisplay && this.currentUser) {
       userDisplay.textContent = this.currentUser.email;
     }
+
+    // Render portal navigation bar
+    this.renderPortalNav();
+  },
+
+  /**
+   * Render portal navigation bar based on user's accessible portals.
+   * Shows links to all portals the user can access, highlights current page.
+   */
+  renderPortalNav: function() {
+    const navEl = document.getElementById('portal-nav');
+    if (!navEl || !this.currentUser) return;
+
+    const role = this.currentUser.role;
+    const currentPage = this.getCurrentPage();
+    const baseUrl = this.getBaseUrl();
+
+    // Build portal list based on role
+    const portals = [];
+
+    if (role === 'ADMIN') {
+      portals.push({ id: 'admin', label: 'Admin', url: 'admin-portal.html' });
+      portals.push({ id: 'manager', label: 'Manager', url: 'manager-portal.html' });
+    } else if (role === 'MANAGER') {
+      portals.push({ id: 'manager', label: 'Manager', url: 'manager-portal.html' });
+    } else if (role === 'DATA_SPOC') {
+      portals.push({ id: 'dataspoc', label: 'Data SPOC', url: 'dataspoc-portal.html' });
+    }
+
+    // Everyone gets Employee Portal
+    portals.push({ id: 'employee', label: 'Employee', url: 'employee-portal.html' });
+
+    // Only render if user has 2+ portals
+    if (portals.length <= 1) {
+      navEl.style.display = 'none';
+      return;
+    }
+
+    // Build nav HTML
+    const linksHTML = portals.map(p => {
+      const isActive = p.id === currentPage;
+      return `<a href="${baseUrl}${p.url}" class="portal-nav__link ${isActive ? 'portal-nav__link--active' : ''}">${p.label} Portal</a>`;
+    }).join('');
+
+    const userEmail = this.currentUser.email || '';
+
+    navEl.innerHTML = `
+      <div class="portal-nav__links">${linksHTML}</div>
+      <div class="portal-nav__user">
+        <span>${userEmail}</span>
+        <button class="portal-nav__signout" data-action="logout">Sign Out</button>
+      </div>
+    `;
+
+    // Attach sign out listener to new button
+    const signOutBtn = navEl.querySelector('.portal-nav__signout');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.logout();
+      });
+    }
   },
 
   /**
