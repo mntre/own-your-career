@@ -2677,3 +2677,220 @@ All animations use CSS `@keyframes` for better performance:
 
 **Launch Readiness:** Ready for QA and UAT testing
 
+
+
+---
+
+# Pending Deliverables & Work Tracking (Archive from PENDING_DELIVERABLES.md)
+
+**Last Updated:** July 8, 2026, 6:00 PM  
+**Status:** 32 of 49 items complete (65%)  
+**Next Phase:** Email service + Deployment configuration (due July 17)
+
+---
+
+## Summary by Priority
+
+| Priority | Count | Description | Status |
+|----------|-------|-------------|--------|
+| ✅ COMPLETE (was CRITICAL) | 13 | Items 1-13 — Converge routes + enforcement | DONE Jul 8 |
+| ✅ COMPLETE (was HIGH) | 7 | Items 14-20 — Admin APIs | DONE Jul 8 |
+| ✅ COMPLETE (was HIGH) | 7 | Items 28-34 — Frontend wiring | DONE Jul 8 |
+| ✅ COMPLETE (was HIGH) | 3 | Items 35-37 — Admin portal UI content | DONE Jul 8 |
+| ✅ RESOLVED (no longer pending) | 2 | Items 21-22 — detectConflict/logConflict | Already implemented |
+| 🟡 HIGH (remaining) | 5 | Items 23-27 — Email service | Blocked on SMTP credentials |
+| 🟢 BACKLOG (can defer) | 12 | Items 38-49 — Shared stubs, tests, deployment | Post-launch |
+
+**Total Remaining: 17 items** (5 high + 12 backlog)
+
+---
+
+## 🟡 EMAIL SERVICE (5 items — HIGH PRIORITY but BLOCKED)
+
+> **Blocker:** Waiting for SMTP credentials from infrastructure team  
+> **Dependencies:** Converge routes (✅ done) + AppScript backend (✅ done)  
+> **Can start:** Stub implementation while waiting for credentials  
+> **Timeline:** Needs credentials by July 10 to complete testing before launch
+
+| # | Deliverable | File | Status | Dependencies |
+|----|-------------|------|--------|--------------|
+| 23 | Configure SMTP transport in email.js (Converge) | `src/backend-converge/email.js` | 🟡 TODO | SMTP server, port, auth |
+| 24 | Build email templates for each step transition (6 notification types) | `src/backend-converge/email.js` + `src/backend-appscript/Email.gs` | 🟡 TODO | Item 23 (Converge) |
+| 25 | Implement email queue/deduplication | `src/backend-converge/email.js` | 🟡 TODO | Item 23 (Converge) |
+| 26 | Implement Email.gs using GmailApp for AppScript platform | `src/backend-appscript/Email.gs` | 🟡 TODO | GmailApp configured |
+| 27 | Wire email triggers to fire after each step completion | `src/backend-converge/routes.js` + `src/backend-appscript/Code.gs` | 🟡 TODO | Items 23-26 |
+
+### Email Automation Triggers
+
+Auto-triggered at each step transition:
+
+| Step Completion | Notification Sent To | Purpose |
+|-----------------|-------------------|---------|
+| Step 1 (Skills Assessment) complete | Data SPOC | Reminder: OKR uploading (Step 2) can now begin |
+| Steps 1 + 2 both complete | Employee | Notification: Self-Assessment (Step 3) is now enabled |
+| Step 3 (Self-Assessment) complete | Manager | Notification: Feed Forward form (Step 4) is now enabled |
+| Step 4 (Feed Forward) complete | Manager | Reminder: Acknowledgement (Step 5) is ready for completion |
+| Step 5 (Manager Acknowledgement) complete | Employee | Notification: View all scores & feedback (Step 6) is now available (read-only) |
+| Step 7 (Employee Acknowledgement) complete | System Admin | Final: All review data locked for that employee; ready for SFTP export |
+
+---
+
+## 🟢 SHARED MODULES (2 items — BACKLOG, can defer)
+
+> **Note:** These are stubs/utilities that don't block core workflow  
+> **Can defer:** Post-launch Phase 2  
+> **Priority:** Low — logic currently lives in gates.js and constants.js
+
+| # | Deliverable | File | Status | Note |
+|----|-------------|------|--------|------|
+| 38 | `shared/workflow.js` — implement workflow state management or formally deprecate | `src/shared/workflow.js` | 🟢 BACKLOG | Logic lives in gates.js; consider deprecation vs. consolidation |
+| 39 | `shared/export.js` — implement SFTP export CSV formatter | `src/shared/export.js` | 🟢 BACKLOG | Deferred to post-launch; can use manual export for now |
+
+---
+
+## 🟢 TESTING & QA (6 items — BACKLOG, due by July 15)
+
+> **Timeline:** Can start after Items 1-20 complete (done Jul 8)  
+> **Required for:** UAT sign-off (July 13-17)  
+> **Owner:** Mike Escobilla (QA Lead) + Ernica Castronero (Analytics)
+
+| # | Deliverable | File | Status | Owner |
+|----|-------------|------|--------|-------|
+| 40 | Unit tests for OKR calculation formulas | `tests/` | 🟢 TODO | Mike Escobilla |
+| 41 | Unit tests for gate logic (step unlock conditions) | `tests/` | 🟢 TODO | Mike Escobilla |
+| 42 | Integration tests: Converge end-to-end (login → form submit → DB write → status update) | `tests/` | 🟢 TODO | Mike Escobilla |
+| 43 | Integration tests: AppScript end-to-end | `tests/` | 🟢 TODO | Jeremy Carino |
+| 44 | Cross-platform parity test (same input produces same output on both platforms) | `tests/` | 🟢 TODO | Mike Escobilla + Jeremy Carino |
+| 45 | UAT test scripts for all 4 personas (Manager, DataSPOC, Employee, Admin) | `tests/` | 🟢 TODO | Ernica Castronero |
+
+---
+
+## 🟢 DEPLOYMENT & OPS (4 items — BACKLOG, due by July 17)
+
+> **Timeline:** Start July 14 (after UAT passes)  
+> **Owner:** Charvin Penaverde (Converge) + Jeremy Carino (AppScript)  
+> **Trigger:** Stakeholder sign-off on UAT
+
+| # | Deliverable | File | Status | Owner |
+|----|-------------|------|--------|-------|
+| 46 | Production environment configuration (Converge Cloud) | `src/backend-converge/server.js` + `.env` | 🟢 TODO | Charvin Penaverde |
+| 47 | AppScript deployment as web app (production URL) | `src/backend-appscript/appsscript.json` | 🟢 TODO | Jeremy Carino |
+| 48 | CORS whitelist for production domain | `src/backend-converge/server.js` | 🟢 TODO | Charvin Penaverde |
+| 49 | Google OAuth authorized origins for production domain | Google Cloud Console | 🟢 TODO | Charvin Penaverde |
+
+---
+
+## Development Timeline (July 8-17)
+
+### Sprint 2 (July 6-10) — IN PROGRESS ✅
+**Focus:** Converge backend + Frontend wiring
+
+| Date | Activity | Owner | Status |
+|------|----------|-------|--------|
+| Jul 6 | Converge route handlers (Items 1-9) | Charvin | ✅ DONE |
+| Jul 7 | Admin APIs + enforcement (Items 10-20) | Charvin | ✅ DONE |
+| Jul 8 | Frontend wiring (Items 28-34) + Admin UI (Items 35-37) | Charvin + Jeremy | ✅ DONE |
+| Jul 9 | **Email service setup (Items 23-27)** | Charvin | 🟡 WAITING |
+| Jul 10 | Email testing + minor fixes | Charvin + Mike | 🟡 BLOCKED |
+
+**Blocker:** Waiting for SMTP credentials from infrastructure team
+
+---
+
+### Sprint 3 (July 13-17) — UPCOMING
+**Focus:** UAT + Go-Live
+
+| Date | Activity | Owner | Status |
+|------|----------|-------|--------|
+| Jul 13-15 | UAT execution (Items 40-45) | Mike Escobilla + Team | 🟢 TODO |
+| Jul 14-15 | Deployment prep (Items 46-49) | Charvin + Jeremy | 🟢 TODO |
+| Jul 16 | Final fixes + stakeholder sign-off | Luigi + Team | 🟢 TODO |
+| **Jul 17** | **🚀 GO-LIVE** | All Hands | 🟢 TODO |
+
+---
+
+## Blockers & Risks
+
+### 🔴 CRITICAL BLOCKER: SMTP Credentials
+- **Issue:** Items 23-27 (email service) require SMTP server details
+- **Waiting For:** Infrastructure team to provide SMTP server, port, credentials
+- **Impact:** Email notifications cannot be tested/deployed until credentials arrive
+- **Mitigation:** Can implement stub email functions while waiting; swap credentials later
+- **Target Delivery:** July 10 (to allow 1 week for testing)
+
+### 🟡 RISK: UAT Timeline
+- **Issue:** Only 3 days for UAT (Jul 13-15)
+- **Mitigation:** Parallel testing possible; start UAT prep earlier
+- **Contingency:** If major bugs found, can defer non-critical features to Phase 2
+
+### 🟡 RISK: Cross-Platform Parity (Item 44)
+- **Issue:** Testing both Converge + AppScript adds complexity
+- **Mitigation:** Focus on core 4 personas; compare outputs side-by-side
+- **Contingency:** If parity issues found, document as known limitation
+
+---
+
+## Admin Data Management Quick Reference
+
+| Card | Feature | Status | Notes |
+|------|---------|--------|-------|
+| A1 | Employee CSV Upload | ✅ COMPLETE | Bulk import, role derivation, hierarchy |
+| A2 | Employee Database Viewer | ✅ COMPLETE | Search, filter, inline edit, role reassignment |
+| A3 | Core Skills Definition | ✅ COMPLETE | UI + backend CRUD |
+| A4 | Leadership Skills Definition | ✅ COMPLETE | UI + backend CRUD |
+| A5 | Role Assignment Management | ✅ COMPLETE | Manual + auto-derived roles |
+| A6 | Organizational Hierarchy Setup | ✅ COMPLETE | UI + backend CRUD |
+
+---
+
+## Current Test Users
+
+| Email | Role | Portals | Status |
+|-------|------|---------|--------|
+| ma.bajar@convergeict.com | ADMIN | All 4 (Admin + Manager + DataSPOC + Employee) | ✅ Active |
+| michael.escobilla@convergeict.com | DATA_SPOC | DataSPOC + Employee | ✅ Active |
+| luigi.espiritu@convergeict.com | ADMIN | All 4 | ✅ Active |
+
+---
+
+## Deployment Checklist (Pre-Go-Live)
+
+- [x] Code complete (Items 1-37)
+- [ ] All functions tested (Items 40-45, due Jul 15)
+- [ ] Email service configured (Items 23-27, blocked on credentials)
+- [ ] Staging deployment verified (Items 46-49, start Jul 14)
+- [ ] UAT sign-off obtained (by Jul 16)
+- [ ] Production credentials secured (by Jul 16)
+- [ ] Rollback plan documented (by Jul 17)
+- [ ] Stakeholder training complete (by Jul 17)
+- [ ] Post-launch monitoring plan ready (by Jul 17)
+
+---
+
+## How to Use This Document
+
+### For Project Managers
+- Check "Summary by Priority" for status overview
+- Review "Development Timeline" for sprint progress
+- Monitor "Blockers & Risks" for escalation items
+
+### For Developers
+- Find your assigned item in the completed or pending section
+- Check dependencies before starting work
+- Refer to implementation notes for technical details
+
+### For QA/Testing
+- Reference "Testing & QA" section (Items 40-45)
+- Use test user accounts above for manual testing
+- Cross-check "Known Limitations" before filing bugs
+
+### For Stakeholders
+- "Summary by Priority" shows completion percentage (65%)
+- "Development Timeline" shows on-track status for July 17 launch
+- "Success Criteria" defines go-live readiness
+
+---
+
+**Document Owner:** Kiro AI  
+**Last Audit:** July 8, 2026, 6:00 PM  
+**Next Review:** July 9, 2026 (after email service work begins)
