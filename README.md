@@ -819,11 +819,14 @@ Once inside a portal, user can switch to another accessible portal via:
 
 | Component | Status |
 |-----------|--------|
-| Google SSO login | ✅ EXISTS (test mode) |
-| Multi-role detection | 📋 DESIGNED |
-| Portal picker UI | 📋 DESIGNED |
-| Auto-redirect (single role) | 📋 DESIGNED |
-| Nav header portal switching | 📋 DESIGNED |
+| Google SSO login | ✅ COMPLETE (real Client ID configured) |
+| Multi-role detection | ✅ COMPLETE (getAccessiblePortals in login.js) |
+| Portal picker UI | ✅ COMPLETE (card-based, shows after SSO) |
+| Auto-redirect (single role) | ✅ COMPLETE (EMPLOYEE → direct to Employee Portal) |
+| Backend auth (email-only lookup) | ✅ COMPLETE (routes.js + auth.js — DB lookup, no role from frontend) |
+| Portal-level access checks | ✅ COMPLETE (app.js verifyPortalAccess — denies unauthorized URL access) |
+| Access denied message | ✅ COMPLETE ("Contact your Admin or HR team") |
+| Nav header portal switching | ✅ COMPLETE (portal-nav bar on all portals, role-based links) |
 | Server-side RBAC enforcement | ✅ EXISTS |
 
 ---
@@ -905,3 +908,80 @@ ALTER TABLE employees ADD COLUMN supervisor_employee_no TEXT;
 ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT;
 -- supervisor_match_status values: "matched" | "override" | "unresolved" | "external"
 ```
+
+### Implementation Breakdown (Phases)
+
+**RD-1: Schema Update (db.js)**
+- Add `lookup_name`, `supervisor_employee_no`, `supervisor_match_status` columns to `employees` table
+- Create `supervisor_overrides` table
+- File: `src/backend-converge/db.js`
+
+**RD-2: Build Lookup on Upload (db.js)**
+- After `bulkUpload()` completes, auto-run a new function `buildSupervisorLookup()`
+- For each employee: `lookup_name = first_name + " " + last_name`
+- Store in the `lookup_name` column
+- File: `src/backend-converge/db.js`
+
+**RD-3: Resolve Supervisors (db.js)**
+- New function `resolveSupervisors()`
+- For each employee with an `immediate_supervisor` value:
+  1. Check `supervisor_overrides` table first (Layer 1)
+  2. If no override → match `immediate_supervisor` against all `lookup_name` values (Layer 2)
+  3. If exactly 1 match → set `supervisor_employee_no`, status = "matched"
+  4. If 0 matches → status = "external" (supervisor not in this upload)
+  5. If 2+ matches → status = "unresolved" (duplicate, needs override)
+- File: `src/backend-converge/db.js`
+
+**RD-4: Derive Roles (db.js)**
+- New function `deriveRolesFromHierarchy()` (replace existing `autoDerivRoles`)
+- Query: find all employee_nos that appear as someone's `supervisor_employee_no`
+- Mark those as MANAGER
+- **Preserve** existing DATA_SPOC and ADMIN roles (don't overwrite manual assignments)
+- Everyone else stays EMPLOYEE
+- File: `src/backend-converge/db.js`
+
+**RD-5: Wire to Upload Flow (routes.js + admin.js)**
+- After employee upload API succeeds → auto-trigger RD-2, RD-3, RD-4 in sequence
+- Return results: `{ matched: X, unresolved: Y, external: Z, managersDetected: N }`
+- Frontend shows summary after upload
+- Files: `src/backend-converge/routes.js`, `src/frontend/js/admin.js`
+
+**RD-6: Override Management UI (admin-portal.html + admin.js)**
+- Show unresolved supervisors list in Admin Portal (A5 Role Assignment section)
+- Admin can set override: "This supervisor name → this employee number"
+- After saving override → re-run RD-3 and RD-4 for affected employees
+- Files: `src/frontend/html/admin-portal.html`, `src/frontend/js/admin.js`
+
+**RD-7: API Endpoints (routes.js)**
+- `GET /api/admin/unresolved-supervisors` — List supervisors that couldn't be matched
+- `POST /api/admin/supervisor-override` — Save an override rule
+- `DELETE /api/admin/supervisor-override/:id` — Remove an override
+- `POST /api/admin/re-derive-roles` — Re-run derivation (after override changes)
+- File: `src/backend-converge/routes.js`
+
+### Implementation Priority
+
+| Phase | Dependency | Required for |
+|-------|-----------|-------------|
+| RD-1 | None | Everything else |
+| RD-2 | RD-1 | Supervisor matching |
+| RD-3 | RD-1, RD-2 | Role derivation |
+| RD-4 | RD-3 | Login portal routing |
+| RD-5 | RD-2, RD-3, RD-4 | End-to-end upload flow |
+| RD-6 | RD-5 | Edge case resolution (can defer) |
+| RD-7 | RD-1 | RD-5 and RD-6 |
+
+**Minimum viable:** RD-1 → RD-2 → RD-3 → RD-4 → RD-5 (gets the full auto-flow working)
+**Can defer:** RD-6, RD-7 (override UI — only needed when duplicates occur)
+
+### Current Status
+
+| Phase | Status |
+|-------|--------|
+| RD-1: Schema update | 📋 Ready to build |
+| RD-2: Build lookup | 📋 Ready to build |
+| RD-3: Resolve supervisors | 📋 Ready to build |
+| RD-4: Derive roles | 📋 Ready to build (replace existing `autoDerivRoles`) |
+| RD-5: Wire to upload flow | 📋 Ready to build |
+| RD-6: Override management UI | 📋 Can defer |
+| RD-7: API endpoints | 📋 Ready to build |
