@@ -352,17 +352,38 @@ function verifyUserRoleFromDatabase(email, expectedRole) {
 
 /**
  * Saves skills assessment data for an employee (Step 1).
+ * Includes hard lock date validation: if deadline passed, blocks submission.
+ * 
  * @param {string|number} employeeId - The employee being assessed
  * @param {Object} assessmentData - Skills assessment form data
  * @returns {Object} { success: boolean, message: string }
  */
 function saveSkillsAssessment(employeeId, assessmentData) {
   try {
+    console.log(`[Code] saveSkillsAssessment called for employee ${employeeId}`);
+    
+    // Check hard lock date before saving
+    const lockDateStr = getSystemConfigValue('HARD_LOCK_DATE');
+    if (lockDateStr) {
+      const lockDate = new Date(lockDateStr);
+      const now = new Date();
+      
+      if (now > lockDate) {
+        console.warn(`[Code] Attempt to save after hard lock date for employee ${employeeId}`);
+        return {
+          success: false,
+          message: `Cannot save: the submission deadline was ${lockDate.toLocaleString()}. No further edits are allowed.`
+        };
+      }
+      
+      console.log(`[Code] Hard lock date check passed (deadline: ${lockDate.toISOString()})`);
+    }
+    
     const success = Database.saveSkillsAssessment(employeeId, assessmentData);
-    if (success) {
+    if (success && success.success !== false) {
       return { success: true, message: 'Skills assessment saved successfully' };
     }
-    return { success: false, message: 'Failed to save skills assessment' };
+    return { success: false, message: success?.message || 'Failed to save skills assessment' };
   } catch (e) {
     console.error(`[Code] Error saving skills assessment: ${e.message}`);
     return { success: false, message: e.message };
@@ -447,6 +468,8 @@ function saveSelfAssessment(employeeId, selfAssessmentData) {
 
 /**
  * Saves Feed Forward / Manager Assessment (Step 4).
+ * Includes hard lock date validation and authorization checks.
+ * 
  * @param {string|number} employeeId - The employee being assessed
  * @param {string|number} managerId - The manager providing assessment
  * @param {Object} feedForwardData - Feed Forward form data
@@ -454,6 +477,9 @@ function saveSelfAssessment(employeeId, selfAssessmentData) {
  */
 function saveFeedForward(employeeId, managerId, feedForwardData) {
   try {
+    console.log(`[Code] saveFeedForward called for employee ${employeeId} by manager ${managerId}`);
+    
+    // Check authorization
     if (!canManagerAccessEmployee_(managerId, employeeId)) {
       logAccessAttempt(
         `[Manager: ${managerId}]`,
@@ -464,11 +490,28 @@ function saveFeedForward(employeeId, managerId, feedForwardData) {
       return { success: false, message: 'You do not have authorization to assess this employee.' };
     }
     
+    // Check hard lock date before saving
+    const lockDateStr = getSystemConfigValue('HARD_LOCK_DATE');
+    if (lockDateStr) {
+      const lockDate = new Date(lockDateStr);
+      const now = new Date();
+      
+      if (now > lockDate) {
+        console.warn(`[Code] Attempt to save Feed Forward after hard lock date for employee ${employeeId}`);
+        return {
+          success: false,
+          message: `Cannot save: the submission deadline was ${lockDate.toLocaleString()}. No further edits are allowed.`
+        };
+      }
+      
+      console.log(`[Code] Hard lock date check passed for Feed Forward (deadline: ${lockDate.toISOString()})`);
+    }
+    
     const success = Database.saveFeedForward(employeeId, managerId, feedForwardData);
-    if (success) {
+    if (success && success.success !== false) {
       return { success: true, message: 'Feed Forward saved successfully' };
     }
-    return { success: false, message: 'Failed to save Feed Forward' };
+    return { success: false, message: success?.message || 'Failed to save Feed Forward' };
   } catch (e) {
     console.error(`[Code] Error saving Feed Forward: ${e.message}`);
     return { success: false, message: e.message };
@@ -533,15 +576,37 @@ function saveEmployeeAcknowledgement(employeeId, ackData) {
 
 /**
  * Saves acknowledgement (Steps 5 & 7).
+ * Includes hard lock date validation and authorization checks.
+ * 
  * @param {string|number} employeeId - The employee whose review is being acknowledged
- * @param {string|number} userId - The user submitting
+ * @param {string|number} userId - The user submitting (manager or employee)
  * @param {Object} ackData - Acknowledgement data
  * @param {'MANAGER'|'EMPLOYEE'} type - Type of acknowledgement
  * @returns {Object} { success: boolean, message: string }
  */
 function saveAcknowledgement(employeeId, userId, ackData, type) {
   try {
+    console.log(`[Code] saveAcknowledgement called for employee ${employeeId} (type: ${type})`);
+    
+    // Check hard lock date before saving
+    const lockDateStr = getSystemConfigValue('HARD_LOCK_DATE');
+    if (lockDateStr) {
+      const lockDate = new Date(lockDateStr);
+      const now = new Date();
+      
+      if (now > lockDate) {
+        console.warn(`[Code] Attempt to save acknowledgement after hard lock date for employee ${employeeId}`);
+        return {
+          success: false,
+          message: `Cannot save: the submission deadline was ${lockDate.toLocaleString()}. No further edits are allowed.`
+        };
+      }
+      
+      console.log(`[Code] Hard lock date check passed for acknowledgement (deadline: ${lockDate.toISOString()})`);
+    }
+    
     if (type === 'MANAGER') {
+      // Verify manager authorization
       if (!canManagerAccessEmployee_(userId, employeeId)) {
         logAccessAttempt(
           `[Manager: ${userId}]`,
@@ -551,17 +616,19 @@ function saveAcknowledgement(employeeId, userId, ackData, type) {
         );
         return { success: false, message: 'You do not have authorization to acknowledge this employee\'s review.' };
       }
+      
       const success = Database.saveManagerAcknowledgement(employeeId, userId, ackData);
-      if (success) {
-        return { success: true, message: 'Acknowledgement saved successfully' };
+      if (success && success.success !== false) {
+        return { success: true, message: 'Manager acknowledgement saved successfully' };
       }
-      return { success: false, message: 'Failed to save acknowledgement' };
+      return { success: false, message: success?.message || 'Failed to save acknowledgement' };
     } else {
+      // Employee acknowledgement (Step 7)
       const success = Database.saveEmployeeAcknowledgement(employeeId, ackData);
-      if (success) {
-        return { success: true, message: 'Acknowledgement saved successfully' };
+      if (success && success.success !== false) {
+        return { success: true, message: 'Employee acknowledgement saved successfully' };
       }
-      return { success: false, message: 'Failed to save acknowledgement' };
+      return { success: false, message: success?.message || 'Failed to save acknowledgement' };
     }
   } catch (e) {
     console.error(`[Code] Error saving acknowledgement: ${e.message}`);
@@ -770,13 +837,25 @@ function getTeamMembersWithStatusData(managerId) {
   try {
     console.log(`[getTeamMembersWithStatusData] Called with managerId: ${managerId}`);
     
+    // Normalize the input ID for consistent comparison
+    const normalizedManagerId = normalizeId(managerId);
+    console.log(`[getTeamMembersWithStatusData] Normalized managerId: ${managerId} → ${normalizedManagerId}`);
+    
+    if (normalizedManagerId === null) {
+      console.error(`[getTeamMembersWithStatusData] Invalid manager ID: ${managerId}`);
+      return { 
+        success: false, 
+        message: 'Invalid manager ID format.' 
+      };
+    }
+    
     // Step 1: Get the employee record to verify role
-    const employee = getEmployeeById_(managerId);
+    const employee = getEmployeeById_(normalizedManagerId);
     
     if (!employee) {
-      console.log(`[getTeamMembersWithStatusData] Employee not found for ID: ${managerId}`);
+      console.log(`[getTeamMembersWithStatusData] Employee not found for ID: ${normalizedManagerId}`);
       logAccessAttempt(
-        `[User: ${managerId}]`,
+        `[User: ${normalizedManagerId}]`,
         'UNKNOWN',
         'DENIED',
         'Employee not found'
@@ -789,12 +868,12 @@ function getTeamMembersWithStatusData(managerId) {
     
     // Step 2: Check if user has MANAGER role
     const userRole = employee.Role || employee.role || 'EMPLOYEE';
-    console.log(`[getTeamMembersWithStatusData] User ${managerId} has role: ${userRole}`);
+    console.log(`[getTeamMembersWithStatusData] User ${normalizedManagerId} has role: ${userRole}`);
     
     if (userRole !== 'MANAGER') {
-      console.log(`[getTeamMembersWithStatusData] Access denied: ${managerId} is not a MANAGER (role=${userRole})`);
+      console.log(`[getTeamMembersWithStatusData] Access denied: ${normalizedManagerId} is not a MANAGER (role=${userRole})`);
       logAccessAttempt(
-        `[User: ${managerId}]`,
+        `[User: ${normalizedManagerId}]`,
         userRole,
         'DENIED',
         'User role is not MANAGER'
@@ -805,20 +884,21 @@ function getTeamMembersWithStatusData(managerId) {
       };
     }
     
-    console.log(`[getTeamMembersWithStatusData] User ${managerId} is a manager, loading team members...`);
+    console.log(`[getTeamMembersWithStatusData] User ${normalizedManagerId} is a manager, loading team members...`);
     
     // Step 3: Get all team members (direct + indirect reports)
-    const teamMembers = getTeamMembersRecursive_(managerId);
+    const teamMembers = getTeamMembersRecursive_(normalizedManagerId);
     
     console.log(`[getTeamMembersWithStatusData] Retrieved ${teamMembers.length} team members`);
     
     if (teamMembers.length === 0) {
-      console.log(`[getTeamMembersWithStatusData] No team members found for manager ${managerId} (may have no direct reports)`);
+      console.log(`[getTeamMembersWithStatusData] No team members found for manager ${normalizedManagerId} (may have no direct reports)`);
     }
     
     // Step 4: Enhance with workflow status
     const enhancedTeamMembers = teamMembers.map(member => {
-      const employeeId = member.EmployeeID || member.employeeId;
+      const rawEmployeeId = member.EmployeeID || member.employeeId;
+      const employeeId = normalizeId(rawEmployeeId);
       const workflowStatus = getWorkflowStatusForTeam_(employeeId);
       
       return {
@@ -830,8 +910,11 @@ function getTeamMembersWithStatusData(managerId) {
         group: member.Group || member.group || 'N/A',
         team: member.Team || member.team || 'N/A',
         corporation: member.Corporation || member.corporation || 'N/A',
-        managerEmployeeId: member.ManagerID || member.managerId || null,
-        workflowStatus: workflowStatus
+        managerEmployeeId: normalizeId(member.ManagerID || member.managerId) || null,
+        workflowStatus: workflowStatus,
+        step1Complete: workflowStatus ? workflowStatus.step1Complete : false,
+        step4Complete: workflowStatus ? workflowStatus.step4Complete : false,
+        step5Complete: workflowStatus ? workflowStatus.step5Complete : false
       };
     });
     
@@ -1734,5 +1817,137 @@ function getSelfAssessment(employeeId) {
       data: null,
       message: `Error retrieving self-assessment: ${e.message}`
     };
+  }
+}
+/* -------------------------------------------------------------------------- */
+/*                      SKILL DEFINITIONS (Task 9 Prep)                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Fetches skill definitions from the SystemConfig sheet.
+ * Returns all 10 skills (5 core + 5 leadership) with required levels per band.
+ * 
+ * @returns {Object} { success: boolean, data: Object[], message: string }
+ */
+function getSkillDefinitions() {
+  try {
+    console.log(`[getSkillDefinitions] Fetching skill definitions from SystemConfig`);
+    
+    const sheet = getSheet_('SystemConfig');
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, Math.max(1, sheet.getLastRow() - 1), sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    // Filter for skill definition rows (skillType = 'CORE' or 'LEADERSHIP')
+    const skillDefinitions = [];
+    
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      const rowObj = {};
+      Object.entries(headers).forEach(([colName, colIndex]) => {
+        rowObj[colName] = row[colIndex];
+      });
+      
+      // Check if this is a skill definition row
+      const skillType = rowObj.SkillType || rowObj.skillType;
+      if (skillType === 'CORE' || skillType === 'LEADERSHIP') {
+        skillDefinitions.push({
+          skillId: rowObj.SkillID || rowObj.skillId || i,
+          skillName: rowObj.SkillName || rowObj.skillName || 'Unnamed Skill',
+          skillType: skillType,
+          requiredLevel: rowObj.RequiredLevel || rowObj.requiredLevel || 3,
+          description: rowObj.Description || rowObj.description || ''
+        });
+      }
+    }
+    
+    console.log(`[getSkillDefinitions] Found ${skillDefinitions.length} skill definitions`);
+    
+    if (skillDefinitions.length === 0) {
+      console.warn(`[getSkillDefinitions] WARNING: No skill definitions found in SystemConfig`);
+      // Return default skills as fallback
+      return {
+        success: true,
+        data: getDefaultSkillDefinitions(),
+        message: 'Using default skill definitions (none found in database)'
+      };
+    }
+    
+    // Separate into core and leadership
+    const coreSkills = skillDefinitions.filter(s => s.skillType === 'CORE');
+    const leadershipSkills = skillDefinitions.filter(s => s.skillType === 'LEADERSHIP');
+    
+    console.log(`[getSkillDefinitions] Core skills: ${coreSkills.length}, Leadership skills: ${leadershipSkills.length}`);
+    
+    return {
+      success: true,
+      data: skillDefinitions,
+      message: `Loaded ${skillDefinitions.length} skill definitions`
+    };
+  } catch (e) {
+    console.error(`[getSkillDefinitions] Error: ${e.message}`);
+    console.error(`[getSkillDefinitions] Stack: ${e.stack}`);
+    return {
+      success: false,
+      data: getDefaultSkillDefinitions(),
+      message: `Error loading skill definitions: ${e.message}`
+    };
+  }
+}
+
+/**
+ * Returns default skill definitions (fallback when database has no data).
+ * This ensures the form always has skills to display.
+ * 
+ * @returns {Object[]} Array of skill definition objects
+ */
+function getDefaultSkillDefinitions() {
+  return [
+    // Core Skills
+    { skillId: 1, skillName: 'Communication', skillType: 'CORE', requiredLevel: 3, description: 'Ability to express ideas clearly and listen effectively' },
+    { skillId: 2, skillName: 'Problem Solving', skillType: 'CORE', requiredLevel: 4, description: 'Ability to analyze issues and develop solutions' },
+    { skillId: 3, skillName: 'Teamwork', skillType: 'CORE', requiredLevel: 3, description: 'Ability to collaborate and support team goals' },
+    { skillId: 4, skillName: 'Customer Focus', skillType: 'CORE', requiredLevel: 3, description: 'Commitment to meeting customer needs' },
+    { skillId: 5, skillName: 'Innovation', skillType: 'CORE', requiredLevel: 2, description: 'Willingness to embrace new ideas and improvements' },
+    // Leadership Skills
+    { skillId: 6, skillName: 'Strategic Thinking', skillType: 'LEADERSHIP', requiredLevel: 3, description: 'Ability to align actions with long-term vision' },
+    { skillId: 7, skillName: 'People Development', skillType: 'LEADERSHIP', requiredLevel: 3, description: 'Commitment to developing others and fostering growth' },
+    { skillId: 8, skillName: 'Decision Making', skillType: 'LEADERSHIP', requiredLevel: 4, description: 'Ability to make sound decisions with available information' },
+    { skillId: 9, skillName: 'Change Management', skillType: 'LEADERSHIP', requiredLevel: 3, description: 'Ability to lead teams through organizational change' },
+    { skillId: 10, skillName: 'Stakeholder Management', skillType: 'LEADERSHIP', requiredLevel: 3, description: 'Ability to build and maintain effective relationships' }
+  ];
+}
+
+/**
+ * Gets system configuration value by key.
+ * Helper function to retrieve settings from SystemConfig sheet.
+ * 
+ * @param {string} key - Configuration key (e.g., 'HARD_LOCK_DATE', 'FORM_PERIOD_START')
+ * @returns {string|null} Configuration value or null if not found
+ */
+function getSystemConfigValue(key) {
+  try {
+    const sheet = getSheet_('SystemConfig');
+    const headers = getHeaderMap_(sheet);
+    const dataRange = sheet.getRange(2, 1, Math.max(1, sheet.getLastRow() - 1), sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      const rowObj = {};
+      Object.entries(headers).forEach(([colName, colIndex]) => {
+        rowObj[colName] = row[colIndex];
+      });
+      
+      if ((rowObj.ConfigKey || rowObj.configKey) === key) {
+        return rowObj.ConfigValue || rowObj.configValue || null;
+      }
+    }
+    
+    console.warn(`[getSystemConfigValue] Configuration key not found: ${key}`);
+    return null;
+  } catch (e) {
+    console.error(`[getSystemConfigValue] Error: ${e.message}`);
+    return null;
   }
 }
