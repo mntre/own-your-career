@@ -17,10 +17,16 @@
       --color-teal-soft: #9AC0C3;
       --font-heading: 'Funnel Display', sans-serif;
       --font-body: 'Funnel Sans', 'DM Sans', sans-serif;
+      --spacing-xs: 0.25rem;
+      --spacing-sm: 0.5rem;
       --spacing-md: 1rem;
       --spacing-lg: 1.5rem;
       --spacing-xl: 2rem;
+      --spacing-2xl: 3rem;
+      --radius-sm: 4px;
       --radius-md: 8px;
+      --color-complete: #0a7c42;
+      --color-pending: #f9a825;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,49 +34,90 @@
     body { font-family: var(--font-body); color: var(--color-black); background-color: #f5f5f5; line-height: 1.6; }
 
     h1, h2, h3 { font-family: var(--font-heading); font-weight: 700; line-height: 1.2; color: var(--color-black); }
-    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; }
+    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.25rem; }
 
     .portal-header {
       background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-teal-dark) 100%);
       color: var(--color-white);
-      padding: var(--spacing-xl) var(--spacing-xl);
+      padding: var(--spacing-xl) var(--spacing-2xl);
     }
     .portal-header h1 { color: var(--color-white); margin: 0; }
+    .portal-header__subtitle { margin-top: var(--spacing-sm); font-size: 0.95rem; opacity: 0.95; }
+
     .portal-main { max-width: 1200px; margin: 0 auto; padding: var(--spacing-xl); }
 
-    .card { background: white; border: 1px solid var(--color-teal-soft); border-radius: var(--radius-md); padding: var(--spacing-lg); margin-bottom: var(--spacing-lg); }
+    .card { background: white; border: 1px solid var(--color-teal-soft); border-radius: var(--radius-md); padding: var(--spacing-lg); margin-bottom: var(--spacing-lg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
     .card h2 { margin-bottom: var(--spacing-md); color: var(--color-teal-dark); }
 
     .form-group { margin-bottom: var(--spacing-lg); }
-    .form-group label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
-    .form-group textarea {
+    .form-group label { display: block; font-weight: 500; margin-bottom: var(--spacing-xs); color: var(--color-black); }
+    .form-group textarea, .form-group input {
       width: 100%;
-      padding: var(--spacing-md);
+      padding: var(--spacing-sm) var(--spacing-md);
       font-family: var(--font-body);
       font-size: 1rem;
       border: 1px solid var(--color-teal-soft);
-      border-radius: var(--radius-md);
-      min-height: 120px;
+      border-radius: var(--radius-sm);
     }
-    .form-group textarea:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15); }
+    .form-group textarea:focus, .form-group input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+    }
+    .form-group textarea { min-height: 120px; }
+    .form-group textarea:disabled, .form-group input:disabled {
+      background-color: #f5f5f5;
+      border-color: #ddd;
+      color: #999;
+      cursor: not-allowed;
+    }
 
-    .form-actions { display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl); justify-content: flex-end; }
+    .form-actions { display: flex; gap: var(--spacing-md); margin-top: var(--spacing-2xl); justify-content: flex-end; }
+
     .btn {
       display: inline-flex;
       align-items: center;
-      padding: var(--spacing-md) var(--spacing-lg);
+      justify-content: center;
+      padding: var(--spacing-sm) var(--spacing-lg);
       font-family: var(--font-body);
+      font-size: 1rem;
       font-weight: 500;
       border: none;
       border-radius: var(--radius-md);
       cursor: pointer;
+      transition: all 0.2s ease;
     }
+    .btn:focus-visible { outline: 3px solid var(--color-aquamarine); outline-offset: 2px; }
     .btn--primary { background-color: var(--color-primary); color: white; }
     .btn--primary:hover { background-color: var(--color-teal-mid); }
+    .btn--primary:disabled { background-color: #ccc; color: #666; cursor: not-allowed; opacity: 0.6; }
     .btn--secondary { background-color: var(--color-teal-soft); color: var(--color-teal-dark); }
+    .btn--secondary:hover { background-color: var(--color-aquamarine); }
 
     .form-guidance { color: #666; font-size: 0.95rem; margin-bottom: var(--spacing-md); }
-    .form-note { font-size: 0.9rem; color: #999; margin-top: var(--spacing-lg); border-top: 1px solid var(--color-teal-soft); padding-top: var(--spacing-md); }
+
+    .lock-alert {
+      background-color: #fff3cd;
+      border: 2px solid #ff9800;
+      border-radius: var(--radius-md);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+      color: #cc5d00;
+      font-weight: 500;
+    }
+    .lock-alert strong { display: block; margin-bottom: 0.5rem; font-size: 1.1rem; }
+    .lock-alert.error { background-color: #ffebee; border-color: #ef5350; color: #c62828; }
+
+    .form--locked { opacity: 0.7; pointer-events: none; }
+
+    .progress-bar {
+      background: #f0f7f6;
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-2xl);
+    }
+    .progress-bar p { margin: 0; color: #666; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -79,53 +126,22 @@
   </header>
 
   <main class="portal-main">
-    <section class="card" id="self-assessment-section">
-      <h2>Step 3: Self-Assessment</h2>
-      <p class="form-guidance">Answer the following 4 questions about your performance this review period. All fields are mandatory.</p>
+    <div id="portal-loading" style="text-align: center; padding: 3rem; color: #999;">
+      <p>Loading your portal...</p>
+    </div>
 
-      <form id="self-assessment-form">
-        <div class="form-group">
-          <label for="q1">1. What contributed to your performance in the first half of this year (1H)?</label>
-          <textarea id="q1" name="q1" placeholder="Describe your key contributions, achievements, and what drove your performance in 1H..." required></textarea>
-        </div>
+    <div id="portal-error" class="card" style="display: none; background-color: #ffebee; border-color: #ef5350;">
+      <h2 style="color: #c62828;">Error Loading Portal</h2>
+      <p id="portal-error-message" style="color: #c62828;"></p>
+    </div>
 
-        <div class="form-group">
-          <label for="q2">2. What challenges or gaps impacted your performance in the second half of this year (2H)?</label>
-          <textarea id="q2" name="q2" placeholder="Describe any obstacles, resource gaps, or challenges that affected your output in 2H..." required></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="q3">3. What support do you need going forward?</label>
-          <textarea id="q3" name="q3" placeholder="Describe what tools, training, coaching, or resources would help you improve..." required></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="q4">4. What specific commitments will you make to improve/sustain performance?</label>
-          <textarea id="q4" name="q4" placeholder="Describe your specific commitments to improve or sustain performance..." required></textarea>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn--secondary" id="backBtn" onclick="goBack()">Back</button>
-          <button type="submit" class="btn btn--primary">Submit Self-Assessment</button>
-        </div>
-      </form>
-
-      <p class="form-guidance form-note">Self Assessment can be edited until the deadline. Once Feed Forward (Step 4) begins, this form becomes read-only.</p>
-    </section>
+    <div id="portal-content" style="display: none;">
+      <!-- Steps render here dynamically -->
+    </div>
   </main>
 
   <script>
-    // === Navigation Functions ===
-    function goBack() {
-      // Navigate back in browser history
-      // This will show the previous portal state or redirect to login
-      window.history.back();
-    }
-
-    // === PLATFORM DETECTION (AppScript) ===
     window.PLATFORM = 'APPSCRIPT';
-    // NOTE: userEmail and employeeId are injected by WebApp.gs via template evaluation
-    // AppScript template syntax uses <?= ?> for output
     window.oyc_userEmail = '<?= userEmail ?>';
     window.oyc_userEmployeeID = <?= employeeId ?>;
 
@@ -133,88 +149,410 @@
     console.log('[EmployeePortal] User Email:', window.oyc_userEmail);
     console.log('[EmployeePortal] User ID:', window.oyc_userEmployeeID);
 
-    // PROBLEM 1 FIX: Validate that google.script.run is available
-    // PROBLEM 3 FIX: Check if user ID exists before using it
     const googleScriptAvailable = typeof google !== 'undefined' && google.script && google.script.run;
     const hasValidEmployeeId = window.oyc_userEmployeeID && window.oyc_userEmployeeID !== '';
 
-    const form = document.getElementById('self-assessment-form');
-    const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+    if (!googleScriptAvailable) {
+      console.error('[EmployeePortal] ERROR: google.script.run not available');
+      document.getElementById('portal-error').style.display = 'block';
+      document.getElementById('portal-error-message').textContent = 'Application error: google.script.run not available';
+      document.getElementById('portal-loading').style.display = 'none';
+    }
+    if (!hasValidEmployeeId) {
+      console.error('[EmployeePortal] ERROR: Employee ID not provided');
+      document.getElementById('portal-error').style.display = 'block';
+      document.getElementById('portal-error-message').textContent = 'Application error: Employee ID not configured';
+      document.getElementById('portal-loading').style.display = 'none';
+    }
 
-    if (form && googleScriptAvailable && hasValidEmployeeId) {
-      form.addEventListener('submit', (e) => {
+    function showPortalError(message) {
+      console.error('[EmployeePortal] Portal Error:', message);
+      document.getElementById('portal-loading').style.display = 'none';
+      document.getElementById('portal-error').style.display = 'block';
+      document.getElementById('portal-error-message').textContent = message;
+    }
+
+    function createStepCard(stepNum, title) {
+      const card = document.createElement('section');
+      card.className = 'card';
+      card.id = 'step-' + stepNum;
+      const heading = document.createElement('h2');
+      heading.textContent = 'Step ' + stepNum + ': ' + title;
+      card.appendChild(heading);
+      return card;
+    }
+
+    function renderStep1(skillsData) {
+      const card = createStepCard(1, 'Skills Assessment');
+      if (!skillsData) {
+        const p = document.createElement('p');
+        p.style.color = '#999';
+        p.textContent = 'Skills assessment has not yet been completed by your manager.';
+        card.appendChild(p);
+      } else {
+        const div = document.createElement('div');
+        div.innerHTML = '<p><strong>Manager Assessment:</strong></p><div style="background: #f9f9f9; padding: 1rem; border-radius: 8px; margin-top: 1rem;"><p>' + (skillsData.remarks || 'No remarks provided') + '</p></div>';
+        card.appendChild(div);
+      }
+      return card;
+    }
+
+    function renderStep2(okrData) {
+      const card = createStepCard(2, 'OKR (' + okrData.roleLevel + ')');
+      if (!okrData.okrs || okrData.okrs.length === 0) {
+        const p = document.createElement('p');
+        p.style.color = '#999';
+        p.textContent = 'No OKR data configured for your role.';
+        card.appendChild(p);
+      } else {
+        okrData.okrs.forEach(function(okrLevel) {
+          const levelDiv = document.createElement('div');
+          levelDiv.style.marginBottom = '1.5rem';
+          levelDiv.style.padding = '1rem';
+          levelDiv.style.backgroundColor = '#f9f9f9';
+          levelDiv.style.borderRadius = '8px';
+          
+          const levelHeading = document.createElement('h3');
+          levelHeading.style.marginBottom = '0.5rem';
+          levelHeading.textContent = okrLevel.level + ' OKR';
+          levelDiv.appendChild(levelHeading);
+
+          if (okrLevel.items && okrLevel.items.length > 0) {
+            const list = document.createElement('ul');
+            list.style.marginLeft = '1rem';
+            okrLevel.items.forEach(function(item) {
+              const li = document.createElement('li');
+              li.style.marginBottom = '0.5rem';
+              li.innerHTML = '<strong>' + item.okrTitle + '</strong> (Target: ' + item.target + ', Weight: ' + item.weight + '%)';
+              list.appendChild(li);
+            });
+            levelDiv.appendChild(list);
+          } else {
+            const p = document.createElement('p');
+            p.style.color = '#999';
+            p.textContent = 'No items configured.';
+            levelDiv.appendChild(p);
+          }
+          card.appendChild(levelDiv);
+        });
+      }
+      return card;
+    }
+
+    function renderStep3(portalData) {
+      const card = createStepCard(3, 'Self-Assessment');
+      const guidance = document.createElement('p');
+      guidance.className = 'form-guidance';
+      if (portalData.visibility.step3.editable) {
+        guidance.textContent = 'Answer the following ' + portalData.questions.length + ' questions about your performance this review period. All fields are mandatory.';
+      } else {
+        guidance.textContent = 'Self-Assessment is currently read-only.';
+      }
+      card.appendChild(guidance);
+
+      if (portalData.isLocked) {
+        const lockAlert = document.createElement('div');
+        lockAlert.className = 'lock-alert error';
+        const deadline = portalData.lockDeadline ? new Date(portalData.lockDeadline).toLocaleString() : 'Unknown';
+        lockAlert.innerHTML = '<strong>⏱️ Form is Read-Only</strong><p>Submission deadline was ' + deadline + '</p>';
+        card.appendChild(lockAlert);
+      }
+
+      const form = document.createElement('form');
+      form.id = 'step3-form';
+      if (!portalData.visibility.step3.editable || portalData.isLocked) {
+        form.className = 'form--locked';
+      }
+
+      portalData.questions.forEach(function(question, index) {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        const label = document.createElement('label');
+        label.htmlFor = 'q' + (index + 1);
+        label.textContent = (index + 1) + '. ' + question.questionText;
+        group.appendChild(label);
+
+        const textarea = document.createElement('textarea');
+        textarea.id = 'q' + (index + 1);
+        textarea.name = 'q' + (index + 1);
+        textarea.required = true;
+        textarea.disabled = !portalData.visibility.step3.editable || portalData.isLocked;
+        textarea.placeholder = 'Answer question ' + (index + 1) + '...';
+        
+        if (portalData.selfAssessment && portalData.selfAssessment['q' + (index + 1)]) {
+          textarea.value = portalData.selfAssessment['q' + (index + 1)];
+        }
+
+        group.appendChild(textarea);
+        form.appendChild(group);
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'form-actions';
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.className = 'btn btn--primary';
+      submitBtn.disabled = !portalData.visibility.step3.editable || portalData.isLocked;
+      submitBtn.textContent = portalData.selfAssessment ? 'Update Self-Assessment' : 'Submit Self-Assessment';
+      
+      submitBtn.addEventListener('click', function(e) {
         e.preventDefault();
+        submitStep3Form(form, portalData);
+      });
 
-        // PROBLEM 3 FIX: Validate all fields are filled
-        const q1 = document.getElementById('q1').value.trim();
-        const q2 = document.getElementById('q2').value.trim();
-        const q3 = document.getElementById('q3').value.trim();
-        const q4 = document.getElementById('q4').value.trim();
+      actions.appendChild(submitBtn);
+      form.appendChild(actions);
+      card.appendChild(form);
+      return card;
+    }
 
-        if (!q1 || !q2 || !q3 || !q4) {
-          alert('Please fill in all 4 questions before submitting.');
+    function renderStep4(feedForwardData) {
+      const card = createStepCard(4, 'Feed Forward');
+      if (!feedForwardData) {
+        const p = document.createElement('p');
+        p.style.color = '#999';
+        p.textContent = 'Feed Forward has not yet been provided by your manager.';
+        card.appendChild(p);
+      } else {
+        const div = document.createElement('div');
+        div.innerHTML = '<p><strong>Manager Feedback:</strong></p><div style="background: #f9f9f9; padding: 1rem; border-radius: 8px; margin-top: 1rem;"><p>' + (feedForwardData.feedback || 'No feedback provided') + '</p></div>';
+        card.appendChild(div);
+      }
+      return card;
+    }
+
+    function renderStep5(managerAckData) {
+      const card = createStepCard(5, 'Manager Acknowledgement');
+      if (!managerAckData) {
+        const p = document.createElement('p');
+        p.style.color = '#999';
+        p.textContent = 'Manager acknowledgement is pending.';
+        card.appendChild(p);
+      } else {
+        const div = document.createElement('div');
+        const date = managerAckData.lastSyncedAt ? new Date(managerAckData.lastSyncedAt).toLocaleDateString() : 'N/A';
+        div.innerHTML = '<p><strong>Status:</strong> ' + (managerAckData.acknowledged ? '✓ Acknowledged' : 'Pending') + '</p><p><strong>Date:</strong> ' + date + '</p>';
+        card.appendChild(div);
+      }
+      return card;
+    }
+
+    function renderStep6() {
+      const card = createStepCard(6, 'View All Scores & Feedback');
+      const p = document.createElement('p');
+      p.style.color = '#666';
+      p.innerHTML = 'This is a read-only summary of your performance review. All scores and feedback are now visible.';
+      card.appendChild(p);
+      return card;
+    }
+
+    function renderStep7(portalData) {
+      const card = createStepCard(7, 'Employee Acknowledgement');
+      const guidance = document.createElement('p');
+      guidance.className = 'form-guidance';
+      guidance.textContent = 'Please acknowledge that you have reviewed and discussed this performance assessment.';
+      card.appendChild(guidance);
+
+      if (portalData.isLocked) {
+        const lockAlert = document.createElement('div');
+        lockAlert.className = 'lock-alert error';
+        const deadline = portalData.lockDeadline ? new Date(portalData.lockDeadline).toLocaleString() : 'Unknown';
+        lockAlert.innerHTML = '<strong>⏱️ Form is Read-Only</strong><p>Submission deadline was ' + deadline + '</p>';
+        card.appendChild(lockAlert);
+      }
+
+      const form = document.createElement('form');
+      form.id = 'step7-form';
+      if (!portalData.visibility.step7.editable || portalData.isLocked) {
+        form.className = 'form--locked';
+      }
+
+      const group = document.createElement('div');
+      group.className = 'form-group';
+      const label = document.createElement('label');
+      label.htmlFor = 'ack-text';
+      label.textContent = 'Your Acknowledgement:';
+      group.appendChild(label);
+
+      const textarea = document.createElement('textarea');
+      textarea.id = 'ack-text';
+      textarea.name = 'acknowledgement';
+      textarea.required = true;
+      textarea.disabled = !portalData.visibility.step7.editable || portalData.isLocked;
+      textarea.placeholder = 'I acknowledge that I have reviewed and discussed this performance assessment...';
+      textarea.style.minHeight = '150px';
+      
+      if (portalData.employeeAck && portalData.employeeAck.acknowledgement) {
+        textarea.value = portalData.employeeAck.acknowledgement;
+      }
+
+      group.appendChild(textarea);
+      form.appendChild(group);
+
+      const actions = document.createElement('div');
+      actions.className = 'form-actions';
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.className = 'btn btn--primary';
+      submitBtn.disabled = !portalData.visibility.step7.editable || portalData.isLocked;
+      submitBtn.textContent = portalData.employeeAck ? 'Update Acknowledgement' : 'Submit Acknowledgement';
+      
+      submitBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        submitStep7Form(form, portalData);
+      });
+
+      actions.appendChild(submitBtn);
+      form.appendChild(actions);
+      card.appendChild(form);
+      return card;
+    }
+
+    function submitStep3Form(form, portalData) {
+      const textareas = form.querySelectorAll('textarea');
+      for (let i = 0; i < textareas.length; i++) {
+        if (textareas[i].value.trim() === '') {
+          alert('Please answer all questions before submitting.');
           return;
         }
-
-        // PROBLEM 5 FIX: Only disable textareas and submit button, not ALL buttons (back button stays enabled)
-        const originalButtonText = submitBtn.textContent;
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Submitting...';
-        // Disable only form textareas, NOT the back button
-        const textareas = form.querySelectorAll('textarea');
-        textareas.forEach(ta => ta.disabled = true);
-
-        const formData = new FormData(form);
-        // PROBLEM 2 FIX: Add timestamp to form data
-        const data = {
-          q1: q1,
-          q2: q2,
-          q3: q3,
-          q4: q4,
-          dateSubmitted: new Date().toISOString()
-        };
-
-        console.log('[EmployeePortal] Submitting self-assessment:', data);
-
-        // PROBLEM 2 FIX: Check if google.script.run exists before calling
-        google.script.run
-          .withSuccessHandler((result) => {
-            // Re-enable form
-            textareas.forEach(ta => ta.disabled = false);
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalButtonText;
-
-            if (result.success) {
-              alert('Self-Assessment submitted successfully!');
-              form.reset();
-            } else {
-              alert('Error: ' + result.message);
-            }
-          })
-          .withFailureHandler((error) => {
-            // Re-enable form
-            textareas.forEach(ta => ta.disabled = false);
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalButtonText;
-
-            console.error('[EmployeePortal] Error:', error);
-            alert('Error submitting form');
-          })
-          .saveSelfAssessment(window.oyc_userEmployeeID, data);
-      });
-    } else {
-      // Disable form only if dependencies missing - don't disable back button
-      if (form) {
-        const formInputs = form.querySelectorAll('textarea, input, button[type="submit"]');
-        formInputs.forEach(input => input.disabled = true);
-
-        if (!googleScriptAvailable) {
-          console.error('[EmployeePortal] ERROR: google.script.run not available (not in AppScript context)');
-        }
-        if (!hasValidEmployeeId) {
-          console.error('[EmployeePortal] ERROR: Employee ID not provided or invalid');
-        }
       }
+
+      const data = { dateSubmitted: new Date().toISOString() };
+      for (let i = 0; i < textareas.length; i++) {
+        data[textareas[i].name] = textareas[i].value.trim();
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const original = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          for (let i = 0; i < textareas.length; i++) { textareas[i].disabled = false; }
+          submitBtn.disabled = false;
+          submitBtn.textContent = original;
+          if (result.success) {
+            alert('Self-Assessment submitted successfully!');
+            setTimeout(function() { location.reload(); }, 500);
+          } else {
+            alert('Error: ' + (result.message || 'Failed to save'));
+          }
+        })
+        .withFailureHandler(function(error) {
+          for (let i = 0; i < textareas.length; i++) { textareas[i].disabled = false; }
+          submitBtn.disabled = false;
+          submitBtn.textContent = original;
+          alert('Error: ' + (error.message || 'Unknown error'));
+        })
+        .saveSelfAssessment(window.oyc_userEmployeeID, data);
+    }
+
+    function submitStep7Form(form, portalData) {
+      const textarea = form.querySelector('textarea');
+      if (textarea.value.trim() === '') {
+        alert('Please provide your acknowledgement before submitting.');
+        return;
+      }
+
+      const data = {
+        acknowledgement: textarea.value.trim(),
+        dateSubmitted: new Date().toISOString()
+      };
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const original = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+      textarea.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          textarea.disabled = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = original;
+          if (result.success) {
+            alert('Acknowledgement submitted successfully!');
+            setTimeout(function() { location.reload(); }, 500);
+          } else {
+            alert('Error: ' + (result.message || 'Failed to save'));
+          }
+        })
+        .withFailureHandler(function(error) {
+          textarea.disabled = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = original;
+          alert('Error: ' + (error.message || 'Unknown error'));
+        })
+        .saveEmployeeAcknowledgement(window.oyc_userEmployeeID, data);
+    }
+
+    function renderPortal(portalData) {
+      console.log('[EmployeePortal] Rendering portal with step:', portalData.currentStep);
+
+      const container = document.getElementById('portal-content');
+      container.innerHTML = '';
+
+      const progress = document.createElement('div');
+      progress.className = 'progress-bar';
+      progress.innerHTML = '<p><strong>Progress:</strong> Step ' + portalData.currentStep + ' of 7' + (portalData.completedSteps.length > 0 ? ' (Completed: ' + portalData.completedSteps.join(', ') + ')' : '') + '</p>';
+      container.appendChild(progress);
+
+      if (portalData.visibility.step1.visible) {
+        container.appendChild(renderStep1(portalData.skillsAssessment));
+      }
+      if (portalData.visibility.step2.visible) {
+        container.appendChild(renderStep2(portalData.okrData));
+      }
+      if (portalData.visibility.step3.visible) {
+        container.appendChild(renderStep3(portalData));
+      }
+      if (portalData.visibility.step4.visible) {
+        container.appendChild(renderStep4(portalData.feedForward));
+      }
+      if (portalData.visibility.step5.visible) {
+        container.appendChild(renderStep5(portalData.managerAck));
+      }
+      if (portalData.visibility.step6.visible) {
+        container.appendChild(renderStep6());
+      }
+      if (portalData.visibility.step7.visible) {
+        container.appendChild(renderStep7(portalData));
+      }
+
+      document.getElementById('portal-loading').style.display = 'none';
+      container.style.display = 'block';
+      console.log('[EmployeePortal] Portal rendered successfully');
+    }
+
+    function initializePortal() {
+      console.log('[EmployeePortal] Initializing portal...');
+
+      if (!googleScriptAvailable || !hasValidEmployeeId) {
+        showPortalError('Cannot initialize portal: missing dependencies');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('[EmployeePortal] Portal data received');
+          if (!result.success || !result.data) {
+            showPortalError(result.message || 'Failed to load portal data');
+            return;
+          }
+          renderPortal(result.data);
+        })
+        .withFailureHandler(function(error) {
+          console.error('[EmployeePortal] Error fetching portal data:', error);
+          showPortalError('Failed to load portal data: ' + (error.message || 'Unknown error'));
+        })
+        .getEmployeePortalDataForPortal(window.oyc_userEmployeeID);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializePortal);
+    } else {
+      initializePortal();
     }
   </script>
 </body>
