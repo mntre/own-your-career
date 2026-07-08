@@ -151,6 +151,29 @@
         </div>
       </div>
     </section>
+
+    <!-- Step 6: View Scores & Feedback (Item #34) -->
+    <section class="scores-view" id="step-6-content" style="display: none;">
+      <div class="card">
+        <h2 class="card__header">Step 6: Your Performance Scores & Feedback</h2>
+        <p class="form-guidance">Read-only view of all your scores and manager feedback.</p>
+        
+        <div id="scores-loading" style="padding: 1rem; text-align: center;">Loading scores...</div>
+        <div id="scores-data" style="display: none;">
+          <h3>Skills Assessment</h3>
+          <div id="scores-skills"></div>
+          
+          <h3>OKR Achievement</h3>
+          <div id="scores-okr"></div>
+          
+          <h3>Performance Bracket</h3>
+          <div id="scores-bracket"></div>
+
+          <h3>Manager Feed Forward</h3>
+          <div id="scores-feedforward"></div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script src="../js/app.js"></script>
@@ -208,7 +231,200 @@
       step3Item.onclick = function() {
         showStep3Content();
       };
+
+      // Wire Step 6 click to load scores (Item #34)
+      const step6Item = document.querySelector('.step-6');
+      if (step6Item) {
+        step6Item.style.cursor = 'pointer';
+        step6Item.onclick = function() {
+          showStep6Content();
+        };
+      }
+
+      // Check workflow status on load for read-only enforcement (Items #28, #29)
+      checkReadOnlyState();
+
+      // Wire self-assessment form submission (Item #31)
+      const saForm = document.getElementById('self-assessment-form');
+      if (saForm) {
+        saForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const q1 = document.getElementById('q1').value.trim();
+          const q2 = document.getElementById('q2').value.trim();
+          const q3 = document.getElementById('q3').value.trim();
+          const q4 = document.getElementById('q4').value.trim();
+          
+          if (!q1 || !q2 || !q3 || !q4) {
+            alert('Please answer all 4 questions before submitting.');
+            return;
+          }
+
+          // Get current user's employee number from session
+          const token = sessionStorage.getItem('oyc_token');
+          let employeeNo = '';
+          if (token && typeof API !== 'undefined' && API.decodeToken) {
+            const decoded = API.decodeToken(token);
+            employeeNo = decoded ? decoded.email : '';
+          }
+
+          if (!employeeNo) {
+            alert('Session expired. Please log in again.');
+            return;
+          }
+
+          const submitBtn = document.getElementById('submit-btn');
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Submitting...';
+
+          if (typeof API !== 'undefined' && API.saveSelfAssessment) {
+            API.saveSelfAssessment(employeeNo, q1, q2, q3, q4)
+              .then(result => {
+                if (result.success) {
+                  alert('Self-Assessment submitted successfully!');
+                  submitBtn.textContent = 'Submitted ✓';
+                } else {
+                  alert('Error: ' + result.message);
+                  submitBtn.disabled = false;
+                  submitBtn.textContent = 'Submit Self-Assessment';
+                }
+              })
+              .catch(err => {
+                alert('Network error. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Self-Assessment';
+              });
+          } else {
+            alert('Self-Assessment submitted successfully! (offline mode)');
+            submitBtn.textContent = 'Submitted ✓';
+          }
+        });
+      }
     });
+
+    /**
+     * Show Step 6 content and load scores from API (Item #34)
+     */
+    function showStep6Content() {
+      document.getElementById('step-2-content').style.display = 'none';
+      document.getElementById('step-3-content').style.display = 'none';
+      document.getElementById('step-4-content').style.display = 'none';
+      document.getElementById('step-6-content').style.display = 'block';
+      
+      // Load scores
+      const token = sessionStorage.getItem('oyc_token');
+      let employeeNo = '';
+      if (token && typeof API !== 'undefined' && API.decodeToken) {
+        const decoded = API.decodeToken(token);
+        employeeNo = decoded ? decoded.email : '';
+      }
+
+      if (employeeNo && typeof API !== 'undefined' && API.getScores) {
+        API.getScores(employeeNo).then(result => {
+          document.getElementById('scores-loading').style.display = 'none';
+          document.getElementById('scores-data').style.display = 'block';
+          
+          if (result.success && result.scores) {
+            const s = result.scores;
+            
+            // Skills
+            const skillsEl = document.getElementById('scores-skills');
+            if (s.skills && s.skills.length > 0) {
+              skillsEl.innerHTML = s.skills.map(sk => `<p><strong>${sk.skill_name}</strong> (${sk.skill_type}): ${sk.rating}/5</p>`).join('');
+            } else {
+              skillsEl.innerHTML = '<p>No skills assessment data available yet.</p>';
+            }
+            
+            // OKR
+            const okrEl = document.getElementById('scores-okr');
+            if (s.okr) {
+              okrEl.innerHTML = `<p>Actual Score: <strong>${s.okr.actual_score || 'N/A'}</strong></p><p>Status: ${s.okr.okr_status || 'N/A'}</p>`;
+            } else {
+              okrEl.innerHTML = '<p>No OKR data available yet.</p>';
+            }
+            
+            // Bracket
+            const bracketEl = document.getElementById('scores-bracket');
+            bracketEl.innerHTML = s.performanceBracket ? `<p class="bracket-display"><strong>${s.performanceBracket}</strong></p>` : '<p>Not yet computed.</p>';
+            
+            // Feed Forward
+            const ffEl = document.getElementById('scores-feedforward');
+            if (s.feedForward) {
+              ffEl.innerHTML = `
+                <p><strong>Rating:</strong> ${s.feedForward.performance_rating || 'N/A'}</p>
+                <p><strong>Comments:</strong> ${s.feedForward.comments || 'None'}</p>
+                <p><strong>Strengths:</strong> ${s.feedForward.strengths || 'None'}</p>
+                <p><strong>Areas for Improvement:</strong> ${s.feedForward.areas_for_improvement || 'None'}</p>
+              `;
+            } else {
+              ffEl.innerHTML = '<p>Feed forward not yet submitted by your manager.</p>';
+            }
+          }
+        }).catch(err => {
+          document.getElementById('scores-loading').textContent = 'Error loading scores.';
+        });
+      } else {
+        document.getElementById('scores-loading').textContent = 'Please log in to view scores.';
+      }
+    }
+
+    /**
+     * Check read-only state (Items #28, #29)
+     * - After Step 5: Self-assessment form becomes read-only
+     * - After hard lock date: All forms disabled
+     */
+    function checkReadOnlyState() {
+      const token = sessionStorage.getItem('oyc_token');
+      let employeeNo = '';
+      if (token && typeof API !== 'undefined' && API.decodeToken) {
+        const decoded = API.decodeToken(token);
+        employeeNo = decoded ? decoded.email : '';
+      }
+
+      if (employeeNo && typeof API !== 'undefined' && API.getWorkflowStatus) {
+        API.getWorkflowStatus(employeeNo).then(result => {
+          if (result.success) {
+            // Item #29: Hard lock date enforcement
+            if (result.isLocked) {
+              disableAllForms('System is locked. The submission deadline has passed.');
+              return;
+            }
+            
+            // Item #28: After Step 5 complete, self-assessment becomes read-only
+            if (result.status && result.status.step5Complete) {
+              const saForm = document.getElementById('self-assessment-form');
+              if (saForm) {
+                const textareas = saForm.querySelectorAll('textarea');
+                textareas.forEach(ta => { ta.disabled = true; });
+                const submitBtn = document.getElementById('submit-btn');
+                if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Read-Only (Review Complete)'; }
+              }
+              
+              // Unlock Step 6
+              const step6El = document.querySelector('.step-6');
+              if (step6El) { step6El.classList.remove('locked'); }
+            }
+          }
+        }).catch(() => { /* Silently fail — offline mode */ });
+      }
+    }
+
+    /**
+     * Disables all form inputs (hard lock enforcement)
+     */
+    function disableAllForms(message) {
+      const forms = document.querySelectorAll('form');
+      forms.forEach(form => {
+        const inputs = form.querySelectorAll('input, textarea, select, button[type="submit"]');
+        inputs.forEach(el => { el.disabled = true; });
+      });
+      
+      // Show lock message
+      const lockBanner = document.createElement('div');
+      lockBanner.style.cssText = 'background: #fff3cd; border: 1px solid #ffc107; padding: 12px 16px; margin: 16px; border-radius: 6px; text-align: center; font-weight: 500;';
+      lockBanner.textContent = message;
+      document.querySelector('main').prepend(lockBanner);
+    }
   </script>
 </body>
 </html>
