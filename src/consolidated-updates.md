@@ -934,38 +934,39 @@ SkillID | SkillName | SkillType | RequiredLevel
 9 | Change Management | LEADERSHIP | 3
 10 | Stakeholder Management | LEADERSHIP | 3
 # Pending Work — Comprehensive Remaining Deliverables (47 Items)
+# Pending Work — Comprehensive Remaining Deliverables (34 Items)
 
 > **Guide for July 17 Launch.** This is the single source of truth for all remaining work.
-> Once the Converge route handlers (items 1-9) land, the system goes from "demo shell" to "working system."
+> Items 1-13 COMPLETED on July 8, 2026 — Converge platform now has full DB interaction.
 
 ---
 
-## 🔴 CONVERGE BACKEND — Route Handlers (the biggest gap)
+## ~~CONVERGE BACKEND — Route Handlers~~ ✅ COMPLETE (Jul 8)
 
-All workflow POST/GET endpoints currently return hardcoded `{ success: true }` with no DB interaction.
+All 9 workflow POST/GET endpoints now have full DB interaction.
 
 | # | Deliverable | File | Status |
 |----|-------------|------|--------|
-| 1 | POST `/api/skills-assessment` — save Core + Leadership skills ratings to `skills_assessment` table | routes.js | 🔴 TODO |
-| 2 | POST `/api/okr-upload` — save OKR data (Corporate, Group, Team, weights, targets) to `okr_data` table | routes.js | 🔴 TODO |
-| 3 | POST `/api/self-assessment` — save 4 self-assessment answers to `self_assessment` table | routes.js | 🔴 TODO |
-| 4 | POST `/api/feed-forward` — save manager assessment + rating to `feed_forward` table | routes.js | 🔴 TODO |
-| 5 | POST `/api/acknowledgement` — save manager (Step 5) and employee (Step 7) acknowledgements to `acknowledgements` table | routes.js | 🔴 TODO |
-| 6 | GET `/api/workflow-status/:empId` — return actual step completion status from `workflow_status` table | routes.js | 🔴 TODO |
-| 7 | GET `/api/scores/:empId` — return all scores (OKR, skills, bracket) from DB | routes.js | 🔴 TODO |
-| 8 | GET `/api/team/:managerId` — return manager's direct reports with workflow status | routes.js | 🔴 TODO |
-| 9 | GET `/api/org-data` — return organizational hierarchy for DataSPOC dropdowns | routes.js | 🔴 TODO |
+| 1 | POST `/api/skills-assessment` — save Core + Leadership skills ratings to `skills_assessment` table | routes.js | ✅ DONE |
+| 2 | POST `/api/okr-upload` — save OKR data (Corporate, Group, Team, weights, targets) to `okr_data` table | routes.js | ✅ DONE |
+| 3 | POST `/api/self-assessment` — save 4 self-assessment answers to `self_assessment` table | routes.js | ✅ DONE |
+| 4 | POST `/api/feed-forward` — save manager assessment + rating to `feed_forward` table | routes.js | ✅ DONE |
+| 5 | POST `/api/acknowledgement` — save manager (Step 5) and employee (Step 7) acknowledgements to `acknowledgements` table | routes.js | ✅ DONE |
+| 6 | GET `/api/workflow-status/:empId` — return actual step completion status from `workflow_status` table | routes.js | ✅ DONE |
+| 7 | GET `/api/scores/:empId` — return all scores (OKR, skills, bracket) from DB | routes.js | ✅ DONE |
+| 8 | GET `/api/team/:managerId` — return manager's direct reports with workflow status | routes.js | ✅ DONE |
+| 9 | GET `/api/org-data` — return organizational hierarchy for DataSPOC dropdowns | routes.js | ✅ DONE |
 
 ---
 
-## 🔴 CONVERGE BACKEND — Enforcement & Validation
+## ~~CONVERGE BACKEND — Enforcement & Validation~~ ✅ COMPLETE (Jul 8)
 
 | # | Deliverable | File | Status |
 |----|-------------|------|--------|
-| 10 | Hard lock date check before every form save (query `system_config` for lock date, reject if past) | routes.js | 🔴 TODO |
-| 11 | Server-side gate validation on each POST (verify prerequisite steps complete before allowing save) | routes.js | 🔴 TODO |
-| 12 | Update `workflow_status` table after each successful step save (mark step complete, trigger next) | routes.js | 🔴 TODO |
-| 13 | RBAC enforcement on each workflow route (MANAGER for Steps 1/4/5, DATA_SPOC for Step 2, EMPLOYEE for Steps 3/7) | routes.js | 🔴 TODO |
+| 10 | Hard lock date check before every form save (query `system_config` for lock date, reject if past) | routes.js | ✅ DONE |
+| 11 | Server-side gate validation on each POST (verify prerequisite steps complete before allowing save) | routes.js | ✅ DONE |
+| 12 | Update `workflow_status` table after each successful step save (mark step complete, trigger next) | routes.js | ✅ DONE |
+| 13 | RBAC enforcement on each workflow route (MANAGER for Steps 1/4/5, DATA_SPOC for Step 2, EMPLOYEE for Steps 3/7) | routes.js | ✅ DONE |
 
 ---
 
@@ -1067,7 +1068,7 @@ All workflow POST/GET endpoints currently return hardcoded `{ success: true }` w
 
 | Priority | Count | Description |
 |----------|-------|-------------|
-| 🔴 CRITICAL (blocks launch) | 13 | Items 1-13 — Converge routes + enforcement |
+| ✅ COMPLETE (was CRITICAL) | 13 | Items 1-13 — Converge routes + enforcement — DONE Jul 8 |
 | 🟡 HIGH (required for full functionality) | 22 | Items 14-20, 23-37 — Admin APIs, email, frontend wiring, admin UI content |
 | 🟢 BACKLOG (can defer) | 12 | Items 38-49 — Shared stubs, tests, deployment config |
 | ✅ RESOLVED (no longer pending) | 2 | Items 21-22 — detectConflict/logConflict already implemented |

@@ -13,7 +13,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('./middleware/auth');
 const rbac = require('./middleware/rbac');
-const { Employees, SystemConfig, Workflow, AuditLog, ExportHistory } = require('./db');
+const { Employees, SystemConfig, Workflow, AuditLog, ExportHistory, queryAll, queryOne, execute, saveDB } = require('./db');
 
 /* --------------------------------------------------------------------------
    Authentication Routes
@@ -134,94 +134,463 @@ router.post('/api/logout', auth.authMiddleware, (req, res) => {
    Protected Routes (require authentication)
    -------------------------------------------------------------------------- */
 
+/**
+ * Helper: Check if hard lock date has passed (rejects form saves after lock)
+ * Items #10 — Hard lock date enforcement
+ * @returns {boolean} true if locked
+ */
+function isSystemLocked() {
+  return SystemConfig.isLocked();
+}
+
+/**
+ * Helper: Ensure workflow_status row exists for employee
+ * @param {string} empNo
+ */
+function ensureWorkflowStatus(empNo) {
+  const existing = Workflow.getStatus(empNo);
+  if (!existing) {
+    execute(
+      'INSERT OR IGNORE INTO workflow_status (employee_no) VALUES ($emp)',
+      { $emp: empNo }
+    );
+    saveDB();
+  }
+}
+
 // Skills Assessment (Step 1)
-router.post('/api/skills-assessment', auth.authMiddleware, (req, res) => {
-  // TODO: Implement skills assessment save logic
-  // RBAC: MANAGER role only
-  res.json({
-    success: true,
-    message: 'Skills assessment saved'
-  });
+// Item #1 — POST /api/skills-assessment
+// Item #13 — RBAC: MANAGER only
+router.post('/api/skills-assessment', auth.authMiddleware, rbac.requireRole(['MANAGER', 'ADMIN']), (req, res) => {
+  try {
+    // Item #10 — Hard lock date check
+    if (isSystemLocked()) {
+      return res.status(403).json({ success: false, message: 'System is locked. No further edits allowed after the hard lock date.' });
+    }
+
+    const { employeeNo, skills } = req.body;
+    const assessorNo = req.user.email;
+
+    if (!employeeNo || !Array.isArray(skills) || skills.length === 0) {
+      return res.status(400).json({ success: false, message: 'employeeNo and skills array are required.' });
+    }
+
+    // Validate each skill entry
+    for (const skill of skills) {
+      if (!skill.skillType || !skill.skillName || skill.rating === undefined) {
+        return res.status(400).json({ success: false, message: 'Each skill must have skillType, skillName, and rating.' });
+      }
+      if (skill.rating < 0 || skill.rating > 5) {
+        return res.status(400).json({ success: false, message: 'Rating must be between 0 and 5.' });
+      }
+    }
+
+    // Save each skill rating (upsert)
+    for (const skill of skills) {
+      execute(`
+        INSERT INTO skills_assessment (employee_no, assessor_no, skill_type, skill_name, rating, remarks, updated_at)
+        VALUES ($emp, $assessor, $type, $name, $rating, $remarks, datetime('now'))
+        ON CONFLICT(employee_no, skill_type, skill_name) DO UPDATE SET
+          rating = excluded.rating, remarks = excluded.remarks, assessor_no = excluded.assessor_no, updated_at = excluded.updated_at
+      `, {
+        $emp: employeeNo,
+        $assessor: assessorNo,
+        $type: skill.skillType,
+        $name: skill.skillName,
+        $rating: skill.rating,
+        $remarks: skill.remarks || null
+      });
+    }
+
+    // Add unique constraint for upsert if not exists (handled gracefully)
+    try {
+      execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_skills_emp_type_name ON skills_assessment(employee_no, skill_type, skill_name)');
+    } catch (e) { /* index may already exist */ }
+
+    saveDB();
+
+    // Item #12 — Update workflow_status
+    ensureWorkflowStatus(employeeNo);
+    Workflow.completeStep(employeeNo, 1);
+
+    AuditLog.add('SKILLS_ASSESSMENT', assessorNo, `Skills assessment saved for ${employeeNo}`, `${skills.length} skills rated`);
+
+    res.json({ success: true, message: 'Skills assessment saved successfully.', skillsCount: skills.length });
+  } catch (error) {
+    console.error('[Route] Skills assessment error:', error);
+    res.status(500).json({ success: false, message: 'Error saving skills assessment: ' + error.message });
+  }
 });
 
 // OKR Upload (Step 2)
-router.post('/api/okr-upload', auth.authMiddleware, (req, res) => {
-  // TODO: Implement OKR upload logic
-  // RBAC: DATA_SPOC role only
-  res.json({
-    success: true,
-    message: 'OKR data uploaded'
-  });
+// Item #2 — POST /api/okr-upload
+// Item #13 — RBAC: DATA_SPOC only
+router.post('/api/okr-upload', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    // Item #10 — Hard lock date check
+    if (isSystemLocked()) {
+      return res.status(403).json({ success: false, message: 'System is locked. No further edits allowed after the hard lock date.' });
+    }
+
+    const { employeeNo, corporateOkr, groupOkr, departmentOkr, teamOkr, targetScore, actualScore, weight, okrStatus } = req.body;
+    const uploadedBy = req.user.email;
+
+    if (!employeeNo) {
+      return res.status(400).json({ success: false, message: 'employeeNo is required.' });
+    }
+
+    // Upsert OKR data
+    execute(`
+      INSERT INTO okr_data (employee_no, uploaded_by, corporate_okr, group_okr, department_okr, team_okr, target_score, actual_score, weight, okr_status, updated_at)
+      VALUES ($emp, $by, $corp, $grp, $dept, $team, $target, $actual, $weight, $status, datetime('now'))
+      ON CONFLICT(employee_no) DO UPDATE SET
+        uploaded_by = excluded.uploaded_by, corporate_okr = excluded.corporate_okr, group_okr = excluded.group_okr,
+        department_okr = excluded.department_okr, team_okr = excluded.team_okr, target_score = excluded.target_score,
+        actual_score = excluded.actual_score, weight = excluded.weight, okr_status = excluded.okr_status, updated_at = excluded.updated_at
+    `, {
+      $emp: employeeNo,
+      $by: uploadedBy,
+      $corp: corporateOkr || null,
+      $grp: groupOkr || null,
+      $dept: departmentOkr || null,
+      $team: teamOkr || null,
+      $target: targetScore || null,
+      $actual: actualScore || null,
+      $weight: weight || null,
+      $status: okrStatus || 'NOT_STARTED'
+    });
+
+    // Add unique constraint for upsert if not exists
+    try {
+      execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_okr_emp_unique ON okr_data(employee_no)');
+    } catch (e) { /* index may already exist */ }
+
+    saveDB();
+
+    // Item #12 — Update workflow_status
+    ensureWorkflowStatus(employeeNo);
+    Workflow.completeStep(employeeNo, 2);
+
+    AuditLog.add('OKR_UPLOAD', uploadedBy, `OKR data uploaded for ${employeeNo}`, `Status: ${okrStatus || 'NOT_STARTED'}`);
+
+    res.json({ success: true, message: 'OKR data uploaded successfully.' });
+  } catch (error) {
+    console.error('[Route] OKR upload error:', error);
+    res.status(500).json({ success: false, message: 'Error uploading OKR data: ' + error.message });
+  }
 });
 
 // Self-Assessment (Step 3)
+// Item #3 — POST /api/self-assessment
+// Item #11 — Gate validation: Steps 1 & 2 must be complete
+// Item #13 — RBAC: EMPLOYEE (all roles can do their own)
 router.post('/api/self-assessment', auth.authMiddleware, (req, res) => {
-  // TODO: Implement self-assessment save logic
-  // RBAC: EMPLOYEE role only
-  res.json({
-    success: true,
-    message: 'Self-assessment submitted'
-  });
+  try {
+    // Item #10 — Hard lock date check
+    if (isSystemLocked()) {
+      return res.status(403).json({ success: false, message: 'System is locked. No further edits allowed after the hard lock date.' });
+    }
+
+    const { employeeNo, q1, q2, q3, q4 } = req.body;
+
+    if (!employeeNo || !q1 || !q2 || !q3 || !q4) {
+      return res.status(400).json({ success: false, message: 'employeeNo and all 4 answers (q1-q4) are required.' });
+    }
+
+    // Item #11 — Gate validation: Steps 1 & 2 must be complete
+    ensureWorkflowStatus(employeeNo);
+    if (!Workflow.isStepEnabled(employeeNo, 3)) {
+      return res.status(403).json({ success: false, message: 'Step 3 is locked. Steps 1 (Skills Assessment) and 2 (OKR Upload) must be completed first.' });
+    }
+
+    // Upsert self-assessment
+    execute(`
+      INSERT INTO self_assessment (employee_no, q1_answer, q2_answer, q3_answer, q4_answer, updated_at)
+      VALUES ($emp, $q1, $q2, $q3, $q4, datetime('now'))
+      ON CONFLICT(employee_no) DO UPDATE SET
+        q1_answer = excluded.q1_answer, q2_answer = excluded.q2_answer,
+        q3_answer = excluded.q3_answer, q4_answer = excluded.q4_answer, updated_at = excluded.updated_at
+    `, { $emp: employeeNo, $q1: q1, $q2: q2, $q3: q3, $q4: q4 });
+
+    saveDB();
+
+    // Item #12 — Update workflow_status
+    Workflow.completeStep(employeeNo, 3);
+
+    AuditLog.add('SELF_ASSESSMENT', req.user.email, `Self-assessment submitted for ${employeeNo}`, '4 questions answered');
+
+    res.json({ success: true, message: 'Self-assessment submitted successfully.' });
+  } catch (error) {
+    console.error('[Route] Self-assessment error:', error);
+    res.status(500).json({ success: false, message: 'Error saving self-assessment: ' + error.message });
+  }
 });
 
 // Feed Forward (Step 4)
-router.post('/api/feed-forward', auth.authMiddleware, (req, res) => {
-  // TODO: Implement feed forward save logic
-  // RBAC: MANAGER role only
-  res.json({
-    success: true,
-    message: 'Feed forward submitted'
-  });
+// Item #4 — POST /api/feed-forward
+// Item #11 — Gate validation: Step 3 must be complete
+// Item #13 — RBAC: MANAGER only
+router.post('/api/feed-forward', auth.authMiddleware, rbac.requireRole(['MANAGER', 'ADMIN']), (req, res) => {
+  try {
+    // Item #10 — Hard lock date check
+    if (isSystemLocked()) {
+      return res.status(403).json({ success: false, message: 'System is locked. No further edits allowed after the hard lock date.' });
+    }
+
+    const { employeeNo, comments, performanceRating, strengths, areasForImprovement } = req.body;
+    const managerNo = req.user.email;
+
+    if (!employeeNo) {
+      return res.status(400).json({ success: false, message: 'employeeNo is required.' });
+    }
+
+    // Item #11 — Gate validation: Step 3 must be complete
+    ensureWorkflowStatus(employeeNo);
+    if (!Workflow.isStepEnabled(employeeNo, 4)) {
+      return res.status(403).json({ success: false, message: 'Step 4 is locked. Step 3 (Self-Assessment) must be completed first.' });
+    }
+
+    // Upsert feed forward
+    execute(`
+      INSERT INTO feed_forward (employee_no, manager_no, comments, performance_rating, strengths, areas_for_improvement, updated_at)
+      VALUES ($emp, $mgr, $comments, $rating, $strengths, $areas, datetime('now'))
+      ON CONFLICT(employee_no) DO UPDATE SET
+        manager_no = excluded.manager_no, comments = excluded.comments, performance_rating = excluded.performance_rating,
+        strengths = excluded.strengths, areas_for_improvement = excluded.areas_for_improvement, updated_at = excluded.updated_at
+    `, {
+      $emp: employeeNo,
+      $mgr: managerNo,
+      $comments: comments || null,
+      $rating: performanceRating || null,
+      $strengths: strengths || null,
+      $areas: areasForImprovement || null
+    });
+
+    saveDB();
+
+    // Item #12 — Update workflow_status
+    Workflow.completeStep(employeeNo, 4);
+
+    AuditLog.add('FEED_FORWARD', managerNo, `Feed forward submitted for ${employeeNo}`, `Rating: ${performanceRating || 'N/A'}`);
+
+    res.json({ success: true, message: 'Feed forward submitted successfully.' });
+  } catch (error) {
+    console.error('[Route] Feed forward error:', error);
+    res.status(500).json({ success: false, message: 'Error saving feed forward: ' + error.message });
+  }
 });
 
 // Acknowledgement (Steps 5 & 7)
+// Item #5 — POST /api/acknowledgement
+// Item #11 — Gate validation: Step 4 (for Step 5) or Step 6 (for Step 7)
+// Item #13 — RBAC: MANAGER (Step 5) or EMPLOYEE (Step 7)
 router.post('/api/acknowledgement', auth.authMiddleware, (req, res) => {
-  // TODO: Implement acknowledgement save logic
-  // RBAC: MANAGER (Step 5) or EMPLOYEE (Step 7)
-  res.json({
-    success: true,
-    message: 'Acknowledgement recorded'
-  });
+  try {
+    // Item #10 — Hard lock date check
+    if (isSystemLocked()) {
+      return res.status(403).json({ success: false, message: 'System is locked. No further edits allowed after the hard lock date.' });
+    }
+
+    const { employeeNo, step, comment } = req.body;
+    const acknowledgedBy = req.user.email;
+
+    if (!employeeNo || !step) {
+      return res.status(400).json({ success: false, message: 'employeeNo and step are required.' });
+    }
+
+    if (step !== 5 && step !== 7) {
+      return res.status(400).json({ success: false, message: 'Acknowledgement is only valid for step 5 (Manager) or step 7 (Employee).' });
+    }
+
+    // Item #13 — RBAC enforcement
+    if (step === 5 && req.user.role !== 'MANAGER' && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'Step 5 acknowledgement requires MANAGER role.' });
+    }
+    if (step === 7 && req.user.role !== 'EMPLOYEE' && req.user.role !== 'MANAGER' && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'Step 7 acknowledgement requires EMPLOYEE role.' });
+    }
+
+    // Item #11 — Gate validation
+    ensureWorkflowStatus(employeeNo);
+    if (!Workflow.isStepEnabled(employeeNo, step)) {
+      const prerequisite = step === 5 ? 'Step 4 (Feed Forward)' : 'Step 6 (View Scores)';
+      return res.status(403).json({ success: false, message: `Step ${step} is locked. ${prerequisite} must be completed first.` });
+    }
+
+    // Upsert acknowledgement
+    execute(`
+      INSERT INTO acknowledgements (employee_no, step, acknowledged_by, comment, submitted_at)
+      VALUES ($emp, $step, $by, $comment, datetime('now'))
+      ON CONFLICT(employee_no, step) DO UPDATE SET
+        acknowledged_by = excluded.acknowledged_by, comment = excluded.comment, submitted_at = excluded.submitted_at
+    `, { $emp: employeeNo, $step: step, $by: acknowledgedBy, $comment: comment || null });
+
+    saveDB();
+
+    // Item #12 — Update workflow_status
+    Workflow.completeStep(employeeNo, step);
+
+    // For Step 5, also mark Step 6 as accessible (read-only view)
+    if (step === 5) {
+      Workflow.completeStep(employeeNo, 6);
+    }
+
+    AuditLog.add('ACKNOWLEDGEMENT', acknowledgedBy, `Step ${step} acknowledgement for ${employeeNo}`, comment || '');
+
+    res.json({ success: true, message: `Step ${step} acknowledgement recorded successfully.` });
+  } catch (error) {
+    console.error('[Route] Acknowledgement error:', error);
+    res.status(500).json({ success: false, message: 'Error saving acknowledgement: ' + error.message });
+  }
 });
 
 // Workflow Status (Gate checking)
+// Item #6 — GET /api/workflow-status/:empId
 router.get('/api/workflow-status/:empId', auth.authMiddleware, (req, res) => {
-  // TODO: Implement workflow status check
-  // RBAC: EMPLOYEE, MANAGER, or DATA_SPOC depending on context
-  res.json({
-    success: true,
-    status: 'PENDING'
-  });
+  try {
+    const empId = req.params.empId;
+    ensureWorkflowStatus(empId);
+    const status = Workflow.getStatus(empId);
+
+    res.json({
+      success: true,
+      employeeNo: empId,
+      status: {
+        step1Complete: status.step1_complete === 1,
+        step2Complete: status.step2_complete === 1,
+        step3Complete: status.step3_complete === 1,
+        step4Complete: status.step4_complete === 1,
+        step5Complete: status.step5_complete === 1,
+        step6Complete: status.step6_complete === 1,
+        step7Complete: status.step7_complete === 1,
+        step1Date: status.step1_date,
+        step2Date: status.step2_date,
+        step3Date: status.step3_date,
+        step4Date: status.step4_date,
+        step5Date: status.step5_date,
+        step6Date: status.step6_date,
+        step7Date: status.step7_date
+      },
+      isLocked: isSystemLocked()
+    });
+  } catch (error) {
+    console.error('[Route] Workflow status error:', error);
+    res.status(500).json({ success: false, message: 'Error retrieving workflow status: ' + error.message });
+  }
 });
 
 // Scores (Step 6 - read only)
+// Item #7 — GET /api/scores/:empId
 router.get('/api/scores/:empId', auth.authMiddleware, (req, res) => {
-  // TODO: Implement scores retrieval
-  // RBAC: EMPLOYEE role only
-  res.json({
-    success: true,
-    scores: {}
-  });
+  try {
+    const empId = req.params.empId;
+
+    // Get skills assessment
+    const skills = queryAll('SELECT * FROM skills_assessment WHERE employee_no = $emp', { $emp: empId });
+
+    // Get OKR data
+    const okr = queryOne('SELECT * FROM okr_data WHERE employee_no = $emp', { $emp: empId });
+
+    // Get feed forward
+    const feedForward = queryOne('SELECT * FROM feed_forward WHERE employee_no = $emp', { $emp: empId });
+
+    // Get self-assessment
+    const selfAssessment = queryOne('SELECT * FROM self_assessment WHERE employee_no = $emp', { $emp: empId });
+
+    // Calculate performance bracket if OKR data exists
+    let performanceBracket = null;
+    if (okr && okr.actual_score !== null) {
+      const score = okr.actual_score;
+      if (score >= 101) performanceBracket = 'Exceeded';
+      else if (score >= 90.1) performanceBracket = 'Achieved';
+      else if (score >= 81) performanceBracket = 'Needs Improvement';
+      else performanceBracket = 'Failed';
+    }
+
+    res.json({
+      success: true,
+      employeeNo: empId,
+      scores: {
+        skills: skills,
+        okr: okr,
+        feedForward: feedForward,
+        selfAssessment: selfAssessment,
+        performanceBracket: performanceBracket
+      }
+    });
+  } catch (error) {
+    console.error('[Route] Scores error:', error);
+    res.status(500).json({ success: false, message: 'Error retrieving scores: ' + error.message });
+  }
 });
 
 // Team list (Manager view)
-router.get('/api/team/:managerId', auth.authMiddleware, (req, res) => {
-  // TODO: Implement team list retrieval
-  // RBAC: MANAGER role only
-  res.json({
-    success: true,
-    team: []
-  });
+// Item #8 — GET /api/team/:managerId
+router.get('/api/team/:managerId', auth.authMiddleware, rbac.requireRole(['MANAGER', 'ADMIN']), (req, res) => {
+  try {
+    const managerId = req.params.managerId;
+
+    // Get manager's employee record to find their name for team lookup
+    const manager = Employees.getByEmail(managerId) || Employees.getByEmpNo(managerId);
+    if (!manager) {
+      return res.status(404).json({ success: false, message: 'Manager not found.' });
+    }
+
+    // Get team members (employees whose immediate_supervisor matches manager's name)
+    const managerName = manager.full_name || `${manager.first_name || ''} ${manager.last_name || ''}`.trim();
+    const team = Employees.getTeam(managerName);
+
+    // Enrich with workflow status
+    const teamWithStatus = team.map(member => {
+      const status = Workflow.getStatus(member.employee_no);
+      return {
+        employeeNo: member.employee_no,
+        fullName: member.full_name,
+        email: member.email,
+        department: member.department_label,
+        position: member.position_title,
+        band: member.band,
+        workflowStatus: status ? {
+          step1Complete: status.step1_complete === 1,
+          step2Complete: status.step2_complete === 1,
+          step3Complete: status.step3_complete === 1,
+          step4Complete: status.step4_complete === 1,
+          step5Complete: status.step5_complete === 1,
+          step6Complete: status.step6_complete === 1,
+          step7Complete: status.step7_complete === 1
+        } : null
+      };
+    });
+
+    res.json({ success: true, managerId, managerName, team: teamWithStatus, teamCount: teamWithStatus.length });
+  } catch (error) {
+    console.error('[Route] Team error:', error);
+    res.status(500).json({ success: false, message: 'Error retrieving team: ' + error.message });
+  }
 });
 
 // Org data (Data SPOC view)
-router.get('/api/org-data/:spocId', auth.authMiddleware, (req, res) => {
-  // TODO: Implement org data retrieval
-  // RBAC: DATA_SPOC role only
-  res.json({
-    success: true,
-    orgData: {}
-  });
+// Item #9 — GET /api/org-data
+router.get('/api/org-data/:spocId', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    // Return organizational hierarchy for DataSPOC dropdowns
+    const groups = queryAll('SELECT DISTINCT business_group_label FROM employees WHERE business_group_label IS NOT NULL AND is_active = 1 ORDER BY business_group_label');
+    const departments = queryAll('SELECT DISTINCT department_label, business_group_label FROM employees WHERE department_label IS NOT NULL AND is_active = 1 ORDER BY department_label');
+
+    // Build hierarchy
+    const hierarchy = {};
+    groups.forEach(g => {
+      const groupName = g.business_group_label;
+      hierarchy[groupName] = departments
+        .filter(d => d.business_group_label === groupName)
+        .map(d => d.department_label);
+    });
+
+    res.json({ success: true, hierarchy, groups: groups.map(g => g.business_group_label), departments: departments.map(d => d.department_label) });
+  } catch (error) {
+    console.error('[Route] Org data error:', error);
+    res.status(500).json({ success: false, message: 'Error retrieving org data: ' + error.message });
+  }
 });
 
 /* --------------------------------------------------------------------------
