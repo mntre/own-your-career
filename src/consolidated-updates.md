@@ -933,12 +933,13 @@ SkillID | SkillName | SkillType | RequiredLevel
 8 | Decision Making | LEADERSHIP | 4
 9 | Change Management | LEADERSHIP | 3
 10 | Stakeholder Management | LEADERSHIP | 3
-# Pending Work — Comprehensive Remaining Deliverables (20 Items)
+# Pending Work — Comprehensive Remaining Deliverables (17 Items)
 
 > **Guide for July 17 Launch.** This is the single source of truth for all remaining work.
 > Items 1-13 COMPLETED on July 8, 2026 — Converge platform now has full DB interaction.
 > Items 14-20 COMPLETED on July 8, 2026 — Admin APIs fully operational.
 > Items 28-34 COMPLETED on July 8, 2026 — Frontend wired to Converge API end-to-end.
+> Items 35-37 COMPLETED on July 8, 2026 — Admin portal UI content complete.
 
 ---
 
@@ -1022,13 +1023,13 @@ All 9 workflow POST/GET endpoints now have full DB interaction.
 
 ---
 
-## 🟡 ADMIN PORTAL — Content Gaps
+## ~~ADMIN PORTAL — Content Gaps~~ ✅ COMPLETE (Jul 8)
 
 | # | Deliverable | File | Status |
 |----|-------------|------|--------|
-| 35 | Core Skills Definition UI content/form (A3 card exists but section body is placeholder) | admin-portal.html + admin.js | 🟡 TODO |
-| 36 | Leadership Skills Definition UI content/form (A4 card exists but section body is placeholder) | admin-portal.html + admin.js | 🟡 TODO |
-| 37 | Org Hierarchy Setup UI content/form (A6 card exists but section body is placeholder) | admin-portal.html + admin.js | 🟡 TODO |
+| 35 | Core Skills Definition UI content/form (A3 card exists but section body is placeholder) | admin-portal.html + admin.js | ✅ DONE |
+| 36 | Leadership Skills Definition UI content/form (A4 card exists but section body is placeholder) | admin-portal.html + admin.js | ✅ DONE |
+| 37 | Org Hierarchy Setup UI content/form (A6 card exists but section body is placeholder) | admin-portal.html + admin.js | ✅ DONE |
 
 ---
 
@@ -1072,7 +1073,8 @@ All 9 workflow POST/GET endpoints now have full DB interaction.
 | ✅ COMPLETE (was CRITICAL) | 13 | Items 1-13 — Converge routes + enforcement — DONE Jul 8 |
 | ✅ COMPLETE (was HIGH) | 7 | Items 14-20 — Admin APIs — DONE Jul 8 |
 | ✅ COMPLETE (was HIGH) | 7 | Items 28-34 — Frontend wiring — DONE Jul 8 |
-| 🟡 HIGH (remaining) | 8 | Items 23-27, 35-37 — Email service + admin UI content |
+| ✅ COMPLETE (was HIGH) | 3 | Items 35-37 — Admin portal UI content — DONE Jul 8 |
+| 🟡 HIGH (remaining) | 5 | Items 23-27 — Email service |
 | 🟢 BACKLOG (can defer) | 12 | Items 38-49 — Shared stubs, tests, deployment config |
 | ✅ RESOLVED (no longer pending) | 2 | Items 21-22 — detectConflict/logConflict already implemented |
 
@@ -1081,10 +1083,10 @@ All 9 workflow POST/GET endpoints now have full DB interaction.
 ```
 A1: Employee CSV Upload                    → ✅ COMPLETE
 A2: Employee Database Viewer               → ✅ COMPLETE
-A3: Core Skills Definition                 → 🟡 UI placeholder, backend not implemented
-A4: Leadership Skills Definition           → 🟡 UI placeholder, backend not implemented
+A3: Core Skills Definition                 → ✅ COMPLETE (UI + backend)
+A4: Leadership Skills Definition           → ✅ COMPLETE (UI + backend)
 A5: Role Assignment Management             → ✅ COMPLETE
-A6: Organizational Hierarchy Setup         → 🟡 UI placeholder, backend not implemented
+A6: Organizational Hierarchy Setup         → ✅ COMPLETE (UI + backend)
 ```
 
 ---

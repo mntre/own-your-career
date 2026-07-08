@@ -245,6 +245,15 @@ const Admin = {
       case 'role-assignment':
         this.loadRoleAssignmentData();
         break;
+      case 'core-skills':
+        this.loadCoreSkills();
+        break;
+      case 'leadership-skills':
+        this.loadLeadershipSkills();
+        break;
+      case 'org-hierarchy':
+        this.loadOrgHierarchy();
+        break;
       default:
         break;
     }
@@ -1685,6 +1694,195 @@ const Admin = {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  },
+
+  /* --------------------------------------------------------------------------
+     CORE SKILLS DEFINITION (A3) — Item #35
+     -------------------------------------------------------------------------- */
+
+  loadCoreSkills: function() {
+    const tbody = document.getElementById('core-skills-tbody');
+    if (!tbody) return;
+
+    if (typeof API !== 'undefined' && API.getSkillDefinitions) {
+      API.getSkillDefinitions().then(result => {
+        if (result.success && Array.isArray(result.skills)) {
+          if (result.skills.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">No core skills defined yet. Add one below.</td></tr>';
+          } else {
+            tbody.innerHTML = result.skills.map(sk => `
+              <tr>
+                <td>${sk.skill_name}</td>
+                <td>${sk.description || '—'}</td>
+                <td>${sk.required_level_per_band || '—'}</td>
+                <td><button class="btn btn--secondary" style="padding: 4px 8px; font-size: 12px;" onclick="Admin.editCoreSkill('${sk.skill_name}', '${sk.description || ''}', '${sk.required_level_per_band || ''}')">Edit</button></td>
+              </tr>
+            `).join('');
+          }
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #c62828;">Error loading skills</td></tr>';
+        }
+      }).catch(() => {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">Could not connect to server.</td></tr>';
+      });
+    }
+
+    // Wire form submission
+    const form = document.getElementById('core-skill-form');
+    if (form && !form.dataset.wired) {
+      form.dataset.wired = 'true';
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const skillName = document.getElementById('core-skill-name').value.trim();
+        const description = document.getElementById('core-skill-desc').value.trim();
+        const levels = document.getElementById('core-skill-levels').value.trim();
+
+        let parsedLevels = null;
+        if (levels) { try { parsedLevels = JSON.parse(levels); } catch (e) { alert('Invalid JSON for levels'); return; } }
+
+        if (typeof API !== 'undefined' && API.request) {
+          API.request('POST', '/admin/skill-definitions', { skillName, description, requiredLevelPerBand: parsedLevels })
+            .then(r => { if (r.success) { alert('Core skill saved!'); this.loadCoreSkills(); form.reset(); } else { alert(r.message); } })
+            .catch(() => alert('Error saving skill'));
+        }
+      });
+    }
+  },
+
+  editCoreSkill: function(name, desc, levels) {
+    document.getElementById('core-skill-name').value = name;
+    document.getElementById('core-skill-desc').value = desc;
+    document.getElementById('core-skill-levels').value = levels;
+  },
+
+  /* --------------------------------------------------------------------------
+     LEADERSHIP SKILLS DEFINITION (A4) — Item #36
+     -------------------------------------------------------------------------- */
+
+  loadLeadershipSkills: function() {
+    const tbody = document.getElementById('leadership-skills-tbody');
+    if (!tbody) return;
+
+    if (typeof API !== 'undefined' && API.getLeadershipDefinitions) {
+      API.getLeadershipDefinitions().then(result => {
+        if (result.success && Array.isArray(result.skills)) {
+          if (result.skills.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">No leadership skills defined yet. Add one below.</td></tr>';
+          } else {
+            tbody.innerHTML = result.skills.map(sk => `
+              <tr>
+                <td>${sk.skill_name}</td>
+                <td>${sk.description || '—'}</td>
+                <td>${sk.required_level_per_band || '—'}</td>
+                <td><button class="btn btn--secondary" style="padding: 4px 8px; font-size: 12px;" onclick="Admin.editLeadershipSkill('${sk.skill_name}', '${sk.description || ''}', '${sk.required_level_per_band || ''}')">Edit</button></td>
+              </tr>
+            `).join('');
+          }
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #c62828;">Error loading skills</td></tr>';
+        }
+      }).catch(() => {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">Could not connect to server.</td></tr>';
+      });
+    }
+
+    // Wire form submission
+    const form = document.getElementById('leadership-skill-form');
+    if (form && !form.dataset.wired) {
+      form.dataset.wired = 'true';
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const skillName = document.getElementById('leadership-skill-name').value.trim();
+        const description = document.getElementById('leadership-skill-desc').value.trim();
+        const levels = document.getElementById('leadership-skill-levels').value.trim();
+
+        let parsedLevels = null;
+        if (levels) { try { parsedLevels = JSON.parse(levels); } catch (e) { alert('Invalid JSON for levels'); return; } }
+
+        if (typeof API !== 'undefined' && API.request) {
+          API.request('POST', '/admin/leadership-definitions', { skillName, description, requiredLevelPerBand: parsedLevels })
+            .then(r => { if (r.success) { alert('Leadership skill saved!'); this.loadLeadershipSkills(); form.reset(); } else { alert(r.message); } })
+            .catch(() => alert('Error saving skill'));
+        }
+      });
+    }
+  },
+
+  editLeadershipSkill: function(name, desc, levels) {
+    document.getElementById('leadership-skill-name').value = name;
+    document.getElementById('leadership-skill-desc').value = desc;
+    document.getElementById('leadership-skill-levels').value = levels;
+  },
+
+  /* --------------------------------------------------------------------------
+     ORG HIERARCHY SETUP (A6) — Item #37
+     -------------------------------------------------------------------------- */
+
+  loadOrgHierarchy: function() {
+    const container = document.getElementById('org-hierarchy-tree');
+    const loading = document.getElementById('org-hierarchy-loading');
+    const stats = document.getElementById('org-hierarchy-stats');
+
+    if (typeof API !== 'undefined' && API.getOrgHierarchy) {
+      API.getOrgHierarchy().then(result => {
+        if (loading) loading.style.display = 'none';
+        if (container) container.style.display = 'block';
+        if (stats) stats.style.display = 'block';
+
+        if (result.success && Array.isArray(result.hierarchy)) {
+          // Display stats
+          document.getElementById('org-group-count').textContent = `Groups: ${result.groupCount}`;
+          document.getElementById('org-dept-count').textContent = `Departments: ${result.departmentCount}`;
+
+          // Build tree view
+          if (result.hierarchy.length === 0) {
+            container.innerHTML = '<p style="color: #999;">No hierarchy data. Upload employees first.</p>';
+          } else {
+            container.innerHTML = result.hierarchy.map(g => `
+              <div style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid var(--color-primary, #038F8D);">
+                <strong>${g.groupLabel || 'Unknown Group'}</strong> <span style="color: #666; font-size: 12px;">(${g.groupCode || ''})</span>
+                <div style="margin-top: 8px; padding-left: 16px;">
+                  ${g.departments.map(d => `<div style="padding: 4px 0; color: #444;">↳ ${d.deptLabel} <span style="color: #999; font-size: 11px;">(${d.deptCode || ''})</span></div>`).join('')}
+                </div>
+              </div>
+            `).join('');
+          }
+
+          // Populate dropdowns
+          const groupSelect = document.getElementById('org-group-select');
+          const deptSelect = document.getElementById('org-dept-select');
+          if (groupSelect) {
+            groupSelect.innerHTML = '<option value="">Select group...</option>' + result.hierarchy.map(g => `<option value="${g.groupLabel}">${g.groupLabel}</option>`).join('');
+          }
+          if (deptSelect) {
+            const allDepts = result.hierarchy.flatMap(g => g.departments);
+            deptSelect.innerHTML = '<option value="">Select department...</option>' + allDepts.map(d => `<option value="${d.deptLabel}">${d.deptLabel}</option>`).join('');
+          }
+        }
+      }).catch(() => {
+        if (loading) loading.textContent = 'Could not connect to server.';
+      });
+    }
+
+    // Wire form submission
+    const form = document.getElementById('org-hierarchy-form');
+    if (form && !form.dataset.wired) {
+      form.dataset.wired = 'true';
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const employeeNo = document.getElementById('org-employee-no').value.trim();
+        const businessGroupLabel = document.getElementById('org-group-select').value;
+        const departmentLabel = document.getElementById('org-dept-select').value;
+
+        if (!employeeNo) { alert('Employee number is required'); return; }
+
+        if (typeof API !== 'undefined' && API.request) {
+          API.request('POST', '/admin/org-hierarchy', { employeeNo, businessGroupLabel, departmentLabel })
+            .then(r => { if (r.success) { alert('Organization updated!'); form.reset(); } else { alert(r.message); } })
+            .catch(() => alert('Error updating organization'));
+        }
+      });
+    }
   }
 };
 

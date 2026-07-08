@@ -1150,8 +1150,42 @@
             <span style="font-size: 12px; color: #666;">Configure core skills & required levels per band</span>
           </div>
           <p style="color: #666; margin-bottom: 16px;">Define the 5 core skills and their required proficiency levels for each band/grade level.</p>
-          <div style="text-align: center; color: #999; padding: 40px 20px;">
-            <p>Core Skills Configuration — Coming Soon</p>
+          
+          <!-- Existing Skills Table -->
+          <div id="core-skills-table-container">
+            <table class="table" id="core-skills-table">
+              <thead>
+                <tr>
+                  <th>Skill Name</th>
+                  <th>Description</th>
+                  <th>Required Levels</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="core-skills-tbody">
+                <tr><td colspan="4" style="text-align: center; color: #999;">Loading skills...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Add/Edit Core Skill Form -->
+          <div class="form-section" style="margin-top: 24px; border-top: 1px solid var(--color-teal-soft, #9AC0C3); padding-top: 16px;">
+            <h3 style="margin-bottom: 12px;">Add / Edit Core Skill</h3>
+            <form id="core-skill-form">
+              <div class="form-group">
+                <label for="core-skill-name">Skill Name</label>
+                <input type="text" id="core-skill-name" placeholder="e.g., Technical Competency" required>
+              </div>
+              <div class="form-group">
+                <label for="core-skill-desc">Description</label>
+                <textarea id="core-skill-desc" rows="2" placeholder="Brief description of this skill"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="core-skill-levels">Required Levels per Band (JSON)</label>
+                <textarea id="core-skill-levels" rows="2" placeholder='{"Associate": 2, "Supervisor": 3, "Manager": 4}'></textarea>
+              </div>
+              <button type="submit" class="btn btn--primary">Save Core Skill</button>
+            </form>
           </div>
         </div>
       </div>
@@ -1164,8 +1198,42 @@
             <span style="font-size: 12px; color: #666;">Configure leadership skills & required levels per band</span>
           </div>
           <p style="color: #666; margin-bottom: 16px;">Define the 5 leadership skills and their required proficiency levels for each band/grade level.</p>
-          <div style="text-align: center; color: #999; padding: 40px 20px;">
-            <p>Leadership Skills Configuration — Coming Soon</p>
+          
+          <!-- Existing Skills Table -->
+          <div id="leadership-skills-table-container">
+            <table class="table" id="leadership-skills-table">
+              <thead>
+                <tr>
+                  <th>Skill Name</th>
+                  <th>Description</th>
+                  <th>Required Levels</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="leadership-skills-tbody">
+                <tr><td colspan="4" style="text-align: center; color: #999;">Loading skills...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Add/Edit Leadership Skill Form -->
+          <div class="form-section" style="margin-top: 24px; border-top: 1px solid var(--color-teal-soft, #9AC0C3); padding-top: 16px;">
+            <h3 style="margin-bottom: 12px;">Add / Edit Leadership Skill</h3>
+            <form id="leadership-skill-form">
+              <div class="form-group">
+                <label for="leadership-skill-name">Skill Name</label>
+                <input type="text" id="leadership-skill-name" placeholder="e.g., Strategic Thinking" required>
+              </div>
+              <div class="form-group">
+                <label for="leadership-skill-desc">Description</label>
+                <textarea id="leadership-skill-desc" rows="2" placeholder="Brief description of this leadership skill"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="leadership-skill-levels">Required Levels per Band (JSON)</label>
+                <textarea id="leadership-skill-levels" rows="2" placeholder='{"Supervisor": 3, "Manager": 4, "Director": 5}'></textarea>
+              </div>
+              <button type="submit" class="btn btn--primary">Save Leadership Skill</button>
+            </form>
           </div>
         </div>
       </div>
@@ -1252,8 +1320,41 @@
             <span style="font-size: 12px; color: #666;">Define Corp → Group → Department structure</span>
           </div>
           <p style="color: #666; margin-bottom: 16px;">Configure the organizational hierarchy for Data SPOC portal dropdown filters.</p>
-          <div style="text-align: center; color: #999; padding: 40px 20px;">
-            <p>Organizational Hierarchy Configuration — Coming Soon</p>
+          
+          <!-- Current Hierarchy Display -->
+          <div id="org-hierarchy-container">
+            <div id="org-hierarchy-loading" style="text-align: center; color: #999; padding: 20px;">Loading hierarchy...</div>
+            <div id="org-hierarchy-tree" style="display: none;"></div>
+          </div>
+
+          <!-- Hierarchy Stats -->
+          <div id="org-hierarchy-stats" style="margin-top: 16px; padding: 12px; background: #f8f9fa; border-radius: 6px; display: none;">
+            <span id="org-group-count" style="margin-right: 16px;"></span>
+            <span id="org-dept-count"></span>
+          </div>
+
+          <!-- Update Employee Org Assignment -->
+          <div class="form-section" style="margin-top: 24px; border-top: 1px solid var(--color-teal-soft, #9AC0C3); padding-top: 16px;">
+            <h3 style="margin-bottom: 12px;">Update Employee Organization</h3>
+            <form id="org-hierarchy-form">
+              <div class="form-group">
+                <label for="org-employee-no">Employee Number</label>
+                <input type="text" id="org-employee-no" placeholder="e.g., EMP001" required>
+              </div>
+              <div class="form-group">
+                <label for="org-group-select">Business Group</label>
+                <select id="org-group-select">
+                  <option value="">Select group...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="org-dept-select">Department</label>
+                <select id="org-dept-select">
+                  <option value="">Select department...</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn--primary">Update Organization</button>
+            </form>
           </div>
         </div>
       </div>
