@@ -808,6 +808,9 @@
         // Populate Department OKR table only
         populateDepartmentOKRTable(allKeyResults, corporate, group, dept);
         
+        // Restore any previously saved draft data
+        restoreDepartmentOKRDraft(dept);
+        
         // Show department section only
         document.getElementById('okr-section-dept').style.display = 'block';
         document.getElementById('okr-section-team').style.display = 'none';
@@ -822,6 +825,9 @@
         // Populate Team OKR table only
         populateTeamOKRTable(allKeyResults, corporate, group, dept, team);
         
+        // Restore any previously saved draft data
+        restoreTeamOKRDraft(team);
+        
         // Show team section only
         document.getElementById('okr-section-team').style.display = 'block';
         document.getElementById('okr-section-dept').style.display = 'none';
@@ -835,6 +841,9 @@
         
         // Populate Group OKR table
         populateGroupOKRTable(allKeyResults, corporate, group);
+        
+        // Restore any previously saved draft data
+        restoreGroupOKRDraft(group);
         
         // Show group section only
         document.getElementById('okr-section-group').style.display = 'block';
@@ -908,9 +917,15 @@
       // Populate Department OKR table
       populateDepartmentOKRTable(keyResults, selectedCorporate, selectedGroup, selectedDepartment);
       
+      // Restore previously saved department draft data
+      restoreDepartmentOKRDraft(selectedDepartment);
+      
       // Populate Team OKR table (if team is selected)
       if (selectedTeam) {
         populateTeamOKRTable(keyResults, selectedCorporate, selectedGroup, selectedDepartment, selectedTeam);
+        
+        // Restore previously saved team draft data
+        restoreTeamOKRDraft(selectedTeam);
       } else {
         // Clear team table if no team selected
         document.getElementById('okr-table-body-team').innerHTML = 
@@ -1301,15 +1316,25 @@
       const corporate = document.getElementById('corporate').value;
       const group = document.getElementById('group').value;
       
+      if (!group) {
+        alert('Please select a group first');
+        return;
+      }
+      
       // Collect Group OKR data
       const groupInputs = document.querySelectorAll('#okr-table-body-group .input-actual-group');
       const groupFormData = {};
       
-      groupInputs.forEach(function(input, index) {
-        groupFormData[`group_kr_${index}`] = input.value;
+      groupInputs.forEach(function(input) {
+        const krIndex = input.getAttribute('data-kr-index');
+        groupFormData[krIndex] = input.value;
       });
       
-      // Save to local storage/memory
+      // Save to localStorage with a unique key
+      const draftKey = `okr_draft_group_${group}`;
+      localStorage.setItem(draftKey, JSON.stringify(groupFormData));
+      
+      // Also save to memory
       if (!okrDraftData[group]) {
         okrDraftData[group] = {};
       }
@@ -1331,15 +1356,25 @@
     document.getElementById('save-draft-dept-btn').addEventListener('click', function() {
       const dept = document.getElementById('department').value;
       
+      if (!dept) {
+        alert('Please select a department first');
+        return;
+      }
+      
       // Collect Department OKR data
       const deptInputs = document.querySelectorAll('#okr-table-body-dept .input-actual-dept');
       const deptFormData = {};
       
-      deptInputs.forEach(function(input, index) {
-        deptFormData[`dept_kr_${index}`] = input.value;
+      deptInputs.forEach(function(input) {
+        const krIndex = input.getAttribute('data-kr-index');
+        deptFormData[krIndex] = input.value;
       });
       
-      // Save to local storage/memory
+      // Save to localStorage with a unique key
+      const draftKey = `okr_draft_dept_${dept}`;
+      localStorage.setItem(draftKey, JSON.stringify(deptFormData));
+      
+      // Also save to memory
       if (!okrDraftData[dept]) {
         okrDraftData[dept] = {};
       }
@@ -1370,11 +1405,16 @@
       const teamInputs = document.querySelectorAll('#okr-table-body-team .input-actual-team');
       const teamFormData = {};
       
-      teamInputs.forEach(function(input, index) {
-        teamFormData[`team_kr_${index}`] = input.value;
+      teamInputs.forEach(function(input) {
+        const krIndex = input.getAttribute('data-kr-index');
+        teamFormData[krIndex] = input.value;
       });
       
-      // Save to local storage/memory
+      // Save to localStorage with a unique key
+      const draftKey = `okr_draft_team_${team}`;
+      localStorage.setItem(draftKey, JSON.stringify(teamFormData));
+      
+      // Also save to memory
       if (!okrDraftData[team]) {
         okrDraftData[team] = {};
       }
@@ -1387,6 +1427,96 @@
       document.getElementById('okr-form-content').style.display = 'none';
       document.getElementById('step-2-content').style.display = 'block';
     });
+
+    /**
+     * Restores saved draft data for Group OKR
+     * @param {string} group - Group name
+     */
+    function restoreGroupOKRDraft(group) {
+      const draftKey = `okr_draft_group_${group}`;
+      const savedData = localStorage.getItem(draftKey);
+      
+      if (savedData) {
+        try {
+          const draftData = JSON.parse(savedData);
+          const groupInputs = document.querySelectorAll('#okr-table-body-group .input-actual-group');
+          
+          groupInputs.forEach(function(input) {
+            const krIndex = input.getAttribute('data-kr-index');
+            if (draftData[krIndex] !== undefined) {
+              input.value = draftData[krIndex];
+            }
+          });
+          
+          // Recalculate scores after restoring data
+          calculateAndDisplayScores('group');
+          
+          console.log('Group OKR draft restored for:', group);
+        } catch (e) {
+          console.error('Error restoring group draft:', e);
+        }
+      }
+    }
+
+    /**
+     * Restores saved draft data for Department OKR
+     * @param {string} dept - Department name
+     */
+    function restoreDepartmentOKRDraft(dept) {
+      const draftKey = `okr_draft_dept_${dept}`;
+      const savedData = localStorage.getItem(draftKey);
+      
+      if (savedData) {
+        try {
+          const draftData = JSON.parse(savedData);
+          const deptInputs = document.querySelectorAll('#okr-table-body-dept .input-actual-dept');
+          
+          deptInputs.forEach(function(input) {
+            const krIndex = input.getAttribute('data-kr-index');
+            if (draftData[krIndex] !== undefined) {
+              input.value = draftData[krIndex];
+            }
+          });
+          
+          // Recalculate scores after restoring data
+          calculateAndDisplayScores('department');
+          
+          console.log('Department OKR draft restored for:', dept);
+        } catch (e) {
+          console.error('Error restoring department draft:', e);
+        }
+      }
+    }
+
+    /**
+     * Restores saved draft data for Team OKR
+     * @param {string} team - Team name
+     */
+    function restoreTeamOKRDraft(team) {
+      const draftKey = `okr_draft_team_${team}`;
+      const savedData = localStorage.getItem(draftKey);
+      
+      if (savedData) {
+        try {
+          const draftData = JSON.parse(savedData);
+          const teamInputs = document.querySelectorAll('#okr-table-body-team .input-actual-team');
+          
+          teamInputs.forEach(function(input) {
+            const krIndex = input.getAttribute('data-kr-index');
+            if (draftData[krIndex] !== undefined) {
+              input.value = draftData[krIndex];
+            }
+          });
+          
+          // Recalculate scores after restoring data
+          calculateAndDisplayScores('team');
+          
+          console.log('Team OKR draft restored for:', team);
+        } catch (e) {
+          console.error('Error restoring team draft:', e);
+        }
+      }
+    }
 
     /**
      * Computes OKR score hierarchy with cascading fallback logic
