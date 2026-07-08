@@ -24,7 +24,9 @@ const SHEETS = {
   FEED_FORWARD: 'FeedForward',
   MANAGER_ACK: 'ManagerAcknowledgement',
   EMPLOYEE_ACK: 'EmployeeAcknowledgement',
-  WORKFLOW_STATUS: 'WorkflowStatus'
+  WORKFLOW_STATUS: 'WorkflowStatus',
+  SELF_ASSESSMENT_QUESTIONS: 'Self-Assessment Questions',
+  SYSTEM_CONFIG: 'SystemConfig'
 };
 
 /* -------------------------------------------------------------------------- */
@@ -1383,5 +1385,107 @@ function detectSheetChanges(sheetName, lastRowCount) {
       hasChanges: false,
       message: e.message
     };
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*              SELF-ASSESSMENT QUESTIONS & SYSTEM CONFIG OPERATIONS          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gets all enabled self-assessment questions ordered by sortOrder.
+ * Used for dynamic question rendering in the employee portal.
+ * 
+ * @returns {Object[]} Array of question objects { id, questionText, period, sortOrder, enabled }
+ */
+function getSelfAssessmentQuestions() {
+  try {
+    const questions = getAllRows_(SHEETS.SELF_ASSESSMENT_QUESTIONS);
+    
+    // Filter to enabled questions only
+    const enabledQuestions = questions.filter(q => q.enabled === true || q.enabled === 'TRUE');
+    
+    // Sort by sortOrder (ascending)
+    enabledQuestions.sort((a, b) => {
+      const orderA = parseInt(a.sortOrder, 10) || 0;
+      const orderB = parseInt(b.sortOrder, 10) || 0;
+      return orderA - orderB;
+    });
+    
+    console.log(`[Database] Retrieved ${enabledQuestions.length} enabled self-assessment questions`);
+    enabledQuestions.forEach(q => {
+      console.log(`[Database] Question ${q.sortOrder}: "${q.questionText}" (period: ${q.period})`);
+    });
+    
+    return enabledQuestions;
+  } catch (e) {
+    console.error(`[Database] Error getting self-assessment questions: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Gets a specific system configuration value by key.
+ * Used for retrieving admin-configured settings like hard lock date.
+ * 
+ * @param {string} key - Configuration key (e.g., "HARD_LOCK_DATE")
+ * @returns {string|null} Configuration value or null if not found
+ */
+function getSystemConfig(key) {
+  try {
+    const configs = getAllRows_(SHEETS.SYSTEM_CONFIG);
+    const config = configs.find(c => c.key === key);
+    
+    if (config) {
+      console.log(`[Database] Config "${key}" = "${config.value}"`);
+      return config.value;
+    }
+    
+    console.warn(`[Database] Config key not found: "${key}"`);
+    return null;
+  } catch (e) {
+    console.error(`[Database] Error getting system config "${key}": ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets an employee's self-assessment response (if already submitted).
+ * Used to pre-populate the form for editing.
+ * 
+ * @param {string} employeeId - The employee ID
+ * @returns {Object|null} Self-assessment data { q1, q2, q3, q4, dateSubmitted } or null if not found
+ */
+function getEmployeeSelfAssessment(employeeId) {
+  try {
+    const sheet = getSheet_(SHEETS.SELF_ASSESSMENT);
+    const headers = getHeaderMap_(sheet);
+    
+    // Check if sheet has data
+    if (sheet.getLastRow() < 2) {
+      console.log(`[Database] Self-Assessment sheet is empty (no submissions yet)`);
+      return null;
+    }
+    
+    const dataRange = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    const values = dataRange.getValues();
+    
+    const row = values.find(r => {
+      const rowObj = rowToObject_(r, Object.keys(headers));
+      return rowObj.employeeId === employeeId;
+    });
+    
+    if (row) {
+      const assessment = rowToObject_(row, Object.keys(headers));
+      console.log(`[Database] Found self-assessment for employee ${employeeId}`);
+      return assessment;
+    }
+    
+    console.log(`[Database] No self-assessment found for employee ${employeeId}`);
+    return null;
+  } catch (e) {
+    console.error(`[Database] Error getting self-assessment for ${employeeId}: ${e.message}`);
+    return null;
   }
 }
