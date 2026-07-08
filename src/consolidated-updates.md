@@ -866,3 +866,336 @@ For issues or questions about this feature:
 **Implementation Date:** July 2026  
 **Developer:** Kiro AI  
 **Status:** ✅ PRODUCTION READY
+
+
+---
+
+# Pending Work — Comprehensive Remaining Deliverables (47 Items)
+
+> **Guide for July 17 Launch.** This is the single source of truth for all remaining work.
+> Once the Converge route handlers (items 1-9) land, the system goes from "demo shell" to "working system."
+
+---
+
+## 🔴 CONVERGE BACKEND — Route Handlers (the biggest gap)
+
+All workflow POST/GET endpoints currently return hardcoded `{ success: true }` with no DB interaction.
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 1 | POST `/api/skills-assessment` — save Core + Leadership skills ratings to `skills_assessment` table | routes.js | 🔴 TODO |
+| 2 | POST `/api/okr-upload` — save OKR data (Corporate, Group, Team, weights, targets) to `okr_data` table | routes.js | 🔴 TODO |
+| 3 | POST `/api/self-assessment` — save 4 self-assessment answers to `self_assessment` table | routes.js | 🔴 TODO |
+| 4 | POST `/api/feed-forward` — save manager assessment + rating to `feed_forward` table | routes.js | 🔴 TODO |
+| 5 | POST `/api/acknowledgement` — save manager (Step 5) and employee (Step 7) acknowledgements to `acknowledgements` table | routes.js | 🔴 TODO |
+| 6 | GET `/api/workflow-status/:empId` — return actual step completion status from `workflow_status` table | routes.js | 🔴 TODO |
+| 7 | GET `/api/scores/:empId` — return all scores (OKR, skills, bracket) from DB | routes.js | 🔴 TODO |
+| 8 | GET `/api/team/:managerId` — return manager's direct reports with workflow status | routes.js | 🔴 TODO |
+| 9 | GET `/api/org-data` — return organizational hierarchy for DataSPOC dropdowns | routes.js | 🔴 TODO |
+
+---
+
+## 🔴 CONVERGE BACKEND — Enforcement & Validation
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 10 | Hard lock date check before every form save (query `system_config` for lock date, reject if past) | routes.js | 🔴 TODO |
+| 11 | Server-side gate validation on each POST (verify prerequisite steps complete before allowing save) | routes.js | 🔴 TODO |
+| 12 | Update `workflow_status` table after each successful step save (mark step complete, trigger next) | routes.js | 🔴 TODO |
+| 13 | RBAC enforcement on each workflow route (MANAGER for Steps 1/4/5, DATA_SPOC for Step 2, EMPLOYEE for Steps 3/7) | routes.js | 🔴 TODO |
+
+---
+
+## 🟡 CONVERGE BACKEND — Admin APIs
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 14 | POST/GET `/api/admin/skill-definitions` — CRUD for Core Skills configuration (A3) | routes.js + db.js | 🟡 TODO |
+| 15 | POST/GET `/api/admin/leadership-definitions` — CRUD for Leadership Skills configuration (A4) | routes.js + db.js | 🟡 TODO |
+| 16 | POST/GET `/api/admin/org-hierarchy` — CRUD for Corporate→Group→Dept→Team structure (A6) | routes.js + db.js | 🟡 TODO |
+| 17 | GET `/api/admin/send-reminders` — actual email sending (currently stub) | routes.js | 🟡 TODO |
+| 18 | POST `/api/admin/lock-system` — enforce hard lock immediately (currently stub) | routes.js | 🟡 TODO |
+| 19 | GET `/api/admin/export-progress` — actual progress report generation (currently stub) | routes.js | 🟡 TODO |
+| 20 | POST `/api/admin/trigger-sftp` — actual SFTP export trigger (currently stub) | routes.js | 🟡 TODO |
+
+---
+
+## ~~APPSCRIPT BACKEND — Bug Fixes~~ ✅ RESOLVED
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 21 | ~~Define `detectConflict()` function~~ — Already implemented (line 1060 in Database.gs) | Database.gs | ✅ DONE |
+| 22 | ~~Define `logConflict()` function~~ — Already implemented (line 1183 in Database.gs) | Database.gs | ✅ DONE |
+
+> **Note (Jul 8):** Both functions were always present in Database.gs. The earlier audit incorrectly flagged them as missing because it only scanned the top of the file.
+
+---
+
+## 🟡 EMAIL SERVICE (both platforms — 0% implemented)
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 23 | Configure SMTP transport in email.js (Converge) | email.js | 🟡 TODO |
+| 24 | Build email templates for each step transition (6 notification types per Email Automation Triggers table) | email.js + Email.gs | 🟡 TODO |
+| 25 | Implement email queue/deduplication (prevent duplicate sends on resubmission) | email.js + Email.gs | 🟡 TODO |
+| 26 | Implement Email.gs using GmailApp for AppScript platform | Email.gs | 🟡 TODO |
+| 27 | Wire email triggers to fire after each step completion (both platforms) | routes.js + Code.gs | 🟡 TODO |
+
+---
+
+## 🟡 FRONTEND — Data Flow Gaps
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 28 | Read-only enforcement after Step 5 (disable form fields, hide edit buttons for employee-facing data) | All portal JS | 🟡 TODO |
+| 29 | Read-only enforcement after hard lock date (all forms across all portals become non-editable) | All portal JS | 🟡 TODO |
+| 30 | Wire Manager Portal form submissions to Converge API (currently only wired to AppScript) | manager-portal.js | 🟡 TODO |
+| 31 | Wire Employee Portal form submissions to Converge API | employee-portal.html | 🟡 TODO |
+| 32 | Wire DataSPOC Portal form submissions to Converge API | dataspoc-portal.html | 🟡 TODO |
+| 33 | Display actual workflow status badges from backend (currently uses placeholder/mock data) | manager-portal.js | 🟡 TODO |
+| 34 | Load real scores in Employee Portal Step 6 view (currently no Converge endpoint to pull from) | employee-portal.html | 🟡 TODO |
+
+---
+
+## 🟡 ADMIN PORTAL — Content Gaps
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 35 | Core Skills Definition UI content/form (A3 card exists but section body is placeholder) | admin-portal.html + admin.js | 🟡 TODO |
+| 36 | Leadership Skills Definition UI content/form (A4 card exists but section body is placeholder) | admin-portal.html + admin.js | 🟡 TODO |
+| 37 | Org Hierarchy Setup UI content/form (A6 card exists but section body is placeholder) | admin-portal.html + admin.js | 🟡 TODO |
+
+---
+
+## 🟢 SHARED MODULES (stubs — can defer)
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 38 | `shared/workflow.js` — implement workflow state management + step transition logic (or formally deprecate since logic lives in gates.js/constants.js) | workflow.js | 🟢 BACKLOG |
+| 39 | `shared/export.js` — implement SFTP export CSV formatter | export.js | 🟢 BACKLOG |
+
+---
+
+## 🟢 TESTING & QA
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 40 | Unit tests for OKR calculation formulas | tests/ | 🟢 TODO |
+| 41 | Unit tests for gate logic (step unlock conditions) | tests/ | 🟢 TODO |
+| 42 | Integration tests: Converge end-to-end (login → form submit → DB write → status update) | tests/ | 🟢 TODO |
+| 43 | Integration tests: AppScript end-to-end | tests/ | 🟢 TODO |
+| 44 | Cross-platform parity test (same input produces same output on both platforms) | tests/ | 🟢 TODO |
+| 45 | UAT test scripts for all 4 personas (Manager, DataSPOC, Employee, Admin) | tests/ | 🟢 TODO |
+
+---
+
+## 🟢 DEPLOYMENT & OPS
+
+| # | Deliverable | File | Status |
+|----|-------------|------|--------|
+| 46 | Production environment configuration (Converge Cloud) | server.js + .env | 🟢 TODO |
+| 47 | AppScript deployment as web app (production URL) | appsscript.json | 🟢 TODO |
+| 48 | CORS whitelist for production domain | server.js | 🟢 TODO |
+| 49 | Google OAuth authorized origins for production domain | Google Cloud Console | 🟢 TODO |
+
+---
+
+## Summary by Priority
+
+| Priority | Count | Description |
+|----------|-------|-------------|
+| 🔴 CRITICAL (blocks launch) | 13 | Items 1-13 — Converge routes + enforcement |
+| 🟡 HIGH (required for full functionality) | 22 | Items 14-20, 23-37 — Admin APIs, email, frontend wiring, admin UI content |
+| 🟢 BACKLOG (can defer) | 12 | Items 38-49 — Shared stubs, tests, deployment config |
+| ✅ RESOLVED (no longer pending) | 2 | Items 21-22 — detectConflict/logConflict already implemented |
+
+**Admin Data Management — Quick Reference:**
+
+```
+A1: Employee CSV Upload                    → ✅ COMPLETE
+A2: Employee Database Viewer               → ✅ COMPLETE
+A3: Core Skills Definition                 → 🟡 UI placeholder, backend not implemented
+A4: Leadership Skills Definition           → 🟡 UI placeholder, backend not implemented
+A5: Role Assignment Management             → ✅ COMPLETE
+A6: Organizational Hierarchy Setup         → 🟡 UI placeholder, backend not implemented
+```
+
+---
+
+**Moved from README.md on July 8, 2026**
+
+
+---
+
+# Recent Updates (July 8, 2026)
+
+**Codebase Audit & README Alignment (6:00 PM)**
+- Full codebase review completed — README updated to reflect actual implementation state
+- Database layer (db.js): Confirmed 100% complete (12 tables, full CRUD, migrations)
+- AppScript backend (Code.gs + Database.gs + WebApp.gs): Confirmed fully functional
+- All frontend JS (13 files): Confirmed fully implemented
+- All 5 HTML portals: Confirmed complete with forms/tables/logic
+- Removed completed Task #1 from CRITICAL list (db.js was already done)
+- Identified key gap: Converge workflow route handlers are stubs (hardcoded responses, no DB writes)
+- Server-side gate validation on AppScript confirmed ✅ (Code.gs); Converge still missing
+
+**Admin Portal: Data Management Refinements**
+- A1 (Employee Upload): Full production implementation complete
+- A2 (Employee Viewer): Search, filter, inline edit, role reassignment all working
+- A5 (Role Assignment): Manual + auto-derived role management complete
+- A3, A4, A6: UI prepared for backend implementation next
+
+**Database & Role Derivation**
+- SQLite database fully designed (12 tables, all migrations)
+- Supervisor matching: 3-layer system (override → name match → flag)
+- Role derivation: Automatic manager detection, manual SPOC/Admin assignment
+- All backup/restore & data integrity logic complete
+
+**Authentication & Portal Routing**
+- Google SSO: Real Client ID configured (production-ready)
+- Multi-role detection: All users routed to accessible portals
+- Portal picker: Shows all roles user can access
+- Single-role auto-redirect: Seamless for pure employees
+
+**Next Immediate Focus (Jul 9):**
+- Implement Converge workflow route handlers (Steps 1-7 DB writes) — biggest gap
+- Add hard lock date check before all form saves (Converge)
+- Add server-side gate validation (Converge)
+- Fix detectConflict()/logConflict() in Database.gs
+
+
+---
+
+# Roadmap for July 17 Launch
+
+### June 28, 29, 30 — Business Solutions & Requirements Finalization
+| Day | Activity | Owner |
+|-----|----------|-------|
+| **June 28 (Sun)** | Business solutions work with stakeholders | Luigi Espiritu, Zaira Bajar |
+| **June 29 (Mon)** | Business solutions work with stakeholders | Luigi Espiritu, Zaira Bajar |
+| **June 30 (Tue)** | Business solutions work with stakeholders; Workflow design finalized (Zaira) | Luigi Espiritu, Zaira Bajar |
+
+**Deliverable:** Requirements locked, workflow confirmed (7-step), tech stack decision, Sprint 1 backlog ready
+
+---
+
+### Sprint 1: July 1 — July 4 (Wed-Sat) — Development Week 1
+**Focus:** Build 3 portals (Manager, Data SPOC, Employee)
+**Developers:** Charvin Penaverde (Lead), Jeremy Carino (Support)
+**Management:** Luigi Espiritu (2 hrs/day), Zaira Bajar (2 hrs/day)
+**Scrum:** JC Claudio — Daily standup 9 AM
+**Working Days:** Wed Jul 1, Thu Jul 2, Fri Jul 3 (3 working days)
+
+---
+
+### Sprint 2: July 6 — July 10 (Mon-Fri) — Development Week 2
+**Focus:** Continue portal development, system integration begins
+**Developers:** Charvin Penaverde, Jeremy Carino
+**QA Team:** Luigi Espiritu, Zaira Bajar, Mike Escobilla (wearing QA hats)
+**Analytics:** Ernica Castronero (data validation)
+**Working Days:** Mon Jul 6, Tue Jul 7, Wed Jul 8, Thu Jul 9, Fri Jul 10 (5 working days)
+**SIT:** 1.5 hours per portal (immediate feedback to dev team)
+
+---
+
+### Sprint 3: July 13 — July 17 (Mon-Fri) — UAT & Go-Live
+**Focus:** UAT execution, stakeholder sign-off, production deployment
+**QA Team:** Luigi Espiritu, Zaira Bajar, Mike Escobilla
+**Analytics:** Ernica Castronero (final data validation)
+**Working Days:** Mon Jul 13, Tue Jul 14, Wed Jul 15, Thu Jul 16, Fri Jul 17 (5 working days)
+**Go-Live:** July 17 (Friday)
+**Post-Go-Live:** Monday Jul 20 — stability monitoring
+
+---
+
+### Last to Develop: BRD v4.0 Additions
+**Source:** BRD v4.0 (July 1, 2026) — Updated requirements from Jelyn Ira Parreño & Gladys Erika Munsalud
+**Status:** To be developed last, after all core portal and workflow features are complete
+**Priority:** Lowest — build only after Steps 1-7 and core functionality are stable
+
+| # | Item | Description | Impact |
+|---|------|-------------|--------|
+| 1 | **Team Heat Map** | Consolidated dashboard on Manager Portal showing score variances with color-coding: Red (negative/off track), Amber (zero/needs attention), Green (positive/on track). Must update in real-time as managers modify assessments. | New UI component |
+| 2 | **Automated Weekly Reporting** | System must email performance reports 1-2x per week to admins (Hiroki Revereza, Jelyn Ira Parreño, Michael Ryan Escobilla, Ernica Castronero). Friday Automation Rule: auto-dispatch every Friday. | New backend scheduled task |
+| 3 | **OKR Status Field** | Add "Current OKR Status" field with values: Not Started, On Track, Completed, Postponed. Must appear in reports. | Schema + UI change |
+| 4 | **Mutual Acknowledgment (Revised Flow)** | BRD specifies a single mutual acknowledgment (both manager & employee see summary + mandatory checkbox + optional comment) rather than separate sequential acknowledgments. Evaluate workflow adjustment. | Workflow redesign |
+| 5 | **Hard Deadline Admin Lock** | PMGM team establishes a hard deadline after which forms are locked and non-editable. Requires admin control mechanism. | New admin feature |
+| 6 | **Self-Assessment Question Wording** | Update questions to reference "first half of the year (1H)" and "second half of the year (2H)" instead of "this quarter." | Quick constants fix |
+| 7 | **Performance Bracket Boundary Fix** | Correct threshold: "Exceeded" should be 101% and above (not 101.01%). Align with BRD v4.0 levels. | Quick constants fix |
+
+**Daily standup:** 9 AM, led by JC Claudio
+
+---
+
+# Implementation Status Summary (as of July 8, 2026)
+
+## Status
+- **Current Phase:** Development (Sprint 2, Day 3/5)
+- **Target Launch:** July 17, 2026
+- **Workflow Design:** Confirmed (Zaira Bajar — 7-step process)
+- **BRD Version:** v4.0 (July 1, 2026) — aligned
+
+## Component Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Portal UIs (HTML/CSS)** | 100% ✅ | All 5 portal pages complete (Login, Manager, DataSPOC, Employee, Admin) |
+| **CSS Branding** | 100% ✅ | 1340 lines, Converge Teal palette, responsive, accessible |
+| **Hard Gates Logic** | 100% ✅ | Client-side gates complete (gates.js + constants.js) |
+| **OKR Calculations** | 100% ✅ | All formulas correct, performance brackets, RAG status, hierarchy computation |
+| **Form Validation** | 100% ✅ | All validators + CSV parsing (RFC 4180 compliant) |
+| **Google OAuth (SSO)** | 100% ✅ | Production Client ID configured; multi-role portal picker; auto-redirect |
+| **RBAC Middleware** | 100% ✅ | requireRole(), requireAdmin(), role checking helpers |
+| **Auth Middleware** | 100% ✅ | JWT + Google OAuth verification, 30-min session timeout, test allowlist |
+| **Portal Login & Multi-Role Routing** | 100% ✅ | Google SSO, portal picker, auto-redirect, nav header switching |
+| **Role Derivation (Supervisor Matching)** | 100% ✅ | 3-layer system complete (override → match → flag), all 7 phases done |
+| **Converge Database (db.js)** | 100% ✅ | SQLite: 12 tables, full CRUD, migrations, indexes, role derivation pipeline |
+| **Converge Server (server.js)** | 100% ✅ | Express with CORS, JSON parsing, health check, error handling |
+| **Converge Admin Routes** | 100% ✅ | Employee upload, role derivation, config, audit, stats, overrides — all wired |
+| **Converge Login Route** | 100% ✅ | DB lookup + Google OAuth + test allowlist |
+| **AppScript Backend (Code.gs)** | 100% ✅ | All step save functions, hard lock enforcement, team retrieval, workflow status |
+| **AppScript Database (Database.gs)** | 100% ✅ | Full CRUD + concurrency (LockService); detectConflict/logConflict confirmed implemented |
+| **AppScript WebApp (WebApp.gs)** | 100% ✅ | doGet/doPost routing, role-based portal serving, JSON action dispatch |
+| **Admin Portal: A1 Employee Upload** | 100% ✅ | CSV parsing, drag-drop, SAP column mapping, validation, preview, upload |
+| **Admin Portal: A2 Employee Viewer** | 100% ✅ | Search, filter, inline edit, role reassignment, pagination |
+| **Admin Portal: A5 Role Assignment** | 100% ✅ | Manual + auto-derived + supervisor override management |
+| **Admin Portal: A3 Core Skills** | 20% 🟡 | UI section prepared, backend API not implemented |
+| **Admin Portal: A4 Leadership Skills** | 20% 🟡 | UI section prepared, backend API not implemented |
+| **Admin Portal: A6 Org Hierarchy** | 20% 🟡 | UI section prepared, backend API not implemented |
+| **Manager Portal JS** | 90% ✅ | Full UI logic, team loading, form sections; DB write via Converge routes pending |
+| **DataSPOC Portal JS** | 90% ✅ | Cascade dropdowns, CSV upload, OKR form, computation; Converge DB write pending |
+| **Employee Portal JS** | 85% ✅ | Step 3 form, step timeline; Converge DB write pending |
+| **Frontend API Layer** | 100% ✅ | api-converge.js, api-appscript.js, api-adapter.js, mock API — all complete |
+| **Converge Workflow Routes** | 10% ❌ | All step endpoints (POST/GET) return hardcoded stubs — no DB interaction |
+| **Server-Side Gate Validation (Converge)** | 0% ❌ | Not enforced on save endpoints |
+| **Hard Lock Enforcement (Converge)** | 0% ❌ | Config stored but never checked on form submissions |
+| **Email Service** | 0% ❌ | Both email.js and Email.gs are stubs (TODO comments only) |
+| **Shared workflow.js** | 0% ❌ | Stub only — logic lives in gates.js/constants.js instead |
+| **Shared export.js (SFTP)** | 0% ❌ | Stub only — Phase 2 |
+| **Tests** | 5% ❌ | 1 HTML structure test only (tests/admin-ui-test.js) |
+
+## Login & Portal Access — Implementation Status
+
+| Component | Status |
+|-----------|--------|
+| Google SSO login | ✅ COMPLETE (real Client ID configured) |
+| Multi-role detection | ✅ COMPLETE (getAccessiblePortals in login.js) |
+| Portal picker UI | ✅ COMPLETE (card-based, shows after SSO) |
+| Auto-redirect (single role) | ✅ COMPLETE (EMPLOYEE → direct to Employee Portal) |
+| Backend auth (email-only lookup) | ✅ COMPLETE (routes.js + auth.js — DB lookup, no role from frontend) |
+| Portal-level access checks | ✅ COMPLETE (app.js verifyPortalAccess — denies unauthorized URL access) |
+| Access denied message | ✅ COMPLETE ("Contact your Admin or HR team") |
+| Nav header portal switching | ✅ COMPLETE (portal-nav bar on all portals, role-based links) |
+| Server-side RBAC enforcement | ✅ EXISTS |
+
+## Role Derivation — Implementation Status
+
+| Phase | Status |
+|-------|--------|
+| RD-1: Schema update | ✅ COMPLETE (columns + override table + migrations) |
+| RD-2: Build lookup | ✅ COMPLETE (buildSupervisorLookup in db.js) |
+| RD-3: Resolve supervisors | ✅ COMPLETE (3-layer: override → match → flag) |
+| RD-4: Derive roles | ✅ COMPLETE (preserves DATA_SPOC/ADMIN) |
+| RD-5: Wire to upload flow | ✅ COMPLETE (auto-runs after CSV upload) |
+| RD-6: Override management UI | ✅ COMPLETE (API endpoints ready, admin.js updated) |
+| RD-7: API endpoints | ✅ COMPLETE (derive, unresolved, override CRUD, re-derive) |
