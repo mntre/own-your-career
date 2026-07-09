@@ -1078,6 +1078,98 @@
     }
 
     /**
+     * Show a progress modal while ingesting OKR data.
+     * Displays a loading animation for ~2.5s, then closes and calls the callback.
+     * @param {Function} onComplete - Called when the modal finishes
+     */
+    function showIngestingModal(onComplete) {
+      // Remove existing modal if any
+      const existingModal = document.getElementById('okr-ingesting-modal');
+      if (existingModal) existingModal.remove();
+
+      // Create modal overlay
+      const modal = document.createElement('div');
+      modal.id = 'okr-ingesting-modal';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      `;
+
+      // Create modal content
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 40px 32px;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      `;
+
+      content.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+        <h3 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #000;">
+          Ingesting OKR Data...
+        </h3>
+        <p style="margin: 0 0 24px; color: #666; font-size: 14px; line-height: 1.6;">
+          Your data is being processed and saved as a draft.
+        </p>
+        <div style="width: 100%; max-width: 280px; height: 6px; background: #e0f2f1; border-radius: 3px; margin: 0 auto; overflow: hidden;">
+          <div id="ingesting-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #038F8D, #4DB6AC); border-radius: 3px; transition: width 2s ease-in-out;"></div>
+        </div>
+        <p style="margin-top: 16px; font-size: 12px; color: #999;">Please wait...</p>
+      `;
+
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+
+      // Animate progress bar
+      setTimeout(function() {
+        const bar = document.getElementById('ingesting-progress-bar');
+        if (bar) bar.style.width = '100%';
+      }, 100);
+
+      // After 2.5 seconds, show success and auto-close
+      setTimeout(function() {
+        content.innerHTML = `
+          <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+          <h3 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #000;">
+            Draft Saved Successfully!
+          </h3>
+          <p style="margin: 0 0 24px; color: #666; font-size: 14px; line-height: 1.6;">
+            Click on the draft below to open the OKR form.
+          </p>
+          <button id="close-ingesting-btn" style="
+            background: #038F8D;
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+          ">
+            Got it
+          </button>
+        `;
+
+        document.getElementById('close-ingesting-btn').addEventListener('click', function() {
+          modal.remove();
+          if (onComplete) onComplete();
+        });
+      }, 2500);
+    }
+
+    /**
      * Handles Generate OKR Form button click
      * Displays OKR form with dynamic key result rows from CSV
      * Filters by selected Group, Department, and Team
@@ -1186,7 +1278,7 @@
         }
       }
       
-      // Get all key results from CSV
+      // Get all key results from CSV (validate data exists)
       const allKeyResults = window.pendingCSVHierarchy.keyResults;
       
       if (!allKeyResults || allKeyResults.length === 0) {
@@ -1194,106 +1286,15 @@
         return;
       }
       
-      // ===== DECISION LOGIC =====
-      // If Department selected (but no Team) → Show Department OKR table only
-      if (dept && !team) {
-        // Build form title for Department OKR
-        let formTitle = `OKR Upload: ${corporate} > ${group} > ${dept}`;
-        document.getElementById('form-department-title').textContent = formTitle;
-        
-        // Populate Department OKR table only
-        populateDepartmentOKRTable(allKeyResults, corporate, group, dept);
-        
-        // Restore any previously saved draft data
-        restoreDepartmentOKRDraft(dept);
-        
-        // Show department section only
-        document.getElementById('okr-section-dept').style.display = 'block';
-        document.getElementById('okr-section-team').style.display = 'none';
-        document.getElementById('okr-section-group').style.display = 'none';
-      }
-      // If both Department AND Team are selected → Show Team OKR table only
-      else if (dept && team) {
-        // Build form title for Team OKR
-        let formTitle = `OKR Upload: ${corporate} > ${group} > ${dept} > ${team}`;
-        document.getElementById('form-department-title').textContent = formTitle;
-        
-        // Populate Team OKR table only
-        populateTeamOKRTable(allKeyResults, corporate, group, dept, team);
-        
-        // Restore any previously saved draft data
-        restoreTeamOKRDraft(team);
-        
-        // Show team section only
-        document.getElementById('okr-section-team').style.display = 'block';
-        document.getElementById('okr-section-dept').style.display = 'none';
-        document.getElementById('okr-section-group').style.display = 'none';
-      }
-      // If only Corporate and Group are selected → Show Group OKR table
-      else if (!dept && !team) {
-        // Build form title for Group OKR
-        let formTitle = `Group OKR Upload: ${corporate} > ${group}`;
-        document.getElementById('form-department-title').textContent = formTitle;
-        
-        // Populate Group OKR table
-        populateGroupOKRTable(allKeyResults, corporate, group);
-        
-        // Restore any previously saved draft data
-        restoreGroupOKRDraft(group);
-        
-        // Show group section only
-        document.getElementById('okr-section-group').style.display = 'block';
-        document.getElementById('okr-section-dept').style.display = 'none';
-        document.getElementById('okr-section-team').style.display = 'none';
-      }
-      // Incomplete selection
-      else {
-        alert('Please complete the hierarchy selection:\n\n' +
-              '• Corporate + Group → Group OKR Form\n' +
-              '• Corporate + Group + Department → Department OKR Form\n' +
-              '• Corporate + Group + Department + Team → Team OKR Form');
-        return;
-      }
+      // Do NOT show the OKR form directly.
+      // Instead, show a progress modal, then update the drafts list.
+      // The user will click the draft to open the OKR form.
       
-      // Switch views
-      document.getElementById('step-2-content').style.display = 'none';
-      document.getElementById('okr-form-content').style.display = 'none';
-      
-      // Show loading and go to My Uploads
-      const uploadTab = document.getElementById('tab-okr-upload');
-      const myUploadsTab = document.getElementById('tab-my-uploads');
-      const uploadBtn = document.getElementById('tab-btn-upload');
-      const myUploadsBtn = document.getElementById('tab-btn-my-uploads');
-      
-      uploadTab.style.display = 'none';
-      myUploadsTab.style.display = 'block';
-      uploadBtn.classList.remove('active');
-      myUploadsBtn.classList.add('active');
-      
-      // Show loading animation
-      const accordion = document.getElementById('my-uploads-list');
-      accordion.innerHTML = `
-        <div style="padding: var(--spacing-xl); text-align: center;">
-          <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">⏳</div>
-          <p style="font-size: 1rem; font-weight: 600; color: var(--color-primary); margin-bottom: var(--spacing-sm);">Ingesting OKR Data...</p>
-          <div style="width: 100%; max-width: 300px; height: 6px; background: var(--color-teal-soft); border-radius: 3px; margin: 0 auto; overflow: hidden;">
-            <div style="width: 100%; height: 100%; background: linear-gradient(90deg, var(--color-primary), var(--color-aquamarine), var(--color-primary)); background-size: 200% 100%; animation: loading 2s ease-in-out infinite;"></div>
-          </div>
-          <p style="font-size: 0.9rem; color: #666; margin-top: var(--spacing-md);">Your draft will appear here shortly...</p>
-        </div>
-        <style>
-          @keyframes loading {
-            0% { background-position: 200% 0; }
-            50% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-          }
-        </style>
-      `;
-      
-      // Reload drafts after delay
-      setTimeout(() => {
-        loadExistingDrafts();
-      }, 2000);
+      showIngestingModal(function() {
+        // After modal completes, show the draft immediately from in-memory data
+        // (we already saved to backend above, so this is always consistent)
+        showLocalDraft(corporate, group, dept, team);
+      });
     });
 
     /**
@@ -2973,9 +2974,9 @@
         `;
       }
 
-      // Re-load drafts after a brief delay
+      // Re-load My Uploads after a brief delay
       setTimeout(() => {
-        loadExistingDrafts();
+        loadMyUploads();
       }, 2000);
     });
 
@@ -3090,21 +3091,194 @@
     }
 
     /**
+     * Show a local draft entry when API is not available (mock/offline mode).
+     * Creates a clickable draft button from in-memory data.
+     */
+    function showLocalDraft(corporate, group, dept, team) {
+      const draftsList = document.getElementById('upload-page-drafts-list');
+      const noDrafts = document.getElementById('upload-page-no-drafts');
+
+      const parts = [corporate, group, dept, team].filter(Boolean);
+      const lastSaved = new Date().toLocaleString();
+
+      draftsList.innerHTML = `
+        <button class="btn btn--primary resume-draft-item" data-draft-index="0" style="display:block;margin: var(--spacing-sm) 0;padding: var(--spacing-md);font-size:13px;text-align:left;width:100%;border-radius: var(--radius-md);">
+          📄 ${parts.join(' > ')}
+          <br><span style="font-size:11px;opacity:0.8;">Last saved: ${lastSaved}</span>
+        </button>
+      `;
+      draftsList.style.display = 'block';
+      noDrafts.style.display = 'none';
+
+      // Store as a local draft for the click handler
+      window.savedDrafts = [{
+        corporate: corporate,
+        businessGroup: group,
+        department: dept,
+        team: team,
+        csvData: JSON.stringify(window.pendingCSVHierarchy),
+        formData: null,
+        updatedAt: new Date().toISOString()
+      }];
+
+      // Show discard button
+      const discardBtn = document.getElementById('discard-all-drafts-btn');
+      if (discardBtn) discardBtn.style.display = 'block';
+
+      // Attach click handler to the draft button
+      setTimeout(function() {
+        var draftBtns = document.querySelectorAll('.resume-draft-item');
+        draftBtns.forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var draftIndex = parseInt(this.getAttribute('data-draft-index'));
+            var draft = window.savedDrafts[draftIndex];
+            if (!draft) return;
+            openOKRFormFromDraft(draft);
+          });
+        });
+      }, 50);
+    }
+
+    /**
+     * Open the OKR form from a draft object.
+     * Shared logic used by both loadExistingDrafts click handler and showLocalDraft.
+     */
+    function openOKRFormFromDraft(draft) {
+      // Restore CSV hierarchy data
+      if (draft.csvData) {
+        try {
+          const csvHierarchy = JSON.parse(draft.csvData);
+          if (csvHierarchy) {
+            window.pendingCSVHierarchy = csvHierarchy;
+            window.csvHierarchyData = csvHierarchy;
+            populateHierarchyDropdowns(csvHierarchy);
+          }
+        } catch (e) {
+          console.warn('[DataSPOC] Failed to parse draft CSV data:', e);
+          alert('Failed to restore draft. Please re-upload your CSV file.');
+          return;
+        }
+      } else {
+        alert('Draft has no CSV data. Please re-upload your CSV file.');
+        return;
+      }
+
+      // Restore form data to memory (will be applied when form is generated)
+      if (draft.formData) {
+        try {
+          const formData = JSON.parse(draft.formData);
+          const key = draft.team || draft.department || draft.businessGroup;
+          if (key && formData) {
+            if (!okrDraftData[key]) okrDraftData[key] = {};
+            if (draft.team) {
+              okrDraftData[key].team = formData;
+              localStorage.setItem(`okr_draft_team_${key}`, JSON.stringify(formData));
+            } else if (draft.department) {
+              okrDraftData[key].department = formData;
+              localStorage.setItem(`okr_draft_dept_${key}`, JSON.stringify(formData));
+            } else {
+              okrDraftData[key].group = formData;
+              localStorage.setItem(`okr_draft_group_${key}`, JSON.stringify(formData));
+            }
+          }
+        } catch (e) {
+          console.warn('[DataSPOC] Failed to parse draft form data:', e);
+        }
+      }
+
+      // Set hierarchy dropdown values
+      if (draft.corporate) {
+        document.getElementById('corporate').value = draft.corporate;
+        document.getElementById('group').disabled = false;
+        document.getElementById('group').classList.remove('disabled-field');
+      }
+      if (draft.businessGroup) {
+        document.getElementById('group').value = draft.businessGroup;
+        document.getElementById('department').disabled = false;
+        document.getElementById('department').classList.remove('disabled-field');
+      }
+      if (draft.department) {
+        document.getElementById('department').value = draft.department;
+        document.getElementById('team').disabled = false;
+        document.getElementById('team').classList.remove('disabled-field');
+      }
+      if (draft.team) {
+        document.getElementById('team').value = draft.team;
+      }
+
+      // Show delete button
+      document.getElementById('delete-okr-btn').style.display = 'inline-flex';
+
+      // Generate OKR form based on hierarchy level
+      const corporate = draft.corporate;
+      const group = draft.businessGroup;
+      const dept = draft.department;
+      const team = draft.team;
+      const allKeyResults = window.pendingCSVHierarchy.keyResults;
+
+      if (!allKeyResults || allKeyResults.length === 0) {
+        alert('No key results found in saved draft. Please re-upload your CSV file.');
+        return;
+      }
+
+      // Determine which form to show based on hierarchy level
+      if (dept && !team) {
+        document.getElementById('form-department-title').textContent = `OKR Upload: ${corporate} > ${group} > ${dept}`;
+        populateDepartmentOKRTable(allKeyResults, corporate, group, dept);
+        restoreDepartmentOKRDraft(dept);
+        document.getElementById('okr-section-dept').style.display = 'block';
+        document.getElementById('okr-section-team').style.display = 'none';
+        document.getElementById('okr-section-group').style.display = 'none';
+      } else if (dept && team) {
+        document.getElementById('form-department-title').textContent = `OKR Upload: ${corporate} > ${group} > ${dept} > ${team}`;
+        populateTeamOKRTable(allKeyResults, corporate, group, dept, team);
+        restoreTeamOKRDraft(team);
+        document.getElementById('okr-section-team').style.display = 'block';
+        document.getElementById('okr-section-dept').style.display = 'none';
+        document.getElementById('okr-section-group').style.display = 'none';
+      } else {
+        document.getElementById('form-department-title').textContent = `Group OKR Upload: ${corporate} > ${group}`;
+        populateGroupOKRTable(allKeyResults, corporate, group);
+        restoreGroupOKRDraft(group);
+        document.getElementById('okr-section-group').style.display = 'block';
+        document.getElementById('okr-section-dept').style.display = 'none';
+        document.getElementById('okr-section-team').style.display = 'none';
+      }
+
+      // Switch to OKR form view
+      document.getElementById('step-2-content').style.display = 'none';
+      document.getElementById('okr-form-content').style.display = 'block';
+
+      console.log('[DataSPOC] Draft restored — OKR form displayed');
+    }
+
+    /**
      * On page load: Check for existing drafts from the backend
      * If drafts exist, show a notification and allow the SPOC to resume
      */
     async function loadExistingDrafts() {
-      if (typeof API === 'undefined' || !API.getOkrDrafts) return;
+      if (typeof API === 'undefined' || !API.getOkrDrafts) {
+        console.warn('[DataSPOC] loadExistingDrafts: API.getOkrDrafts not available');
+        return;
+      }
 
       try {
+        console.log('[DataSPOC] loadExistingDrafts: Fetching drafts from backend...');
         const result = await API.getOkrDrafts();
+        console.log('[DataSPOC] loadExistingDrafts: API response:', JSON.stringify(result).substring(0, 200));
         
         // Get the fixed draft containers
         const draftsList = document.getElementById('upload-page-drafts-list');
         const noDrafts = document.getElementById('upload-page-no-drafts');
         
+        if (!draftsList || !noDrafts) {
+          console.warn('[DataSPOC] loadExistingDrafts: Draft container elements not found in DOM');
+          return;
+        }
+        
         if (!result.success || !result.drafts || result.drafts.length === 0) {
           // No drafts - show "no drafts" message
+          console.log('[DataSPOC] loadExistingDrafts: No drafts found (success:', result.success, ', drafts:', result.drafts, ')');
           draftsList.style.display = 'none';
           noDrafts.style.display = 'block';
           return;
@@ -3145,113 +3319,7 @@
               var draftIndex = parseInt(this.getAttribute('data-draft-index'));
               var draft = window.savedDrafts[draftIndex];
               if (!draft) return;
-
-              // Restore CSV hierarchy data
-              if (draft.csvData) {
-                try {
-                  const csvHierarchy = JSON.parse(draft.csvData);
-                  if (csvHierarchy) {
-                    window.pendingCSVHierarchy = csvHierarchy;
-                    window.csvHierarchyData = csvHierarchy;
-                    populateHierarchyDropdowns(csvHierarchy);
-                  }
-                } catch (e) {
-                  console.warn('[DataSPOC] Failed to parse draft CSV data:', e);
-                  alert('Failed to restore draft. Please re-upload your CSV file.');
-                  return;
-                }
-              } else {
-                alert('Draft has no CSV data. Please re-upload your CSV file.');
-                return;
-              }
-
-              // Restore form data to memory (will be applied when form is generated)
-              if (draft.formData) {
-                try {
-                  const formData = JSON.parse(draft.formData);
-                  const key = draft.team || draft.department || draft.businessGroup;
-                  if (key && formData) {
-                    if (!okrDraftData[key]) okrDraftData[key] = {};
-                    if (draft.team) {
-                      okrDraftData[key].team = formData;
-                      localStorage.setItem(`okr_draft_team_${key}`, JSON.stringify(formData));
-                    } else if (draft.department) {
-                      okrDraftData[key].department = formData;
-                      localStorage.setItem(`okr_draft_dept_${key}`, JSON.stringify(formData));
-                    } else {
-                      okrDraftData[key].group = formData;
-                      localStorage.setItem(`okr_draft_group_${key}`, JSON.stringify(formData));
-                    }
-                  }
-                } catch (e) {
-                  console.warn('[DataSPOC] Failed to parse draft form data:', e);
-                }
-              }
-
-              // Set hierarchy dropdown values
-              if (draft.corporate) {
-                document.getElementById('corporate').value = draft.corporate;
-                document.getElementById('group').disabled = false;
-                document.getElementById('group').classList.remove('disabled-field');
-              }
-              if (draft.businessGroup) {
-                document.getElementById('group').value = draft.businessGroup;
-                document.getElementById('department').disabled = false;
-                document.getElementById('department').classList.remove('disabled-field');
-              }
-              if (draft.department) {
-                document.getElementById('department').value = draft.department;
-                document.getElementById('team').disabled = false;
-                document.getElementById('team').classList.remove('disabled-field');
-              }
-              if (draft.team) {
-                document.getElementById('team').value = draft.team;
-              }
-
-              // Show delete button
-              document.getElementById('delete-okr-btn').style.display = 'inline-flex';
-
-              // === DIRECTLY GENERATE OKR FORM (skip ownership check — this is our own draft) ===
-              const corporate = draft.corporate;
-              const group = draft.businessGroup;
-              const dept = draft.department;
-              const team = draft.team;
-              const allKeyResults = window.pendingCSVHierarchy.keyResults;
-
-              if (!allKeyResults || allKeyResults.length === 0) {
-                alert('No key results found in saved draft. Please re-upload your CSV file.');
-                return;
-              }
-
-              // Determine which form to show based on hierarchy level
-              if (dept && !team) {
-                document.getElementById('form-department-title').textContent = `OKR Upload: ${corporate} > ${group} > ${dept}`;
-                populateDepartmentOKRTable(allKeyResults, corporate, group, dept);
-                restoreDepartmentOKRDraft(dept);
-                document.getElementById('okr-section-dept').style.display = 'block';
-                document.getElementById('okr-section-team').style.display = 'none';
-                document.getElementById('okr-section-group').style.display = 'none';
-              } else if (dept && team) {
-                document.getElementById('form-department-title').textContent = `OKR Upload: ${corporate} > ${group} > ${dept} > ${team}`;
-                populateTeamOKRTable(allKeyResults, corporate, group, dept, team);
-                restoreTeamOKRDraft(team);
-                document.getElementById('okr-section-team').style.display = 'block';
-                document.getElementById('okr-section-dept').style.display = 'none';
-                document.getElementById('okr-section-group').style.display = 'none';
-              } else {
-                document.getElementById('form-department-title').textContent = `Group OKR Upload: ${corporate} > ${group}`;
-                populateGroupOKRTable(allKeyResults, corporate, group);
-                restoreGroupOKRDraft(group);
-                document.getElementById('okr-section-group').style.display = 'block';
-                document.getElementById('okr-section-dept').style.display = 'none';
-                document.getElementById('okr-section-team').style.display = 'none';
-              }
-
-              // Switch to OKR form view
-              document.getElementById('step-2-content').style.display = 'none';
-              document.getElementById('okr-form-content').style.display = 'block';
-
-              console.log('[DataSPOC] Draft restored — OKR form displayed');
+              openOKRFormFromDraft(draft);
             });
           });
           
@@ -3283,8 +3351,20 @@
       }
     }
 
-    // Load drafts on page ready
-    loadExistingDrafts();
+    // Load drafts on page ready (with retry for cases where API may not be immediately available)
+    (async function() {
+      // First attempt
+      await loadExistingDrafts();
+      
+      // If the drafts list is still hidden (API might have failed), retry after 1.5s
+      const draftsList = document.getElementById('upload-page-drafts-list');
+      if (draftsList && draftsList.style.display === 'none') {
+        setTimeout(function() {
+          console.log('[DataSPOC] Retrying draft load...');
+          loadExistingDrafts();
+        }, 1500);
+      }
+    })();
   </script>
 </body>
 </html>
