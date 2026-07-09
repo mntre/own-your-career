@@ -1837,3 +1837,281 @@ function createOKRUploadSheet_() {
     throw e;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/*                    ADMIN PROGRESS MONITORING OPERATIONS                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * TASK 10: Gets completion percentages for each workflow step (1-7).
+ * Calculates the percentage of employees who have completed each step.
+ * 
+ * @returns {Object[]} Array of step completion objects
+ *   [{step: 1, completed: 45, total: 100, percentage: 45, status: 'green'}, ...]
+ *   where status is 'green' (>75%), 'orange' (50-75%), 'red' (<50%)
+ */
+function getStepCompletionPercentages() {
+  try {
+    console.log('[Database] getStepCompletionPercentages() called');
+    
+    // Get all employees
+    const allEmployees = getAllRows_(SHEETS.EMPLOYEES);
+    const totalEmployees = allEmployees.length;
+    
+    if (totalEmployees === 0) {
+      console.warn('[Database] No employees found in Employee Database sheet');
+      return [];
+    }
+    
+    // Get all workflow statuses
+    const workflowStatuses = getAllRows_(SHEETS.WORKFLOW_STATUS);
+    
+    console.log(`[Database] Total employees: ${totalEmployees}, Workflow records: ${workflowStatuses.length}`);
+    
+    // Count completion for each step
+    const steps = [
+      { stepKey: 'step1Complete', stepNumber: 1, label: 'Skills Assessment' },
+      { stepKey: 'step2Complete', stepNumber: 2, label: 'OKR Upload' },
+      { stepKey: 'step3Complete', stepNumber: 3, label: 'Self-Assessment' },
+      { stepKey: 'step4Complete', stepNumber: 4, label: 'Feed Forward' },
+      { stepKey: 'step5Complete', stepNumber: 5, label: 'Manager Acknowledgement' },
+      { stepKey: 'step6Unlocked', stepNumber: 6, label: 'View Scores' },
+      { stepKey: 'step7Complete', stepNumber: 7, label: 'Employee Acknowledgement' }
+    ];
+    
+    const result = steps.map(step => {
+      // Count employees with this step marked complete
+      const completedCount = workflowStatuses.filter(status => {
+        const stepValue = status[step.stepKey];
+        return stepValue === true || stepValue === 'true' || stepValue === 1 || stepValue === '1' || stepValue === 'COMPLETED';
+      }).length;
+      
+      const percentage = totalEmployees > 0 ? Math.round((completedCount / totalEmployees) * 100) : 0;
+      
+      // Determine color-coding: green (>75%), orange (50-75%), red (<50%)
+      let colorStatus = 'red';
+      if (percentage > 75) {
+        colorStatus = 'green';
+      } else if (percentage >= 50) {
+        colorStatus = 'orange';
+      }
+      
+      console.log(`[Database] Step ${step.stepNumber} (${step.label}): ${completedCount}/${totalEmployees} = ${percentage}% (${colorStatus})`);
+      
+      return {
+        step: step.stepNumber,
+        label: step.label,
+        completed: completedCount,
+        total: totalEmployees,
+        percentage: percentage,
+        status: colorStatus
+      };
+    });
+    
+    console.log(`[Database] Step completion percentages calculated successfully`);
+    return result;
+  } catch (e) {
+    console.error(`[Database] Error getting step completion percentages: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * TASK 10: Gets list of employees who have NOT completed a specific step.
+ * Used for "View Details" link to show incomplete employees for a step.
+ * 
+ * @param {number} step - Step number (1-7)
+ * @returns {Object[]} Array of employee objects { EmployeeID, Name, Email, Department, Group, Band }
+ */
+function getIncompleteEmployeesForStep(step) {
+  try {
+    console.log(`[Database] getIncompleteEmployeesForStep(${step}) called`);
+    
+    if (step < 1 || step > 7) {
+      throw new Error(`Invalid step number: ${step}. Must be 1-7.`);
+    }
+    
+    const stepKeyMap = {
+      1: 'step1Complete',
+      2: 'step2Complete',
+      3: 'step3Complete',
+      4: 'step4Complete',
+      5: 'step5Complete',
+      6: 'step6Unlocked',
+      7: 'step7Complete'
+    };
+    
+    const stepKey = stepKeyMap[step];
+    
+    // Get all employees
+    const allEmployees = getAllRows_(SHEETS.EMPLOYEES);
+    
+    // Get all workflow statuses
+    const workflowStatuses = getAllRows_(SHEETS.WORKFLOW_STATUS);
+    
+    // Build map of completed employee IDs for this step
+    const completedEmployeeIds = new Set();
+    workflowStatuses.forEach(status => {
+      const stepValue = status[stepKey];
+      if (stepValue === true || stepValue === 'true' || stepValue === 1 || stepValue === '1' || stepValue === 'COMPLETED') {
+        completedEmployeeIds.add(status.employeeId);
+      }
+    });
+    
+    // Filter employees who have NOT completed this step
+    const incompleteEmployees = allEmployees.filter(emp => {
+      const empId = emp.EmployeeID || emp.employeeId;
+      return !completedEmployeeIds.has(empId);
+    });
+    
+    console.log(`[Database] Found ${incompleteEmployees.length} employees incomplete for step ${step}`);
+    
+    return incompleteEmployees;
+  } catch (e) {
+    console.error(`[Database] Error getting incomplete employees for step ${step}: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * TASK 11: Gets list of employees who have NOT completed all 7 steps.
+ * Used for "Send Email Reminder" to identify non-compliant employees.
+ * 
+ * @returns {Object[]} Array of employee objects with workflow status
+ *   [{ EmployeeID, Name, Email, Department, Group, Band, completedSteps, overallPercentage }, ...]
+ */
+function getIncompleteEmployees() {
+  try {
+    console.log('[Database] getIncompleteEmployees() called');
+    
+    // Get all employees
+    const allEmployees = getAllRows_(SHEETS.EMPLOYEES);
+    
+    // Get all workflow statuses
+    const workflowStatuses = getAllRows_(SHEETS.WORKFLOW_STATUS);
+    
+    // Build map of workflow status by employee ID
+    const statusMap = {};
+    workflowStatuses.forEach(status => {
+      statusMap[status.employeeId] = status;
+    });
+    
+    // Filter employees who don't have allLocked=true
+    const incompleteEmployees = allEmployees.filter(emp => {
+      const empId = emp.EmployeeID || emp.employeeId;
+      const status = statusMap[empId];
+      
+      // If no status record exists or allLocked is false, employee is incomplete
+      if (!status) return true;
+      
+      const allLockedValue = status.allLocked;
+      return allLockedValue !== true && allLockedValue !== 'true' && allLockedValue !== 1 && allLockedValue !== '1';
+    });
+    
+    console.log(`[Database] Found ${incompleteEmployees.length} incomplete employees out of ${allEmployees.length}`);
+    
+    return incompleteEmployees;
+  } catch (e) {
+    console.error(`[Database] Error getting incomplete employees: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Gets all completed employees (all 7 steps done, data locked).
+ * Used for SFTP export validation.
+ * 
+ * @returns {Object[]} Array of employee objects { EmployeeID, Name, Email, Department, Group, Band }
+ */
+function getCompleteEmployees() {
+  try {
+    console.log('[Database] getCompleteEmployees() called');
+    
+    // Get all employees
+    const allEmployees = getAllRows_(SHEETS.EMPLOYEES);
+    
+    // Get all workflow statuses
+    const workflowStatuses = getAllRows_(SHEETS.WORKFLOW_STATUS);
+    
+    // Build map of workflow status by employee ID
+    const statusMap = {};
+    workflowStatuses.forEach(status => {
+      statusMap[status.employeeId] = status;
+    });
+    
+    // Filter employees with allLocked=true
+    const completeEmployees = allEmployees.filter(emp => {
+      const empId = emp.EmployeeID || emp.employeeId;
+      const status = statusMap[empId];
+      
+      if (!status) return false;
+      
+      const allLockedValue = status.allLocked;
+      return allLockedValue === true || allLockedValue === 'true' || allLockedValue === 1 || allLockedValue === '1';
+    });
+    
+    console.log(`[Database] Found ${completeEmployees.length} complete employees out of ${allEmployees.length}`);
+    
+    return completeEmployees;
+  } catch (e) {
+    console.error(`[Database] Error getting complete employees: ${e.message}`);
+    return [];
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                         EMAIL REMINDER OPERATIONS                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * TASK 11: Gets system configuration value (hard lock date for email template).
+ * 
+ * @param {string} key - Config key (e.g., 'HARD_LOCK_DATE')
+ * @returns {string|null} Config value or null if not found
+ */
+function getSystemConfigValue(key) {
+  try {
+    const configs = getAllRows_(SHEETS.SYSTEM_CONFIG);
+    const config = configs.find(c => c.key === key || c.ConfigKey === key);
+    return config ? (config.value || config.ConfigValue) : null;
+  } catch (e) {
+    console.error(`[Database] Error getting system config value for key ${key}: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets all workflow statuses (for admin reports).
+ * 
+ * @returns {Object[]} Array of all workflow status records
+ */
+function getAllWorkflowStatuses() {
+  try {
+    return getAllRows_(SHEETS.WORKFLOW_STATUS);
+  } catch (e) {
+    console.error(`[Database] Error getting all workflow statuses: ${e.message}`);
+    return [];
+  }
+}
+
+
+/**
+ * Logs an export history event (for audit trail).
+ * 
+ * @param {string} exportType - Type of export
+ * @param {string} status - Export status (SUCCESS, FAILED)
+ * @param {number} recordCount - Number of records
+ * @param {string} details - Export details
+ */
+function logExportHistory(exportType, status, recordCount, details) {
+  try {
+    // In production, this would write to ExportHistory sheet
+    // For now, just log to console
+    console.log(`[Database] Export history: type=${exportType}, status=${status}, records=${recordCount}, details=${details}`);
+    return true;
+  } catch (e) {
+    console.error(`[Database] Error logging export history: ${e.message}`);
+    return false;
+  }
+}
