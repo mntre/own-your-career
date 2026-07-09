@@ -100,6 +100,94 @@ function getMockAPI() {
 
     getTeam: async function(managerId) {
       return { success: true, managerId, team: [] };
+    },
+
+    // OKR Draft methods (stored in localStorage for mock mode)
+    saveOkrDraft: async function(draftData) {
+      const drafts = JSON.parse(localStorage.getItem('oyc_mock_drafts') || '[]');
+      // Find existing draft for same selection
+      const existingIdx = drafts.findIndex(d =>
+        d.corporate === draftData.corporate &&
+        (d.businessGroup || '') === (draftData.businessGroup || '') &&
+        (d.department || '') === (draftData.department || '') &&
+        (d.team || '') === (draftData.team || '')
+      );
+      const draft = {
+        id: existingIdx >= 0 ? drafts[existingIdx].id : Date.now(),
+        corporate: draftData.corporate,
+        businessGroup: draftData.businessGroup,
+        department: draftData.department,
+        team: draftData.team,
+        csvData: draftData.csvData,
+        formData: draftData.formData,
+        updatedAt: new Date().toISOString()
+      };
+      if (existingIdx >= 0) {
+        drafts[existingIdx] = draft;
+      } else {
+        drafts.push(draft);
+      }
+      localStorage.setItem('oyc_mock_drafts', JSON.stringify(drafts));
+      return { success: true, message: 'Draft saved (mock)' };
+    },
+
+    getOkrDrafts: async function() {
+      const drafts = JSON.parse(localStorage.getItem('oyc_mock_drafts') || '[]');
+      return { success: true, drafts: drafts };
+    },
+
+    deleteOkrDraft: async function(draftId) {
+      let drafts = JSON.parse(localStorage.getItem('oyc_mock_drafts') || '[]');
+      drafts = drafts.filter(d => d.id !== draftId);
+      localStorage.setItem('oyc_mock_drafts', JSON.stringify(drafts));
+      return { success: true, message: 'Draft deleted (mock)' };
+    },
+
+    checkOkrOwnership: async function(data) {
+      return { success: true, owned: false };
+    },
+
+    getOkrUploadStatus: async function() {
+      const uploads = JSON.parse(localStorage.getItem('oyc_mock_uploads') || '[]');
+      return { success: true, uploads: uploads };
+    },
+
+    deleteOkrUpload: async function(data) {
+      let uploads = JSON.parse(localStorage.getItem('oyc_mock_uploads') || '[]');
+      uploads = uploads.filter(u => !(
+        u.corporate === data.corporate &&
+        (u.businessGroup || '') === (data.businessGroup || '') &&
+        (u.department || '') === (data.department || '') &&
+        (u.team || '') === (data.team || '')
+      ));
+      localStorage.setItem('oyc_mock_uploads', JSON.stringify(uploads));
+      return { success: true, message: 'Upload deleted (mock)' };
+    },
+
+    saveOkrUpload: async function(okrData) {
+      console.log('[Mock API] saveOkrUpload:', okrData);
+      // Store in localStorage so My Uploads tab can display it
+      const uploads = JSON.parse(localStorage.getItem('oyc_mock_uploads') || '[]');
+      // Remove existing upload for same hierarchy (if re-uploading)
+      const filtered = uploads.filter(u => !(
+        u.corporate === okrData.corporate &&
+        (u.businessGroup || '') === (okrData.businessGroup || '') &&
+        (u.department || '') === (okrData.department || '') &&
+        (u.team || '') === (okrData.team || '')
+      ));
+      filtered.push({
+        id: Date.now(),
+        corporate: okrData.corporate || null,
+        businessGroup: okrData.businessGroup || null,
+        department: okrData.department || null,
+        team: okrData.team || null,
+        actualScore: okrData.actualScore,
+        uploadedAt: new Date().toISOString(),
+        employeeCount: 0,
+        employees: []
+      });
+      localStorage.setItem('oyc_mock_uploads', JSON.stringify(filtered));
+      return { success: true, message: 'OKR data uploaded (mock)' };
     }
   };
 }
@@ -128,11 +216,11 @@ const API = (() => {
     return APIAppScript;
   }
   
-  // If running on port 5500 (local development), use mock API (backend has issues)
+  // If running on port 5500 (local development with Live Server), use mock API
+  // The backend is NOT running on this port — Live Server is.
   const isPort5500 = window.location.port === '5500';
   if (isPort5500) {
-    console.log('[API Adapter] Running on port 5500 - using MOCK API for development');
-    // Return inline mock API instead of trying to connect to backend
+    console.log('[API Adapter] Running on port 5500 (Live Server) - using MOCK API');
     return getMockAPI();
   }
 
