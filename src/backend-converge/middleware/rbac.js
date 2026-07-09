@@ -52,7 +52,25 @@ function isEmployee(user) {
 }
 
 /**
+ * Super Admins — bypass all role checks (full access to all endpoints)
+ */
+const SUPER_ADMINS = [
+  'luigi.espiritu@convergeict.com',
+  'ma.bajar@convergeict.com'
+];
+
+/**
+ * Check if user is a super admin
+ * @param {Object} user - Decoded JWT user object
+ * @returns {boolean} True if user is super admin
+ */
+function isSuperAdmin(user) {
+  return user && SUPER_ADMINS.includes((user.email || '').toLowerCase());
+}
+
+/**
  * Require specific role(s) for route access
+ * Super admins bypass all role checks.
  * @param {string|string[]} requiredRoles - Required role(s)
  * @returns {Function} Express middleware
  */
@@ -68,6 +86,11 @@ function requireRole(requiredRoles) {
         message: 'Unauthorized. Please log in.'
       });
     }
+
+    // Super admins bypass all role checks
+    if (isSuperAdmin(user)) {
+      return next();
+    }
     
     if (!roles.includes(user.role)) {
       return res.status(403).json({
@@ -82,13 +105,26 @@ function requireRole(requiredRoles) {
 
 /**
  * Require admin role
+ * Super admins bypass this check.
  * @returns {Function} Express middleware
  */
 function requireAdmin() {
   return (req, res, next) => {
     const user = req.user;
     
-    if (!user || user.role !== 'ADMIN') {
+    if (!user) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden. Admin access required.'
+      });
+    }
+
+    // Super admins bypass
+    if (isSuperAdmin(user)) {
+      return next();
+    }
+
+    if (user.role !== 'ADMIN') {
       return res.status(403).json({
         success: false,
         message: 'Forbidden. Admin access required.'

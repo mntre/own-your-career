@@ -100,6 +100,7 @@ function createTables() {
       business_group_label TEXT,
       department_code TEXT,
       department_label TEXT,
+      team_label TEXT,
       cost_center_code TEXT,
       cost_center_label TEXT,
       business_area TEXT,
@@ -322,7 +323,8 @@ function runMigrations() {
   const migrations = [
     'ALTER TABLE employees ADD COLUMN lookup_name TEXT',
     'ALTER TABLE employees ADD COLUMN supervisor_employee_no TEXT',
-    'ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT DEFAULT \'unresolved\''
+    'ALTER TABLE employees ADD COLUMN supervisor_match_status TEXT DEFAULT \'unresolved\'',
+    'ALTER TABLE employees ADD COLUMN team_label TEXT'
   ];
 
   migrations.forEach(sql => {
@@ -443,6 +445,7 @@ const Employees = {
       'Business Group (Label)': 'business_group_label',
       'Department (Department Code)': 'department_code',
       'Department (Label)': 'department_label',
+      'Team': 'team_label',
       'Cost Center (externalCode)': 'cost_center_code',
       'Cost Center (Label)': 'cost_center_label',
       'Business Area (Picklist Label)': 'business_area',
@@ -486,7 +489,7 @@ const Employees = {
             email, employment_status, position_title, band,
             pathway_code, pathway_label, job_code, job_code_label,
             business_group_code, business_group_label,
-            department_code, department_label,
+            department_code, department_label, team_label,
             cost_center_code, cost_center_label,
             business_area, immediate_supervisor, ot_approver,
             assignment_code, base_of_assignment, affiliate, gender,
@@ -496,7 +499,7 @@ const Employees = {
             $email, $employment_status, $position_title, $band,
             $pathway_code, $pathway_label, $job_code, $job_code_label,
             $business_group_code, $business_group_label,
-            $department_code, $department_label,
+            $department_code, $department_label, $team_label,
             $cost_center_code, $cost_center_label,
             $business_area, $immediate_supervisor, $ot_approver,
             $assignment_code, $base_of_assignment, $affiliate, $gender,
@@ -520,6 +523,7 @@ const Employees = {
           $business_group_label: params.business_group_label,
           $department_code: params.department_code,
           $department_label: params.department_label,
+          $team_label: params.team_label,
           $cost_center_code: params.cost_center_code,
           $cost_center_label: params.cost_center_label,
           $business_area: params.business_area,
