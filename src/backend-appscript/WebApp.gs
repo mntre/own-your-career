@@ -17,7 +17,8 @@
 const TEMPLATES = {
   MANAGER_PORTAL: 'manager-portal',
   DATA_SPOC_PORTAL: 'dataspoc-portal',
-  EMPLOYEE_PORTAL: 'employee-portal'
+  EMPLOYEE_PORTAL: 'employee-portal',
+  ADMIN_PORTAL: 'admin-portal'
 };
 
 /* -------------------------------------------------------------------------- */
@@ -144,10 +145,9 @@ function redirectToPortal_(role, userEmail, employeeId, userName) {
         console.log(`[redirectToPortal_] Loading DATA_SPOC portal`);
         break;
       case 'ADMIN':
-        // TODO: Create admin-portal.html when ready
-        templateName = 'employee-portal'; // Fallback for now
+        templateName = 'admin-portal';
         title = 'Own Your Career — Admin Portal';
-        console.log(`[redirectToPortal_] Loading ADMIN portal (not yet implemented, using fallback)`);
+        console.log(`[redirectToPortal_] Loading ADMIN portal`);
         break;
       case 'EMPLOYEE':
       default:
@@ -198,6 +198,42 @@ function doPost(e) {
         return getTeamMembers(params.managerId);
       case 'getAllScores':
         return getAllScores(params.employeeId);
+      // Admin Portal Actions
+      case 'getSystemConfig':
+        return getSystemConfig();
+      case 'updateSystemConfig':
+        return updateSystemConfig(params.config);
+      case 'getOverviewMetrics':
+        return getOverviewMetrics();
+      case 'getAdminAuditLog':
+        return getAdminAuditLog(params.page);
+      case 'validateEmployeeUpload':
+        return validateEmployeeUpload(params.employees);
+      case 'uploadEmployees':
+        return uploadEmployees(params.employees);
+      case 'getAllEmployees':
+        return getAllEmployees();
+      case 'updateEmployee':
+        return updateEmployee(params.employee);
+      case 'deleteEmployee':
+        return deleteEmployee(params.employeeId);
+      case 'getSkills':
+        return getSkills(params.type);
+      case 'createSkill':
+        return createSkill(params.type, params.skill);
+      case 'updateSkill':
+        return updateSkill(params.type, params.skill);
+      case 'deleteSkill':
+        return deleteSkill(params.type, params.skillId);
+      // Progress Monitoring & Reporting Actions
+      case 'getStepProgress':
+        return getStepProgress();
+      case 'sendEmailReminder':
+        return sendEmailReminder();
+      case 'exportProgressReport':
+        return exportProgressReport();
+      case 'getExportHistory':
+        return getExportHistory(params.page);
       default:
         return { success: false, message: 'Unknown action' };
     }

@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Own Your Career — Admin Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-primary: #038F8D;
+      --color-black: #000000;
+      --color-white: #FFFFFF;
+      --color-teal-dark: #024645;
+      --color-teal-mid: #027574;
+      --color-aquamarine: #49D7D1;
+      --color-teal-soft: #9AC0C3;
+      --color-violet: #8965F5;
+      --color-complete: #0a7c42;
+      --color-pending: #f9a825;
+      --color-locked: #9AC0C3;
+      --color-error: #c62828;
+      --color-warn-bg: #fff8e1;
+      --color-warn-border: #ffeb3b;
+      --color-success: #2e7d32;
+      --font-heading: 'Funnel Display', sans-serif;
+      --font-body: 'Funnel Sans', 'DM Sans', sans-serif;
+      --spacing-xs: 0.25rem;
+      --spacing-sm: 0.5rem;
+      --spacing-md: 1rem;
+      --spacing-lg: 1.5rem;
+      --spacing-xl: 2rem;
+      --spacing-2xl: 3rem;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--font-body); color: var(--color-black); background-color: #f5f5f5; line-height: 1.6; }
+
+    h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 700; line-height: 1.2; }
+    h1 { font-size: 2rem; color: var(--color-black); }
+    h2 { font-size: 1.5rem; color: var(--color-black); }
+    h3 { font-size: 1.25rem; color: var(--color-black); }
+    p { margin-bottom: var(--spacing-md); }
+
+    .portal-header {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-teal-dark) 100%);
+      color: var(--color-white);
+      padding: var(--spacing-xl) var(--spacing-2xl);
+    }
+    .portal-header h1 { color: var(--color-white); margin: 0; }
+    .portal-header__subtitle { margin-top: var(--spacing-sm); font-size: 0.95rem; opacity: 0.95; }
+    
+    .portal-header__top { display: flex; justify-content: space-between; align-items: center; }
+    .portal-header__user { font-size: 0.9rem; opacity: 0.9; }
+
+    .portal-main { max-width: 1400px; margin: 0 auto; padding: var(--spacing-xl); }
+
+    .admin-section {
+      background: white;
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--spacing-xl);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .admin-section__header {
+      background-color: var(--color-teal-dark);
+      color: var(--color-white);
+      padding: var(--spacing-lg);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    .admin-section__header h2 { margin: 0; font-size: 1.25rem; color: var(--color-white); }
+
+    .admin-section__content {
+      padding: var(--spacing-lg);
+      display: none;
+    }
+
+    .admin-section__content.open {
+      display: block;
+    }
+
+    .collapse-icon { font-size: 1.5rem; transition: transform 0.2s ease; }
+    .admin-section.open .collapse-icon { transform: rotate(180deg); }
+
+    .metric-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-xl); }
+    .metric-card {
+      background: white;
+      border: 2px solid var(--color-teal-soft);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-lg);
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .metric-card h3 { font-size: 2.5rem; color: var(--color-primary); margin-bottom: var(--spacing-sm); }
+    .metric-card p { margin: 0; color: #666; font-size: 0.95rem; }
+
+    .form-group { margin-bottom: var(--spacing-lg); }
+    .form-group label { display: block; font-weight: 500; margin-bottom: var(--spacing-xs); color: var(--color-black); }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      border: 1px solid var(--color-teal-soft);
+      border-radius: var(--radius-sm);
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(3, 143, 141, 0.15);
+    }
+    .form-group textarea { min-height: 100px; resize: vertical; }
+    .form-group input:disabled, .form-group textarea:disabled, .form-group select:disabled {
+      background-color: #f5f5f5;
+      border-color: #ddd;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    .form-actions { display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg); justify-content: flex-end; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-sm) var(--spacing-lg);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn:focus-visible { outline: 3px solid var(--color-aquamarine); outline-offset: 2px; }
+    .btn--primary { background-color: var(--color-primary); color: var(--color-white); }
+    .btn--primary:hover:not(:disabled) { background-color: var(--color-teal-mid); }
+    .btn--primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn--secondary { background-color: var(--color-teal-soft); color: var(--color-teal-dark); }
+    .btn--secondary:hover:not(:disabled) { background-color: var(--color-aquamarine); }
+    .btn--small { padding: 0.4rem 0.8rem; font-size: 0.875rem; margin-right: 0.5rem; }
+    .btn--danger { background-color: var(--color-error); color: var(--color-white); }
+    .btn--danger:hover:not(:disabled) { background-color: #b71c1c; }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: var(--spacing-lg);
+    }
+    .table th, .table td { padding: var(--spacing-sm) var(--spacing-md); text-align: left; }
+    .table th {
+      background-color: var(--color-teal-dark);
+      color: var(--color-white);
+      font-weight: 600;
+      border-bottom: 2px solid var(--color-teal-dark);
+    }
+    .table tr:hover { background-color: rgba(154, 192, 195, 0.15); }
+    .table td { border-bottom: 1px solid var(--color-teal-soft); }
+
+    .alert { padding: var(--spacing-md); border-radius: var(--radius-sm); margin-bottom: var(--spacing-lg); }
+    .alert--success { background-color: #e8f5e9; border: 1px solid var(--color-success); color: var(--color-success); }
+    .alert--error { background-color: #ffebee; border: 1px solid var(--color-error); color: var(--color-error); }
+    .alert--warning { background-color: var(--color-warn-bg); border: 1px solid var(--color-warn-border); color: #f57f17; }
+    .alert--info { background-color: #e3f2fd; border: 1px solid #2196f3; color: #1565c0; }
+
+    .progress-bar { width: 100%; height: 24px; background-color: #e0e0e0; border-radius: var(--radius-sm); overflow: hidden; margin: var(--spacing-sm) 0; }
+    .progress-bar__fill { height: 100%; background-color: var(--color-success); transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: 600; }
+
+    .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid var(--color-teal-soft); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+  </style>
+</head>
+<body>
+  <div class="portal-header">
+    <div class="portal-header__top">
+      <h1>Admin Portal</h1>
+      <div class="portal-header__user">
+        <strong id="userName"><?= userName ?></strong><br>
+        <span id="userRole">ADMIN</span>
+      </div>
+    </div>
+    <p class="portal-header__subtitle">Manage system configuration, employee data, and monitor workflow progress</p>
+  </div>
+
+  <div class="portal-main">
+    <!-- SECTION 1: OVERVIEW -->
+    <div class="admin-section open">
+      <div class="admin-section__header" onclick="toggleSection(this)">
+        <h2>Overview</h2>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="admin-section__content open">
+        <div id="overviewMetrics" class="metric-cards">
+          <div class="metric-card">
+            <h3 id="totalEmployees">0</h3>
+            <p>Total Employees</p>
+          </div>
+          <div class="metric-card">
+            <h3 id="stepsCompleted">0</h3>
+            <p>Steps Completed</p>
+          </div>
+          <div class="metric-card">
+            <h3 id="completionRate">0%</h3>
+            <p>Completion Rate</p>
+          </div>
+          <div class="metric-card">
+            <h3 id="pendingReview">0</h3>
+            <p>Pending Review</p>
+          </div>
+        </div>
+        <div id="systemStatus" class="admin-section" style="margin-bottom: 0; border: 1px solid var(--color-teal-soft);">
+          <div style="background-color: var(--color-teal-dark); color: white; padding: var(--spacing-lg); font-weight: 600;">System Status</div>
+          <div style="padding: var(--spacing-lg);">
+            <div id="lockStatusAlert" class="alert alert--info"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: SYSTEM CONFIGURATION -->
+    <div class="admin-section">
+      <div class="admin-section__header" onclick="toggleSection(this)">
+        <h2>System Configuration</h2>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="admin-section__content">
+        <form id="systemConfigForm">
+          <div class="form-group">
+            <label for="hardLockDate">Hard Lock Date (UTC)</label>
+            <input type="datetime-local" id="hardLockDate" required>
+            <small>After this date/time, all forms become read-only globally</small>
+          </div>
+          <div class="form-group">
+            <label for="reviewPeriodStart">Review Period Start</label>
+            <input type="datetime-local" id="reviewPeriodStart" required>
+          </div>
+          <div class="form-group">
+            <label for="reviewPeriodEnd">Review Period End</label>
+            <input type="datetime-local" id="reviewPeriodEnd" required>
+          </div>
+          <div class="form-group">
+            <label for="exceededThreshold">Exceeded Threshold (%)</label>
+            <input type="number" id="exceededThreshold" min="100" max="200" step="0.1" value="101" required>
+            <small>Performance score required to reach "Exceeded" bracket</small>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn--secondary" onclick="loadSystemConfig()">Reset to Defaults</button>
+            <button type="submit" class="btn btn--primary">Save Configuration</button>
+          </div>
+        </form>
+        <div id="configMessage" style="margin-top: var(--spacing-lg);"></div>
+      </div>
+    </div>
+
+    <!-- SECTION 2B: PROGRESS MONITORING -->
+    <div class="admin-section">
+      <div class="admin-section__header" onclick="toggleSection(this)">
+        <h2>Progress Monitoring</h2>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="admin-section__content">
+        <h3>Step Completion Progress</h3>
+        <p style="color: #666; font-size: 0.95rem; margin-bottom: var(--spacing-lg);">Overall completion percentage by step in the workflow</p>
+        
+        <div id="stepProgressContainer" style="margin-bottom: var(--spacing-xl);">
+          <div class="loading-spinner" style="margin: var(--spacing-lg) auto;"></div>
+        </div>
+
+        <h3 style="margin-top: var(--spacing-xl);">Quick Actions</h3>
+        <p style="color: #666; font-size: 0.95rem; margin-bottom: var(--spacing-lg);">Send reminders and export reports</p>
+        
+        <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+          <button class="btn btn--primary" onclick="sendEmailReminder()" id="sendReminderBtn">
+            📧 Send Email Reminder
+          </button>
+          <button class="btn btn--primary" onclick="exportProgressReport()" id="exportReportBtn">
+            📥 Export Progress Report
+          </button>
+        </div>
+
+        <div id="progressMessage" style="margin-top: var(--spacing-lg);"></div>
+      </div>
+    </div>
+
+    <!-- SECTION 2C: SFTP EXPORT -->
+    <div class="admin-section">
+      <div class="admin-section__header" onclick="toggleSection(this)">
+        <h2>SFTP Export</h2>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="admin-section__content">
+        <p style="color: #666; font-size: 0.95rem; margin-bottom: var(--spacing-lg);">After all employees complete Steps 1-7, export finalized review data to SAP SuccessFactors via SFTP</p>
+        
+        <div id="exportReadinessStatus" class="alert alert--warning" style="margin-bottom: var(--spacing-lg);">
+          <strong>⏳ Waiting for completion:</strong> Not all employees have completed their workflows. Export will be available once 100% completion is reached.
+        </div>
+
+        <form id="sftpExportForm" style="display: none;">
+          <h3>SFTP Configuration (Placeholder)</h3>
+          <p style="color: #666; font-size: 0.9rem; margin-bottom: var(--spacing-lg);">Configuration details are under discussion. This form will be enabled in a future release.</p>
+          
+          <div class="form-group">
+            <label for="sftpServer">SFTP Server Address</label>
+            <input type="text" id="sftpServer" placeholder="e.g., sftp.example.com" disabled>
+            <small>Hostname or IP address of the SFTP server</small>
+          </div>
+
+          <div class="form-group">
+            <label for="sftpPort">Port</label>
+            <input type="number" id="sftpPort" placeholder="22" value="22" disabled>
+            <small>SFTP port (typically 22)</small>
+          </div>
+
+          <div class="form-group">
+            <label for="sftpDirectory">Export Directory</label>
+            <input type="text" id="sftpDirectory" placeholder="e.g., /uploads/gyms-2026" disabled>
+            <small>Destination directory path on SFTP server</small>
+          </div>
+
+          <div class="form-group">
+            <label for="exportFormat">Export Format</label>
+            <select id="exportFormat" disabled>
+              <option value="CSV">CSV</option>
+              <option value="JSON">JSON</option>
+              <option value="XML">XML</option>
+            </select>
+            <small>File format for exported data</small>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn--primary" onclick="triggerSFTPExport()" disabled id="sftpExportBtn">
+              🔗 Trigger SFTP Export
+            </button>
+          </div>
+        </form>
+
+        <div id="sftpMessage" style="margin-top: var(--spacing-lg);"></div>
+      </div>
+    </div>
+
+    <!-- SECTION 2D: EXPORT HISTORY -->
+    <div class="admin-section">
+      <div class="admin-section__header" onclick="toggleSection(this)">
+        <h2>Export History</h2>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="admin-section__content">
+        <p style="color: #666; font-size: 0.95rem; margin-bottom: var(--spacing-lg);">Audit log of all exports (Progress Reports, SFTP Exports, etc.)</p>
+        
+        <div style="overflow-x: auto; margin-bottom: var(--spacing-lg);">
+          <table class="table" id="exportHistoryTable">
+            <thead>
+              <tr>
+                <th>Timestamp (UTC)</th>
+                <th>Export Type</th>
+                <th>Records</th>
+                <th>Status</th>
+                <th style="text-align: center;">Details</th>
+              </tr>
+            </thead>
+            <tbody id="exportHistoryTableBody">
+              <tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">Loading export history...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div id="exportHistoryPaginationInfo" style="font-size: 0.9rem; color: #666;"></div>
+          <div style="display: flex; gap: var(--spacing-sm);">
+            <button class="btn btn--secondary btn--small" onclick="previousExportHistoryPage()" id="exportHistoryPrevBtn" disabled>← Previous</button>
+            <button class="btn btn--secondary btn--small" onclick="nextExportHistoryPage()" id="exportHistoryNextBtn" disabled>Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: DATA MANAGEMENT -->
+    <div class="admin-section">
+      <div class="admin-section__header" onclick="toggleSection(this)">
+        <h2>Data Management</h2>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="admin-section__content">
+        
+        <!-- Employee Upload Subsection -->
+        <div style="border-bottom: 2px solid var(--color-teal-soft); padding-bottom: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+          <h3>Employee Upload</h3>
+          <p style="color: #666; font-size: 0.95rem;">Upload master employee list from SAP SuccessFactors (HRMF CSV format)</p>
+          
+          <div class="form-group">
+            <label for="employeeUploadFile">Select CSV File (SAP HRMF Format)</label>
+            <input type="file" id="employeeUploadFile" accept=".csv" required>
+            <small>Expected columns: Employee No., Full Name, Email Address, Business Group (Label), Department (Label), Band, Immediate Supervisor, Position Position Title</small>
+          </div>
+
+          <div id="uploadPreview" style="display: none; margin: var(--spacing-lg) 0; padding: var(--spacing-lg); background-color: var(--color-warn-bg); border: 1px solid var(--color-warn-border); border-radius: var(--radius-sm);">
+            <h4>Upload Preview</h4>
+            <p id="previewSummary"></p>
+            <div id="previewErrors" style="margin-top: var(--spacing-md);"></div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn--secondary" onclick="previewEmployeeUpload()">Preview Upload</button>
+            <button type="button" class="btn btn--primary" onclick="confirmEmployeeUpload()" id="confirmUploadBtn" disabled>Confirm & Upload</button>
+          </div>
+          
+          <div id="uploadMessage" style="margin-top: var(--spacing-lg);"></div>
+        </div>
+
+        <!-- Employee Database Subsection -->
+        <div style="border-bottom: 2px solid var(--color-teal-soft); padding-bottom: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+          <h3>Employee Database</h3>
+          <p style="color: #666; font-size: 0.95rem;">View, search, filter, and edit employee records</p>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+            <input type="text" id="searchEmployee" placeholder="Search name or email..." style="padding: var(--spacing-sm); border: 1px solid var(--color-teal-soft); border-radius: var(--radius-sm);">
+            <select id="filterDepartment" style="padding: var(--spacing-sm); border: 1px solid var(--color-teal-soft); border-radius: var(--radius-sm);">
+              <option value="">All Departments</option>
+            </select>
+            <select id="filterGroup" style="padding: var(--spacing-sm); border: 1px solid var(--color-teal-soft); border-radius: var(--radius-sm);">
+              <option value="">All Groups</option>
+            </select>
+            <select id="filterBand" style="padding: var(--spacing-sm); border: 1px solid var(--color-teal-soft); border-radius: var(--radius-sm);">
+              <option value="">All Bands</option>
+            </select>
+          </div>
+
+          <div style="overflow-x: auto; margin-bottom: var(--spacing-lg);">
+            <table class="table" id="employeeTable">
+              <thead>
+                <tr>
+                  <th>Employee ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Department</th>
+                  <th>Group</th>
+                  <th>Band</th>
+                  <th>Role</th>
+                  <th style="text-align: center;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="employeeTableBody">
+                <tr><td colspan="8" style="text-align: center; padding: var(--spacing-lg); color: #999;">Loading employees...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div id="paginationInfo" style="font-size: 0.9rem; color: #666;"></div>
+            <div style="display: flex; gap: var(--spacing-sm);">
+              <button class="btn btn--secondary btn--small" onclick="previousPage()" id="prevBtn" disabled>← Previous</button>
+              <button class="btn btn--secondary btn--small" onclick="nextPage()" id="nextBtn" disabled>Next →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Employee Edit Modal -->
+        <div id="editEmployeeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: var(--spacing-lg);">
+          <div style="background: white; border-radius: var(--radius-md); padding: var(--spacing-lg); max-width: 600px; margin: auto; max-height: 90vh; overflow-y: auto;">
+            <h3 style="margin-top: 0;">Edit Employee</h3>
+            <form id="editEmployeeForm">
+              <div class="form-group">
+                <label for="editEmpId">Employee ID</label>
+                <input type="text" id="editEmpId" disabled>
+              </div>
+              <div class="form-group">
+                <label for="editEmpName">Full Name</label>
+                <input type="text" id="editEmpName" required>
+              </div>
+              <div class="form-group">
+                <label for="editEmpEmail">Email</label>
+                <input type="email" id="editEmpEmail" required>
+              </div>
+              <div class="form-group">
+                <label for="editEmpDepartment">Department</label>
+                <input type="text" id="editEmpDepartment">
+              </div>
+              <div class="form-group">
+                <label for="editEmpGroup">Group</label>
+                <input type="text" id="editEmpGroup">
+              </div>
+              <div class="form-group">
+                <label for="editEmpBand">Band</label>
+                <input type="text" id="editEmpBand">
+              </div>
+              <div class="form-group">
+                <label for="editEmpRole">Role</label>
+                <select id="editEmpRole">
+                  <option value="EMPLOYEE">EMPLOYEE</option>
+                  <option value="MANAGER">MANAGER</option>
+                  <option value="DATA_SPOC">DATA_SPOC</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn btn--secondary" onclick="closeEditModal()">Cancel</button>
+                <button type="button" class="btn btn--danger" onclick="deleteEmployee()" style="margin-right: auto;">Delete</button>
+                <button type="submit" class="btn btn--primary">Save Changes</button>
+              </div>
+            </form>
+            <div id="editMessage" style="margin-top: var(--spacing-lg);"></div>
+          </div>
+        </div>
+
+        <!-- Core Skills Definition Subsection -->
+        <div style="border-bottom: 2px solid var(--color-teal-soft); padding-bottom: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+          <h3>Core Skills Definition</h3>
+          <p style="color: #666; font-size: 0.95rem;">Configure 5 core skills and required proficiency levels per band</p>
+          
+          <div style="overflow-x: auto; margin-bottom: var(--spacing-lg);">
+            <table class="table" id="coreSkillsTable">
+              <thead>
+                <tr>
+                  <th>Skill Name</th>
+                  <th>Description</th>
+                  <th>Band Levels</th>
+                  <th style="text-align: center;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="coreSkillsTableBody">
+                <tr><td colspan="4" style="text-align: center; padding: var(--spacing-lg); color: #999;">Loading skills...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <button class="btn btn--primary" onclick="openAddSkillModal('core')" style="margin-bottom: var(--spacing-lg);">+ Add Core Skill</button>
+          <div id="coreSkillsMessage"></div>
+        </div>
+
+        <!-- Leadership Skills Definition Subsection -->
+        <div style="padding-bottom: var(--spacing-lg);">
+          <h3>Leadership Skills Definition</h3>
+          <p style="color: #666; font-size: 0.95rem;">Configure 5 leadership skills and required proficiency levels per band</p>
+          
+          <div style="overflow-x: auto; margin-bottom: var(--spacing-lg);">
+            <table class="table" id="leadershipSkillsTable">
+              <thead>
+                <tr>
+                  <th>Skill Name</th>
+                  <th>Description</th>
+                  <th>Band Levels</th>
+                  <th style="text-align: center;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="leadershipSkillsTableBody">
+                <tr><td colspan="4" style="text-align: center; padding: var(--spacing-lg); color: #999;">Loading skills...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <button class="btn btn--primary" onclick="openAddSkillModal('leadership')" style="margin-bottom: var(--spacing-lg);">+ Add Leadership Skill</button>
+          <div id="leadershipSkillsMessage"></div>
+        </div>
+
+        <!-- System Audit Log Section -->
+        <div class="admin-section">
+          <div class="admin-section__header" onclick="toggleSection(this)">
+            <h2>System Audit Log</h2>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="admin-section__content">
+            <p style="color: #666; font-size: 0.95rem; margin-bottom: var(--spacing-lg);">Complete audit trail of all admin actions (Timestamp, Event, User, Action, Status)</p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+              <select id="auditFilterEvent" style="padding: var(--spacing-sm); border: 1px solid var(--color-teal-soft); border-radius: var(--radius-sm);">
+                <option value="">All Events</option>
+              </select>
+              <input type="text" id="auditFilterUser" placeholder="Filter by user email..." style="padding: var(--spacing-sm); border: 1px solid var(--color-teal-soft); border-radius: var(--radius-sm);">
+              <button class="btn btn--secondary" onclick="exportAuditLog()" style="padding: var(--spacing-sm);">Export to CSV</button>
+            </div>
+
+            <div style="overflow-x: auto; margin-bottom: var(--spacing-lg);">
+              <table class="table" id="auditLogTable">
+                <thead>
+                  <tr>
+                    <th>Timestamp (UTC)</th>
+                    <th>Event</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Status</th>
+                    <th style="text-align: center;">Details</th>
+                  </tr>
+                </thead>
+                <tbody id="auditLogTableBody">
+                  <tr><td colspan="6" style="text-align: center; padding: var(--spacing-lg); color: #999;">Loading audit log...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div id="auditPaginationInfo" style="font-size: 0.9rem; color: #666;"></div>
+              <div style="display: flex; gap: var(--spacing-sm);">
+                <button class="btn btn--secondary btn--small" onclick="previousAuditPage()" id="auditPrevBtn" disabled>← Previous</button>
+                <button class="btn btn--secondary btn--small" onclick="nextAuditPage()" id="auditNextBtn" disabled>Next →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+  <script>
+    // Global variables
+    const userEmail = '<?= userEmail ?>';
+    const userName = '<?= userName ?>';
+    const employeeId = '<?= employeeId ?>';
+
+    // Utility: Toggle section visibility
+    function toggleSection(headerElement) {
+      const section = headerElement.parentElement;
+      const content = section.querySelector('.admin-section__content');
+      section.classList.toggle('open');
+      content.classList.toggle('open');
+    }
+
+    // Initialize page
+    function initPage() {
+      console.log('Admin Portal initialized for:', userEmail);
+      loadSystemConfig();
+      loadEmployees();
+      loadOverviewMetrics();
+      loadSkills();
+    }
+
+    // Load system configuration from server
+    function loadSystemConfig() {
+      google.script.run.withSuccessHandler(function(data) {
+        if (data && data.success) {
+          document.getElementById('hardLockDate').value = formatDatetimeLocal(data.config.hardLockDate || '');
+          document.getElementById('reviewPeriodStart').value = formatDatetimeLocal(data.config.reviewPeriodStart || '');
+          document.getElementById('reviewPeriodEnd').value = formatDatetimeLocal(data.config.reviewPeriodEnd || '');
+          document.getElementById('exceededThreshold').value = data.config.exceededThreshold || 101;
+          updateLockStatus();
+          console.log('System config loaded:', data.config);
+        } else {
+          console.error('Error in response:', data?.message || 'Unknown error');
+          showMessage('configMessage', 'Error loading configuration: ' + (data?.message || 'Unknown error'), 'error');
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error loading system config:', error);
+        showMessage('configMessage', 'Error loading configuration: ' + error, 'error');
+      }).getSystemConfig();
+    }
+
+    // Save system configuration
+    document.getElementById('systemConfigForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Validate form
+      const hardLockDate = document.getElementById('hardLockDate').value;
+      const reviewStart = document.getElementById('reviewPeriodStart').value;
+      const reviewEnd = document.getElementById('reviewPeriodEnd').value;
+      const threshold = parseFloat(document.getElementById('exceededThreshold').value);
+
+      // Validate dates
+      if (!hardLockDate || !reviewStart || !reviewEnd) {
+        showMessage('configMessage', 'All date fields are required', 'error');
+        return;
+      }
+
+      // Validate threshold
+      if (threshold < 100 || threshold > 200) {
+        showMessage('configMessage', 'Exceeded Threshold must be between 100 and 200', 'error');
+        return;
+      }
+
+      // Convert to ISO strings for server
+      const config = {
+        hardLockDate: new Date(hardLockDate).toISOString(),
+        reviewPeriodStart: new Date(reviewStart).toISOString(),
+        reviewPeriodEnd: new Date(reviewEnd).toISOString(),
+        exceededThreshold: threshold
+      };
+
+      console.log('Saving config:', config);
+
+      google.script.run.withSuccessHandler(function(data) {
+        if (data && data.success) {
+          showMessage('configMessage', 'Configuration saved successfully!', 'success');
+          updateLockStatus();
+          logAdminAction('CONFIG_SAVED', 'Configuration update by ' + userEmail);
+        } else {
+          showMessage('configMessage', 'Error saving configuration: ' + (data?.message || 'Unknown error'), 'error');
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error saving config:', error);
+        showMessage('configMessage', 'Error saving configuration: ' + error, 'error');
+      }).updateSystemConfig(config);
+    });
+
+    // Load overview metrics
+    function loadOverviewMetrics() {
+      google.script.run.withSuccessHandler(function(data) {
+        if (data && data.success) {
+          document.getElementById('totalEmployees').textContent = data.metrics.totalEmployees;
+          document.getElementById('stepsCompleted').textContent = data.metrics.stepsCompleted;
+          document.getElementById('completionRate').textContent = (data.metrics.completionRate || 0).toFixed(1) + '%';
+          document.getElementById('pendingReview').textContent = data.metrics.pendingReview;
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error loading metrics:', error);
+      }).getOverviewMetrics();
+    }
+
+    // Update lock status display
+    function updateLockStatus() {
+      const lockDateStr = document.getElementById('hardLockDate').value;
+      if (!lockDateStr) {
+        document.getElementById('lockStatusAlert').innerHTML = '<strong>⚠️ Warning:</strong> Hard lock date not set. All forms will remain editable.';
+        document.getElementById('lockStatusAlert').className = 'alert alert--warning';
+        return;
+      }
+      const lockDate = new Date(lockDateStr);
+      const now = new Date();
+      if (now > lockDate) {
+        document.getElementById('lockStatusAlert').innerHTML = '<strong>🔒 System Locked:</strong> Forms are no longer editable. Lock date was ' + lockDate.toLocaleString() + '.';
+        document.getElementById('lockStatusAlert').className = 'alert alert--info';
+      } else {
+        document.getElementById('lockStatusAlert').innerHTML = '<strong>🔓 System Unlocked:</strong> Forms are editable. Lock date will be ' + lockDate.toLocaleString() + '.';
+        document.getElementById('lockStatusAlert').className = 'alert alert--success';
+      }
+    }
+
+    // Helper: Format datetime-local
+    function formatDatetimeLocal(isoString) {
+      if (!isoString) return '';
+      const date = new Date(isoString);
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      const hours = String(date.getUTCHours()).padStart(2, '0');
+      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    // Helper: Show message
+    function showMessage(elementId, message, type) {
+      const element = document.getElementById(elementId);
+      element.innerHTML = message;
+      element.className = 'alert alert--' + (type || 'info');
+      setTimeout(() => { element.innerHTML = ''; }, 5000);
+    }
+
+    // Initialize on page load
+    window.addEventListener('load', initPage);
+
+    // Employee Upload - Preview
+    function previewEmployeeUpload() {
+      const fileInput = document.getElementById('employeeUploadFile');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        showMessage('uploadMessage', 'Please select a CSV file', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const csv = e.target.result;
+          const lines = csv.split('\n').filter(line => line.trim() !== '');
+          
+          if (lines.length < 2) {
+            showMessage('uploadMessage', 'CSV file must contain header row and at least one employee', 'error');
+            return;
+          }
+
+          // Parse CSV
+          const headers = lines[0].split(',').map(h => h.trim());
+          const employees = [];
+          const errors = [];
+
+          for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            if (values.length < headers.length) continue; // Skip malformed rows
+
+            const employee = {};
+            headers.forEach((header, idx) => {
+              employee[header] = values[idx];
+            });
+
+            employees.push(employee);
+          }
+
+          // Send to server for validation
+          google.script.run.withSuccessHandler(function(result) {
+            if (result.success) {
+              displayUploadPreview(result);
+            } else {
+              showMessage('uploadMessage', 'Error processing file: ' + result.message, 'error');
+            }
+          }).withFailureHandler(function(error) {
+            console.error('Error:', error);
+            showMessage('uploadMessage', 'Error: ' + error, 'error');
+          }).validateEmployeeUpload(employees);
+
+        } catch (error) {
+          console.error('CSV Parse Error:', error);
+          showMessage('uploadMessage', 'Error parsing CSV file: ' + error.message, 'error');
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    // Display upload preview
+    function displayUploadPreview(result) {
+      const previewDiv = document.getElementById('uploadPreview');
+      const summaryDiv = document.getElementById('previewSummary');
+      const errorsDiv = document.getElementById('previewErrors');
+
+      const { validCount, invalidCount, errors: validationErrors } = result;
+
+      let summary = `<strong>✓ ${validCount} valid employees</strong> will be added to the system`;
+      if (invalidCount > 0) {
+        summary += `<br><strong style="color: var(--color-error);">✗ ${invalidCount} invalid rows</strong> will be skipped`;
+      }
+
+      summaryDiv.innerHTML = summary;
+
+      // Show first 10 errors
+      if (validationErrors && validationErrors.length > 0) {
+        let errorHTML = '<div style="background: white; padding: var(--spacing-sm); border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto;"><strong>Validation Errors:</strong><ul style="margin: var(--spacing-sm) 0; padding-left: var(--spacing-lg);">';
+        validationErrors.slice(0, 10).forEach(err => {
+          errorHTML += `<li style="margin: 0.25rem 0; font-size: 0.9rem;">${err}</li>`;
+        });
+        if (validationErrors.length > 10) {
+          errorHTML += `<li style="color: #999; font-style: italic;">... and ${validationErrors.length - 10} more errors</li>`;
+        }
+        errorHTML += '</ul></div>';
+        errorsDiv.innerHTML = errorHTML;
+      }
+
+      previewDiv.style.display = 'block';
+      document.getElementById('confirmUploadBtn').disabled = validCount === 0;
+    }
+
+    // Confirm and upload employees
+    function confirmEmployeeUpload() {
+      const fileInput = document.getElementById('employeeUploadFile');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        showMessage('uploadMessage', 'Please select a CSV file', 'error');
+        return;
+      }
+
+      // Show loading
+      const btn = document.getElementById('confirmUploadBtn');
+      btn.disabled = true;
+      btn.textContent = 'Uploading...';
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const csv = e.target.result;
+          const lines = csv.split('\n').filter(line => line.trim() !== '');
+          const headers = lines[0].split(',').map(h => h.trim());
+          const employees = [];
+
+          for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            if (values.length < headers.length) continue;
+
+            const employee = {};
+            headers.forEach((header, idx) => {
+              employee[header] = values[idx];
+            });
+
+            employees.push(employee);
+          }
+
+          // Upload to server
+          google.script.run.withSuccessHandler(function(result) {
+            btn.disabled = false;
+            btn.textContent = 'Confirm & Upload';
+
+            if (result.success) {
+              showMessage('uploadMessage', `Upload successful! ${result.uploadedCount} employees added.`, 'success');
+              fileInput.value = '';
+              document.getElementById('uploadPreview').style.display = 'none';
+              loadOverviewMetrics(); // Refresh metrics
+            } else {
+              showMessage('uploadMessage', 'Upload failed: ' + result.message, 'error');
+            }
+          }).withFailureHandler(function(error) {
+            btn.disabled = false;
+            btn.textContent = 'Confirm & Upload';
+            console.error('Error:', error);
+            showMessage('uploadMessage', 'Error: ' + error, 'error');
+          }).uploadEmployees(employees);
+
+        } catch (error) {
+          btn.disabled = false;
+          btn.textContent = 'Confirm & Upload';
+          console.error('Error:', error);
+          showMessage('uploadMessage', 'Error: ' + error.message, 'error');
+        }
+      };
+
+      reader.readAsText(file);
+    }
+  
+  </script>
+</body>
+</html>
+
+
+    // Employee Database - Pagination and filtering
+    let allEmployees = [];
+    let filteredEmployees = [];
+    let currentPage = 1;
+    const pageSize = 50;
+    let currentEditEmployee = null;
+
+    // Load all employees
+    function loadEmployees() {
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          allEmployees = result.employees || [];
+          filteredEmployees = allEmployees;
+          populateFilters();
+          displayEmployeePage();
+          console.log('Loaded ' + allEmployees.length + ' employees');
+        } else {
+          console.error('Error loading employees:', result.message);
+          showMessage('paginationInfo', 'Error loading employees: ' + result.message, 'error');
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error:', error);
+        showMessage('paginationInfo', 'Error: ' + error, 'error');
+      }).getAllEmployees();
+    }
+
+    // Populate filter dropdowns
+    function populateFilters() {
+      const departments = [...new Set(allEmployees.map(e => e.Department).filter(d => d))];
+      const groups = [...new Set(allEmployees.map(e => e.Group).filter(g => g))];
+      const bands = [...new Set(allEmployees.map(e => e.Band).filter(b => b))];
+
+      const deptSelect = document.getElementById('filterDepartment');
+      const groupSelect = document.getElementById('filterGroup');
+      const bandSelect = document.getElementById('filterBand');
+
+      departments.sort().forEach(dept => {
+        const opt = document.createElement('option');
+        opt.value = dept;
+        opt.textContent = dept;
+        deptSelect.appendChild(opt);
+      });
+
+      groups.sort().forEach(group => {
+        const opt = document.createElement('option');
+        opt.value = group;
+        opt.textContent = group;
+        groupSelect.appendChild(opt);
+      });
+
+      bands.sort().forEach(band => {
+        const opt = document.createElement('option');
+        opt.value = band;
+        opt.textContent = band;
+        bandSelect.appendChild(opt);
+      });
+    }
+
+    // Apply filters and search
+    function applyFilters() {
+      const searchText = document.getElementById('searchEmployee').value.toLowerCase();
+      const deptFilter = document.getElementById('filterDepartment').value;
+      const groupFilter = document.getElementById('filterGroup').value;
+      const bandFilter = document.getElementById('filterBand').value;
+
+      filteredEmployees = allEmployees.filter(emp => {
+        const matchesSearch = !searchText || 
+          emp.Name?.toLowerCase().includes(searchText) || 
+          emp.Email?.toLowerCase().includes(searchText);
+        const matchesDept = !deptFilter || emp.Department === deptFilter;
+        const matchesGroup = !groupFilter || emp.Group === groupFilter;
+        const matchesBand = !bandFilter || emp.Band === bandFilter;
+
+        return matchesSearch && matchesDept && matchesGroup && matchesBand;
+      });
+
+      currentPage = 1;
+      displayEmployeePage();
+    }
+
+    // Display current page of employees
+    function displayEmployeePage() {
+      const tbody = document.getElementById('employeeTableBody');
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const pageEmployees = filteredEmployees.slice(start, end);
+
+      if (pageEmployees.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: var(--spacing-lg); color: #999;">No employees found</td></tr>';
+        document.getElementById('paginationInfo').textContent = '';
+        document.getElementById('prevBtn').disabled = true;
+        document.getElementById('nextBtn').disabled = true;
+        return;
+      }
+
+      tbody.innerHTML = pageEmployees.map(emp => `
+        <tr>
+          <td>${emp.EmployeeID || ''}</td>
+          <td>${emp.Name || ''}</td>
+          <td>${emp.Email || ''}</td>
+          <td>${emp.Department || ''}</td>
+          <td>${emp.Group || ''}</td>
+          <td>${emp.Band || ''}</td>
+          <td>${emp.Role || 'EMPLOYEE'}</td>
+          <td style="text-align: center;">
+            <button class="btn btn--small btn--secondary" onclick="editEmployee('${(emp.EmployeeID || '').replace(/'/g, '\\'')}')" style="margin-right: 0.25rem;">Edit</button>
+          </td>
+        </tr>
+      `).join('');
+
+      const totalPages = Math.ceil(filteredEmployees.length / pageSize);
+      document.getElementById('paginationInfo').textContent = `Page ${currentPage} of ${totalPages} (${filteredEmployees.length} employees)`;
+      document.getElementById('prevBtn').disabled = currentPage === 1;
+      document.getElementById('nextBtn').disabled = currentPage === totalPages;
+    }
+
+    // Pagination
+    function nextPage() {
+      const totalPages = Math.ceil(filteredEmployees.length / pageSize);
+      if (currentPage < totalPages) {
+        currentPage++;
+        displayEmployeePage();
+      }
+    }
+
+    function previousPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        displayEmployeePage();
+      }
+    }
+
+    // Edit employee
+    function editEmployee(employeeId) {
+      currentEditEmployee = allEmployees.find(e => e.EmployeeID === employeeId);
+      if (!currentEditEmployee) {
+        showMessage('editMessage', 'Employee not found', 'error');
+        return;
+      }
+
+      document.getElementById('editEmpId').value = currentEditEmployee.EmployeeID || '';
+      document.getElementById('editEmpName').value = currentEditEmployee.Name || '';
+      document.getElementById('editEmpEmail').value = currentEditEmployee.Email || '';
+      document.getElementById('editEmpDepartment').value = currentEditEmployee.Department || '';
+      document.getElementById('editEmpGroup').value = currentEditEmployee.Group || '';
+      document.getElementById('editEmpBand').value = currentEditEmployee.Band || '';
+      document.getElementById('editEmpRole').value = currentEditEmployee.Role || 'EMPLOYEE';
+
+      document.getElementById('editEmployeeModal').style.display = 'block';
+    }
+
+    function closeEditModal() {
+      document.getElementById('editEmployeeModal').style.display = 'none';
+      currentEditEmployee = null;
+      document.getElementById('editMessage').innerHTML = '';
+    }
+
+    // Save employee changes
+    document.getElementById('editEmployeeForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      if (!currentEditEmployee) return;
+
+      const updatedEmployee = {
+        EmployeeID: currentEditEmployee.EmployeeID,
+        Name: document.getElementById('editEmpName').value,
+        Email: document.getElementById('editEmpEmail').value,
+        Department: document.getElementById('editEmpDepartment').value,
+        Group: document.getElementById('editEmpGroup').value,
+        Band: document.getElementById('editEmpBand').value,
+        Role: document.getElementById('editEmpRole').value
+      };
+
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          showMessage('editMessage', 'Employee updated successfully', 'success');
+          setTimeout(() => {
+            closeEditModal();
+            loadEmployees();
+          }, 1500);
+        } else {
+          showMessage('editMessage', 'Error updating employee: ' + result.message, 'error');
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error:', error);
+        showMessage('editMessage', 'Error: ' + error, 'error');
+      }).updateEmployee(updatedEmployee);
+    });
+
+    // Delete employee
+    function deleteEmployee() {
+      if (!currentEditEmployee) return;
+
+      if (!confirm(`Are you sure you want to delete ${currentEditEmployee.Name}? This cannot be undone.`)) {
+        return;
+      }
+
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          showMessage('editMessage', 'Employee deleted successfully', 'success');
+          setTimeout(() => {
+            closeEditModal();
+            loadEmployees();
+          }, 1500);
+        } else {
+          showMessage('editMessage', 'Error deleting employee: ' + result.message, 'error');
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error:', error);
+        showMessage('editMessage', 'Error: ' + error, 'error');
+      }).deleteEmployee(currentEditEmployee.EmployeeID);
+    }
+
+    // Add filter event listeners
+    document.getElementById('searchEmployee').addEventListener('input', applyFilters);
+    document.getElementById('filterDepartment').addEventListener('change', applyFilters);
+    document.getElementById('filterGroup').addEventListener('change', applyFilters);
+    document.getElementById('filterBand').addEventListener('change', applyFilters);
+
+    // Close modal on background click
+    document.getElementById('editEmployeeModal').addEventListener('click', function(e) {
+      if (e.target === this) closeEditModal();
+    });
+
+
+    // Skills Management - Core and Leadership
+    let skillsData = { core: [], leadership: [] };
+    let currentSkillType = null;
+
+    // Load skills on init
+    function loadSkills() {
+      loadCoreSkills();
+      loadLeadershipSkills();
+    }
+
+    function loadCoreSkills() {
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          skillsData.core = result.skills || [];
+          displaySkillsTable('core');
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error loading core skills:', error);
+      }).getSkills('core');
+    }
+
+    function loadLeadershipSkills() {
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          skillsData.leadership = result.skills || [];
+          displaySkillsTable('leadership');
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error loading leadership skills:', error);
+      }).getSkills('leadership');
+    }
+
+    function displaySkillsTable(type) {
+      const tbody = document.getElementById(type + 'SkillsTableBody');
+      const skills = skillsData[type];
+
+      if (skills.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: var(--spacing-lg); color: #999;">No skills defined yet</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = skills.map(skill => `
+        <tr>
+          <td><strong>${skill.SkillName || ''}</strong></td>
+          <td>${skill.Description || ''}</td>
+          <td style="font-size: 0.85rem;">${skill.BandLevels ? Object.entries(skill.BandLevels).map(([band, level]) => `${band}: ${level}`).join(', ') : ''}</td>
+          <td style="text-align: center;">
+            <button class="btn btn--small btn--secondary" onclick="editSkill('${type}', '${skill.SkillID || ''}')" style="margin-right: 0.25rem;">Edit</button>
+            <button class="btn btn--small btn--danger" onclick="deleteSkill('${type}', '${skill.SkillID || ''}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openAddSkillModal(type) {
+      currentSkillType = type;
+      // TODO: Open add skill modal
+      showMessage(type + 'SkillsMessage', 'Add skill modal not yet implemented', 'info');
+    }
+
+    function editSkill(type, skillId) {
+      // TODO: Open edit skill modal
+      showMessage(type + 'SkillsMessage', 'Edit skill feature not yet implemented', 'info');
+    }
+
+    function deleteSkill(type, skillId) {
+      if (!confirm('Delete this skill? This cannot be undone.')) return;
+
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          showMessage(type + 'SkillsMessage', 'Skill deleted successfully', 'success');
+          if (type === 'core') loadCoreSkills();
+          else loadLeadershipSkills();
+        } else {
+          showMessage(type + 'SkillsMessage', 'Error deleting skill: ' + result.message, 'error');
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error:', error);
+        showMessage(type + 'SkillsMessage', 'Error: ' + error, 'error');
+      }).deleteSkill(type, skillId);
+    }
+
+    // Call skills load after employees are loaded
+    // (Now handled in initPage)
+
+    // Audit Log - Pagination and filtering
+    let auditLogData = [];
+    let filteredAuditLog = [];
+    let currentAuditPage = 1;
+    const auditPageSize = 50;
+    const auditEventTypes = new Set();
+
+    // Load audit log
+    function loadAuditLog() {
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          auditLogData = result.entries || [];
+          
+          // Populate event filter
+          auditLogData.forEach(entry => auditEventTypes.add(entry.Event));
+          populateAuditEventFilter();
+          
+          filteredAuditLog = auditLogData;
+          displayAuditLogPage();
+          console.log('Loaded ' + auditLogData.length + ' audit log entries');
+        } else {
+          console.error('Error loading audit log:', result.message);
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error:', error);
+      }).getAdminAuditLog(1);
+    }
+
+    // Populate event filter dropdown
+    function populateAuditEventFilter() {
+      const select = document.getElementById('auditFilterEvent');
+      [...auditEventTypes].sort().forEach(event => {
+        const opt = document.createElement('option');
+        opt.value = event;
+        opt.textContent = event;
+        select.appendChild(opt);
+      });
+    }
+
+    // Apply audit log filters
+    function applyAuditFilters() {
+      const eventFilter = document.getElementById('auditFilterEvent').value;
+      const userFilter = document.getElementById('auditFilterUser').value.toLowerCase();
+
+      filteredAuditLog = auditLogData.filter(entry => {
+        const matchesEvent = !eventFilter || entry.Event === eventFilter;
+        const matchesUser = !userFilter || entry.User?.toLowerCase().includes(userFilter);
+        return matchesEvent && matchesUser;
+      });
+
+      currentAuditPage = 1;
+      displayAuditLogPage();
+    }
+
+    // Display current page of audit log
+    function displayAuditLogPage() {
+      const tbody = document.getElementById('auditLogTableBody');
+      const start = (currentAuditPage - 1) * auditPageSize;
+      const end = start + auditPageSize;
+      const pageEntries = filteredAuditLog.slice(start, end);
+
+      if (pageEntries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: var(--spacing-lg); color: #999;">No audit log entries found</td></tr>';
+        document.getElementById('auditPaginationInfo').textContent = '';
+        document.getElementById('auditPrevBtn').disabled = true;
+        document.getElementById('auditNextBtn').disabled = true;
+        return;
+      }
+
+      tbody.innerHTML = pageEntries.map(entry => `
+        <tr>
+          <td>${formatAuditTimestamp(entry.Timestamp)}</td>
+          <td>${entry.Event || ''}</td>
+          <td style="font-size: 0.9rem;">${entry.User || ''}</td>
+          <td>${entry.Action || ''}</td>
+          <td><span style="display: inline-block; padding: 0.25rem 0.5rem; border-radius: 3px; background-color: ${entry.Status === 'SUCCESS' ? '#e8f5e9' : '#ffebee'}; color: ${entry.Status === 'SUCCESS' ? '#2e7d32' : '#c62828'}; font-size: 0.85rem;">${entry.Status}</span></td>
+          <td style="text-align: center; font-size: 0.85rem;">
+            ${entry.Details ? '<button class="btn btn--small btn--secondary" onclick="showAuditDetails(\'' + entry.Timestamp.replace(/'/g, "\\\\'") + '\')">View</button>' : '—'}
+          </td>
+        </tr>
+      `).join('');
+
+      const totalPages = Math.ceil(filteredAuditLog.length / auditPageSize);
+      document.getElementById('auditPaginationInfo').textContent = `Page ${currentAuditPage} of ${totalPages} (${filteredAuditLog.length} entries)`;
+      document.getElementById('auditPrevBtn').disabled = currentAuditPage === 1;
+      document.getElementById('auditNextBtn').disabled = currentAuditPage === totalPages;
+    }
+
+    // Audit log pagination
+    function nextAuditPage() {
+      const totalPages = Math.ceil(filteredAuditLog.length / auditPageSize);
+      if (currentAuditPage < totalPages) {
+        currentAuditPage++;
+        displayAuditLogPage();
+      }
+    }
+
+    function previousAuditPage() {
+      if (currentAuditPage > 1) {
+        currentAuditPage--;
+        displayAuditLogPage();
+      }
+    }
+
+    // Format audit log timestamp
+    function formatAuditTimestamp(ts) {
+      if (!ts) return '';
+      const date = new Date(ts);
+      return date.toISOString().replace('T', ' ').substring(0, 19);
+    }
+
+    // Show audit details
+    function showAuditDetails(timestamp) {
+      const entry = auditLogData.find(e => e.Timestamp === timestamp);
+      if (!entry) return;
+
+      let details = 'Timestamp: ' + entry.Timestamp + '\n';
+      details += 'Event: ' + entry.Event + '\n';
+      details += 'User: ' + entry.User + '\n';
+      details += 'Action: ' + entry.Action + '\n';
+      details += 'Status: ' + entry.Status + '\n';
+
+      if (entry.Details) {
+        details += '\nDetails:\n';
+        if (typeof entry.Details === 'string') {
+          try {
+            const parsed = JSON.parse(entry.Details);
+            details += JSON.stringify(parsed, null, 2);
+          } catch (e) {
+            details += entry.Details;
+          }
+        } else {
+          details += JSON.stringify(entry.Details, null, 2);
+        }
+      }
+
+      alert(details);
+    }
+
+    // Export audit log to CSV
+    function exportAuditLog() {
+      if (filteredAuditLog.length === 0) {
+        showMessage('auditPaginationInfo', 'No audit log entries to export', 'warning');
+        return;
+      }
+
+      let csv = 'Timestamp,Event,User,Action,Status,Details\n';
+      filteredAuditLog.forEach(entry => {
+        const details = entry.Details ? JSON.stringify(entry.Details).replace(/"/g, '""') : '';
+        csv += `"${entry.Timestamp}","${entry.Event}","${entry.User}","${entry.Action}","${entry.Status}","${details}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `audit_log_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Add filter event listeners
+    document.getElementById('auditFilterEvent').addEventListener('change', applyAuditFilters);
+    document.getElementById('auditFilterUser').addEventListener('input', applyAuditFilters);
+
+    /* ===== PROGRESS MONITORING FUNCTIONS ===== */
+
+    // Load step progress
+    function loadStepProgress() {
+      google.script.run.withSuccessHandler(function(data) {
+        if (data && data.success && data.steps) {
+          displayStepProgress(data.steps);
+        } else {
+          console.error('Error loading step progress:', data?.message || 'Unknown error');
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error loading step progress:', error);
+      }).getStepProgress();
+    }
+
+    // Display step progress bars
+    function displayStepProgress(steps) {
+      const container = document.getElementById('stepProgressContainer');
+      
+      if (!steps || steps.length === 0) {
+        container.innerHTML = '<p style="color: #999; text-align: center;">No progress data available</p>';
+        return;
+      }
+
+      let html = '';
+      steps.forEach((step, idx) => {
+        const percentage = Math.round(step.percentage * 10) / 10;
+        html += `
+          <div style="margin-bottom: var(--spacing-lg);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-xs);">
+              <span style="font-weight: 500;">${step.name}</span>
+              <span style="color: #666; font-size: 0.9rem;">${step.completed} / ${step.total} (${percentage}%)</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar__fill" style="width: ${percentage}%;"></div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // Send email reminder to incomplete employees
+    function sendEmailReminder() {
+      const btn = document.getElementById('sendReminderBtn');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      google.script.run.withSuccessHandler(function(data) {
+        btn.disabled = false;
+        btn.textContent = '📧 Send Email Reminder';
+
+        if (data && data.success) {
+          showMessage('progressMessage', `✓ Email reminders sent to ${data.emailsSent} employee(s)`, 'success');
+          logAdminAction('EMAIL_REMINDER', `Sent reminders to ${data.emailsSent} employees`);
+        } else {
+          showMessage('progressMessage', `Error: ${data?.message || 'Failed to send reminders'}`, 'error');
+        }
+      }).withFailureHandler(function(error) {
+        btn.disabled = false;
+        btn.textContent = '📧 Send Email Reminder';
+        console.error('Error sending reminders:', error);
+        showMessage('progressMessage', `Error: ${error}`, 'error');
+      }).sendEmailReminder();
+    }
+
+    // Export progress report as CSV
+    function exportProgressReport() {
+      const btn = document.getElementById('exportReportBtn');
+      btn.disabled = true;
+      btn.textContent = 'Exporting...';
+
+      google.script.run.withSuccessHandler(function(data) {
+        btn.disabled = false;
+        btn.textContent = '📥 Export Progress Report';
+
+        if (data && data.success && data.csv) {
+          // Download CSV
+          const blob = new Blob([data.csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `progress_report_${new Date().toISOString().split('T')[0]}.csv`;
+          link.click();
+          URL.revokeObjectURL(url);
+
+          showMessage('progressMessage', `✓ ${data.message}`, 'success');
+          logAdminAction('PROGRESS_REPORT_EXPORT', `Exported report`);
+        } else {
+          showMessage('progressMessage', `Error: ${data?.message || 'Failed to export report'}`, 'error');
+        }
+      }).withFailureHandler(function(error) {
+        btn.disabled = false;
+        btn.textContent = '📥 Export Progress Report';
+        console.error('Error exporting report:', error);
+        showMessage('progressMessage', `Error: ${error}`, 'error');
+      }).exportProgressReport();
+    }
+
+    // Load step progress on init
+    setTimeout(loadStepProgress, 300);
+
+    // Check export readiness
+    function checkExportReadiness() {
+      google.script.run.withSuccessHandler(function(data) {
+        if (data && data.success && data.metrics) {
+          const isReady = data.metrics.completionRate === 100;
+          const statusDiv = document.getElementById('exportReadinessStatus');
+          const form = document.getElementById('sftpExportForm');
+          const btn = document.getElementById('sftpExportBtn');
+
+          if (isReady) {
+            statusDiv.innerHTML = '<strong>✓ Ready for Export:</strong> All employees have completed their workflows. You can now trigger the SFTP export.';
+            statusDiv.className = 'alert alert--success';
+            form.style.display = 'block';
+            btn.disabled = false;
+          } else {
+            const remaining = data.metrics.pendingReview || 0;
+            statusDiv.innerHTML = `<strong>⏳ Waiting for completion:</strong> ${remaining} employee(s) have not yet completed their workflows. Export will be available once 100% completion is reached.`;
+            statusDiv.className = 'alert alert--warning';
+            form.style.display = 'none';
+            btn.disabled = true;
+          }
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error checking export readiness:', error);
+      }).getOverviewMetrics();
+    }
+
+    // Trigger SFTP export (placeholder)
+    function triggerSFTPExport() {
+      showMessage('sftpMessage', 'SFTP export functionality is currently a placeholder. Configuration and actual export will be implemented in a future release.', 'warning');
+      console.log('SFTP Export triggered (placeholder mode)');
+      logAdminAction('SFTP_EXPORT_TRIGGERED', 'Placeholder SFTP export triggered');
+    }
+
+    // Check export readiness on init
+    setTimeout(checkExportReadiness, 400);
+
+    /* ===== EXPORT HISTORY FUNCTIONS ===== */
+
+    let exportHistoryData = [];
+    let filteredExportHistory = [];
+    let currentExportHistoryPage = 1;
+    const exportHistoryPageSize = 50;
+
+    // Load export history
+    function loadExportHistory() {
+      google.script.run.withSuccessHandler(function(result) {
+        if (result.success) {
+          exportHistoryData = result.entries || [];
+          filteredExportHistory = exportHistoryData;
+          displayExportHistoryPage();
+          console.log('Loaded ' + exportHistoryData.length + ' export history entries');
+        } else {
+          console.error('Error loading export history:', result.message);
+          document.getElementById('exportHistoryTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">No export history available</td></tr>';
+        }
+      }).withFailureHandler(function(error) {
+        console.error('Error loading export history:', error);
+        document.getElementById('exportHistoryTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">Error loading export history</td></tr>';
+      }).getExportHistory(1);
+    }
+
+    // Display current page of export history
+    function displayExportHistoryPage() {
+      const tbody = document.getElementById('exportHistoryTableBody');
+      const start = (currentExportHistoryPage - 1) * exportHistoryPageSize;
+      const end = start + exportHistoryPageSize;
+      const pageEntries = filteredExportHistory.slice(start, end);
+
+      if (pageEntries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">No export history entries found</td></tr>';
+        document.getElementById('exportHistoryPaginationInfo').textContent = '';
+        document.getElementById('exportHistoryPrevBtn').disabled = true;
+        document.getElementById('exportHistoryNextBtn').disabled = true;
+        return;
+      }
+
+      tbody.innerHTML = pageEntries.map(entry => `
+        <tr>
+          <td style="font-size: 0.9rem;">${formatExportTimestamp(entry.Timestamp)}</td>
+          <td>${entry.ExportType || ''}</td>
+          <td style="text-align: center;">${entry.RecordCount || 0}</td>
+          <td><span style="display: inline-block; padding: 0.25rem 0.5rem; border-radius: 3px; background-color: ${entry.Status === 'SUCCESS' ? '#e8f5e9' : '#ffebee'}; color: ${entry.Status === 'SUCCESS' ? '#2e7d32' : '#c62828'}; font-size: 0.85rem;">${entry.Status}</span></td>
+          <td style="text-align: center; font-size: 0.85rem;">
+            ${entry.Details ? '<button class="btn btn--small btn--secondary" onclick="showExportDetails(\'' + entry.Timestamp.replace(/'/g, "\\\\'") + '\')">View</button>' : '—'}
+          </td>
+        </tr>
+      `).join('');
+
+      const totalPages = Math.ceil(filteredExportHistory.length / exportHistoryPageSize);
+      document.getElementById('exportHistoryPaginationInfo').textContent = `Page ${currentExportHistoryPage} of ${totalPages} (${filteredExportHistory.length} entries)`;
+      document.getElementById('exportHistoryPrevBtn').disabled = currentExportHistoryPage === 1;
+      document.getElementById('exportHistoryNextBtn').disabled = currentExportHistoryPage === totalPages;
+    }
+
+    // Export history pagination
+    function nextExportHistoryPage() {
+      const totalPages = Math.ceil(filteredExportHistory.length / exportHistoryPageSize);
+      if (currentExportHistoryPage < totalPages) {
+        currentExportHistoryPage++;
+        displayExportHistoryPage();
+      }
+    }
+
+    function previousExportHistoryPage() {
+      if (currentExportHistoryPage > 1) {
+        currentExportHistoryPage--;
+        displayExportHistoryPage();
+      }
+    }
+
+    // Format export history timestamp
+    function formatExportTimestamp(ts) {
+      if (!ts) return '';
+      const date = new Date(ts);
+      return date.toISOString().replace('T', ' ').substring(0, 19);
+    }
+
+    // Show export details
+    function showExportDetails(timestamp) {
+      const entry = exportHistoryData.find(e => e.Timestamp === timestamp);
+      if (!entry) return;
+
+      let details = 'Timestamp: ' + entry.Timestamp + '\n';
+      details += 'Export Type: ' + entry.ExportType + '\n';
+      details += 'Records: ' + entry.RecordCount + '\n';
+      details += 'Status: ' + entry.Status + '\n';
+
+      if (entry.Details) {
+        details += '\nDetails:\n';
+        if (typeof entry.Details === 'string') {
+          try {
+            const parsed = JSON.parse(entry.Details);
+            details += JSON.stringify(parsed, null, 2);
+          } catch (e) {
+            details += entry.Details;
+          }
+        } else {
+          details += JSON.stringify(entry.Details, null, 2);
+        }
+      }
+
+      alert(details);
+    }
+
+    // Load export history on init
+    setTimeout(loadExportHistory, 600);
+
+    // Initialize demo export history if needed (one-time on first load)
+    function initializeDemoExportHistory() {
+      // This can be called once to seed the ExportHistory sheet with sample data
+      // For now, we'll just log that it's available
+      console.log('[Admin Portal] Export history is ready. Exports will be logged when triggered.');
+    }
+
+    initializeDemoExportHistory();
+
+    // Load audit log on init
+    setTimeout(loadAuditLog, 500);
+
+  </script>
+</body>
+</html>
