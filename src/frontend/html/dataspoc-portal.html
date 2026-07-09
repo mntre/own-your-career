@@ -1037,13 +1037,13 @@
             return;
           }
 
-          // Check if current SPOC already has a draft for this selection
+          // Check if current SPOC already has a submitted upload for this selection
           if (ownershipResult.success && ownershipResult.owned && ownershipResult.isOwner) {
             const proceed = confirm(
-              '📋 You already have a draft for this selection.\n\n' +
-              'Do you want to overwrite it with the new CSV data?\n\n' +
-              '• Click OK to overwrite with new data\n' +
-              '• Click Cancel to keep your existing draft (use "Resume Latest Draft" instead)'
+              '✅ You already have a submitted upload for this selection.\n\n' +
+              'Do you want to overwrite it with new CSV data?\n\n' +
+              '• Click OK to re-upload and replace the existing data\n' +
+              '• Click Cancel to keep your current upload'
             );
             if (!proceed) return;
           }

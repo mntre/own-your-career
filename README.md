@@ -45,7 +45,7 @@ This repository contains the source code for the **2026 Performance Management &
 **Functions:**
 - **Step 2:** OKR Uploading Form (Corporate, Group, Team OKR + Targets + Weights)
 - **My Organizational Data:** Corporate → Group → Department hierarchy
-- **Uploading Status:** Track completion per member
+- **My Uploads:** View all submitted hierarchies with employee lists, delete/re-upload capability
 - **Performance Summary:** Dashboard/Rankings with OKR Achievement
 
 ### Portal 3: Employee Portal (EE Portal)
@@ -179,8 +179,7 @@ own-your-career/
 ├── .kiro/                       # Kiro AI steering files
 │   └── steering/
 ├── .gitignore
-├── README.md                    # This file (product overview)
-└── PENDING_DELIVERABLES.md      # Work tracking & sprint status
+└── README.md                    # This file (product overview)
 ```
 
 ---
@@ -189,7 +188,7 @@ own-your-career/
 
 See `.kiro/steering/structure.md` for file governance rules and steering hierarchy.
 
-All pending work, task tracking, and deployment status lives in `PENDING_DELIVERABLES.md` (not in this README).
+All pending work, task tracking, and deployment status lives in this README under "Current Status & Roadmap" and detailed notes in `src/consolidated-updates.md`.
 
 ---
 
@@ -201,15 +200,32 @@ See `.kiro/steering/tech.md` for development environment configuration and deplo
 
 ## Current Status & Roadmap
 
-For detailed status on completed and pending work, see `PENDING_DELIVERABLES.md`. This includes:
-- All 49 deliverables with completion status
-- High-priority items still in progress
-- Testing and deployment roadmap
-- Team responsibilities and sprint schedule
+For detailed status on completed and pending work, see `src/consolidated-updates.md`. This includes:
+- Implementation details and development notes
+- Phase-specific testing guides
+- Troubleshooting and debugging tips
 
-**Current Progress:** 32 of 49 items complete (65%)  
+**Current Progress:** 35 of 49 items complete (~71%)  
+**Last Updated:** July 9, 2026  
 **Next Milestone:** Email service + UAT (due July 15)  
 **Launch Date:** July 17, 2026
+
+### Recently Completed (July 9)
+- ✅ Data SPOC Portal: "My Uploads" tab with accordion view of submitted hierarchies
+- ✅ Data SPOC Portal: Delete functionality moved to My Uploads tab
+- ✅ Data SPOC Portal: "Confirm & Close" now saves to backend + deletes draft
+- ✅ Backend: `GET /api/okr-ownership/details` endpoint (hierarchy + employee list)
+- ✅ Backend: OKR ownership, draft save/resume, and delete operations verified
+- ✅ Database: SQLite (oyc.db) persistence confirmed across sessions
+
+### Pending (High Priority)
+- [ ] Email notification service (auto-trigger at step transitions)
+- [ ] Employee Portal: Step 3 Self-Assessment (Converge backend integration)
+- [ ] Manager Portal: Step 1 Skills Assessment (Converge backend integration)
+- [ ] Manager Portal: Step 4 Feed Forward (Converge backend integration)
+- [ ] Hard lock date enforcement across all portals
+- [ ] UAT testing with all personas
+- [ ] SFTP export to SuccessFactors
 
 ---
 

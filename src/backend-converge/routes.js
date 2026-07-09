@@ -457,25 +457,24 @@ router.get('/api/okr-ownership/details', auth.authMiddleware, rbac.requireRole([
       { $email: spocEmail }
     );
 
-    // For each hierarchy, fetch employees under it
+    // For each hierarchy, fetch employees matching that hierarchy level
     const uploads = ownerships.map(ownership => {
-      const employees = queryAll(
-        `SELECT DISTINCT e.employee_no, e.full_name, e.band 
-         FROM employees e
-         JOIN okr_data o ON e.employee_no = o.employee_no
-         WHERE e.is_active = 1 
-         AND o.corporate = $corp 
-         AND (COALESCE(o.business_group, '') = $grp OR COALESCE(e.business_group_label, '') = $grp)
-         AND (COALESCE(o.department, '') = $dept OR COALESCE(e.department_label, '') = $dept)
-         AND (COALESCE(o.team, '') = $team OR COALESCE(e.team_label, '') = $team OR $team = '')
-         ORDER BY e.full_name`,
-        { 
-          $corp: ownership.corporate,
-          $grp: ownership.business_group || '',
-          $dept: ownership.department || '',
-          $team: ownership.team || ''
-        }
-      );
+      // Build a dynamic query based on which hierarchy levels are set
+      let query = 'SELECT employee_no, full_name, band FROM employees WHERE is_active = 1';
+      const params = {};
+
+      if (ownership.business_group) {
+        query += ' AND business_group_label = $grp';
+        params.$grp = ownership.business_group;
+      }
+      if (ownership.department) {
+        query += ' AND department_label = $dept';
+        params.$dept = ownership.department;
+      }
+
+      query += ' ORDER BY full_name';
+
+      const employees = queryAll(query, Object.keys(params).length > 0 ? params : undefined);
 
       return {
         id: ownership.id,
