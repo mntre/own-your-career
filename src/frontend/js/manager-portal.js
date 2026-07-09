@@ -367,7 +367,7 @@ function displayTeamOverview(teamMembers) {
     console.warn('[ManagerPortal] No team members to display');
     const emptyRow = document.createElement('tr');
     emptyRow.innerHTML = `
-      <td colspan="7" style="text-align: center; padding: 2rem; color: #999;">
+      <td colspan="8" style="text-align: center; padding: 2rem; color: #999;">
         No team members found. You may not have any direct reports.
       </td>
     `;

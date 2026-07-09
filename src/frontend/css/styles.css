@@ -402,6 +402,15 @@ p {
   background-color: rgba(154, 192, 195, 0.15);
 }
 
+/* Extend hover effect to all columns including Actions */
+.team-table tbody tr:hover {
+  background-color: rgba(154, 192, 195, 0.15);
+}
+
+.team-table tbody tr:hover td {
+  background-color: rgba(154, 192, 195, 0.15);
+}
+
 /* --------------------------------------------------------------------------
    Status Indicators (RAG / Performance Brackets)
    -------------------------------------------------------------------------- */

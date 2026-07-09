@@ -29,7 +29,7 @@
     <section class="okr-uploading" id="step-2-content">
       <div class="card">
         <div class="card-header-accent">
-          <h2 class="card__header">STEP 2 — OKR Uploading (My Organizational Data)</h2>
+          <h2 class="card__header">OKR Uploading (My Organizational Data)</h2>
         </div>
 
         <h3 class="section-subtitle">My Organizational Data</h3>
@@ -1004,6 +1004,80 @@
     }
 
     /**
+     * Show a styled modal for Generate OKR errors instead of browser alert
+     */
+    function showOKRErrorModal(title, message) {
+      // Remove existing modal if any
+      const existingModal = document.getElementById('okr-error-modal');
+      if (existingModal) existingModal.remove();
+
+      // Create modal overlay
+      const modal = document.createElement('div');
+      modal.id = 'okr-error-modal';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      `;
+
+      // Create modal content
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 32px;
+        max-width: 420px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      `;
+
+      content.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+        <h3 style="margin: 0 0 16px; font-size: 18px; font-weight: 600; color: #000;">
+          ${title}
+        </h3>
+        <p style="margin: 0 0 24px; color: #666; font-size: 14px; line-height: 1.6;">
+          ${message}
+        </p>
+        <button id="close-okr-error-btn" style="
+          background: #038F8D;
+          color: white;
+          border: none;
+          padding: 12px 32px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s;
+        ">
+          Got it
+        </button>
+      `;
+
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+
+      // Close button handler
+      document.getElementById('close-okr-error-btn').addEventListener('click', function() {
+        modal.remove();
+      });
+
+      // Close on background click
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
+    }
+
+    /**
      * Handles Generate OKR Form button click
      * Displays OKR form with dynamic key result rows from CSV
      * Filters by selected Group, Department, and Team
@@ -1017,18 +1091,18 @@
       
       // Validate: Corporate is mandatory
       if (!corporate) {
-        alert('Please select a corporate entity first');
+        showOKRErrorModal('Select Corporate First', 'Please select a corporate entity first.');
         return;
       }
       
       // Validate: Group is mandatory
       if (!group) {
-        alert('Please select a group first');
+        showOKRErrorModal('Select Group First', 'Please select a group first.');
         return;
       }
       
       if (!window.pendingCSVHierarchy) {
-        alert('No CSV data loaded. Please upload a CSV file first.');
+        showOKRErrorModal('No CSV File Loaded', 'Please upload a CSV file first to generate the OKR form.');
         return;
       }
 
@@ -1045,7 +1119,7 @@
 
           if (ownershipResult.success && ownershipResult.owned && !ownershipResult.isOwner) {
             const ownerName = ownershipResult.ownedBy.name || ownershipResult.ownedBy.email;
-            alert(`⚠️ This selection was already uploaded by ${ownerName}.\n\nPlease contact them or your Admin if you need to make changes.`);
+            showOKRErrorModal('Already Uploaded', `This selection was already uploaded by ${ownerName}.\n\nPlease contact them or your Admin if you need to make changes.`);
             return;
           }
 
