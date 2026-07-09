@@ -950,7 +950,7 @@ router.get('/api/team/:managerId', auth.authMiddleware, rbac.requireRole(['MANAG
     // Get manager's employee record to find their name for team lookup
     const manager = Employees.getByEmail(managerId) || Employees.getByEmpNo(managerId);
     if (!manager) {
-      return res.status(404).json({ success: false, message: 'Manager not found.' });
+      return res.json({ success: true, managerId, managerName: null, team: [], teamCount: 0, message: 'No records found.' });
     }
 
     // Get team members using resolved supervisor relationship first, then fallback to name match
