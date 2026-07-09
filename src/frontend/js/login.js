@@ -34,21 +34,21 @@ const PORTALS = {
     id: 'manager',
     label: 'Manager Portal',
     icon: '👔',
-    desc: 'Steps 1, 4, 5 — Team skills assessment & feed forward',
+    desc: 'Team skills assessment & feed forward',
     url: 'manager-portal.html'
   },
   dataspoc: {
     id: 'dataspoc',
     label: 'Data SPOC Portal',
     icon: '📊',
-    desc: 'Step 2 — OKR upload, rankings & org data',
+    desc: 'OKR Upload',
     url: 'dataspoc-portal.html'
   },
   employee: {
     id: 'employee',
     label: 'Employee Portal',
     icon: '👤',
-    desc: 'Steps 3, 6, 7 — Self-assessment & view scores',
+    desc: 'Self-assessment & view performance scores',
     url: 'employee-portal.html'
   }
 };
