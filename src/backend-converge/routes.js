@@ -943,7 +943,7 @@ router.get('/api/scores/:empId', auth.authMiddleware, (req, res) => {
 
 // Team list (Manager view)
 // Item #8 — GET /api/team/:managerId
-router.get('/api/team/:managerId', auth.authMiddleware, rbac.requireRole(['MANAGER', 'ADMIN']), (req, res) => {
+router.get('/api/team/:managerId', auth.authMiddleware, rbac.requireRole(['MANAGER', 'DATA_SPOC', 'ADMIN']), (req, res) => {
   try {
     const managerId = req.params.managerId;
 
@@ -953,9 +953,20 @@ router.get('/api/team/:managerId', auth.authMiddleware, rbac.requireRole(['MANAG
       return res.status(404).json({ success: false, message: 'Manager not found.' });
     }
 
-    // Get team members (employees whose immediate_supervisor matches manager's name)
-    const managerName = manager.full_name || `${manager.first_name || ''} ${manager.last_name || ''}`.trim();
-    const team = Employees.getTeam(managerName);
+    // Get team members using resolved supervisor relationship first, then fallback to name match
+    let team = queryAll(
+      'SELECT * FROM employees WHERE supervisor_employee_no = $empNo AND is_active = 1 ORDER BY full_name',
+      { $empNo: manager.employee_no }
+    );
+
+    // Fallback: match by immediate_supervisor name if no resolved relationships
+    if (team.length === 0) {
+      const managerLookupName = manager.lookup_name || `${manager.first_name || ''} ${manager.last_name || ''}`.trim();
+      team = queryAll(
+        'SELECT * FROM employees WHERE immediate_supervisor = $mgr AND is_active = 1 ORDER BY full_name',
+        { $mgr: managerLookupName }
+      );
+    }
 
     // Enrich with workflow status
     const teamWithStatus = team.map(member => {
@@ -965,6 +976,7 @@ router.get('/api/team/:managerId', auth.authMiddleware, rbac.requireRole(['MANAG
         fullName: member.full_name,
         email: member.email,
         department: member.department_label,
+        team: member.team_label,
         position: member.position_title,
         band: member.band,
         workflowStatus: status ? {
@@ -979,7 +991,7 @@ router.get('/api/team/:managerId', auth.authMiddleware, rbac.requireRole(['MANAG
       };
     });
 
-    res.json({ success: true, managerId, managerName, team: teamWithStatus, teamCount: teamWithStatus.length });
+    res.json({ success: true, managerId, managerName: manager.full_name, team: teamWithStatus, teamCount: teamWithStatus.length });
   } catch (error) {
     console.error('[Route] Team error:', error);
     res.status(500).json({ success: false, message: 'Error retrieving team: ' + error.message });
@@ -1019,7 +1031,7 @@ router.get('/api/org-data/:spocId', auth.authMiddleware, rbac.requireRole(['DATA
  * Get current system configuration
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/system-config', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/system-config', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const config = SystemConfig.getAll();
     res.json({
@@ -1042,7 +1054,7 @@ router.get('/api/admin/system-config', rbac.requireAdmin(), (req, res) => {
  * Save system configuration
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/system-config', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/system-config', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const { hardLockDate, reviewPeriodStart, reviewPeriodEnd, exceededThreshold } = req.body;
     const userEmail = req.user ? req.user.email : 'admin';
@@ -1066,7 +1078,7 @@ router.post('/api/admin/system-config', rbac.requireAdmin(), (req, res) => {
  * Get admin dashboard statistics
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/stats', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/stats', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const stats = Workflow.getProgressStats();
     res.json({ success: true, stats });
@@ -1082,7 +1094,7 @@ router.get('/api/admin/stats', rbac.requireAdmin(), (req, res) => {
  * Item #17 — actual email reminder logic
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/send-reminders', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/send-reminders', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const userEmail = req.user ? req.user.email : 'admin';
     const { step } = req.body; // Optional: target specific step
@@ -1126,7 +1138,7 @@ router.post('/api/admin/send-reminders', rbac.requireAdmin(), (req, res) => {
  * Item #18 — enforce hard lock immediately
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/lock-system', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/lock-system', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const userEmail = req.user ? req.user.email : 'admin';
     const lockDate = new Date().toISOString();
@@ -1151,7 +1163,7 @@ router.post('/api/admin/lock-system', rbac.requireAdmin(), (req, res) => {
  * Item #19 — actual progress report generation
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/export-progress-report', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/export-progress-report', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const stats = Workflow.getProgressStats();
     const total = stats.totalEmployees;
@@ -1188,7 +1200,7 @@ router.get('/api/admin/export-progress-report', rbac.requireAdmin(), (req, res) 
  * Get export history
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/export-history', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/export-history', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const history = ExportHistory.getRecent(50);
     res.json({ success: true, history });
@@ -1204,7 +1216,7 @@ router.get('/api/admin/export-history', rbac.requireAdmin(), (req, res) => {
  * Item #20 — actual SFTP export trigger with data gathering
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/trigger-sftp-export', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/trigger-sftp-export', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const userEmail = req.user ? req.user.email : 'admin';
 
@@ -1246,7 +1258,7 @@ router.post('/api/admin/trigger-sftp-export', rbac.requireAdmin(), (req, res) =>
  * Item #14 — CRUD for Core Skills configuration (A3)
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/skill-definitions', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/skill-definitions', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const skills = queryAll("SELECT * FROM skill_definitions WHERE skill_type = 'CORE' ORDER BY skill_name");
     res.json({ success: true, skills });
@@ -1262,7 +1274,7 @@ router.get('/api/admin/skill-definitions', rbac.requireAdmin(), (req, res) => {
  * Item #14 — CRUD for Core Skills configuration (A3)
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/skill-definitions', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/skill-definitions', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const { skillName, description, requiredLevelPerBand } = req.body;
     const userEmail = req.user ? req.user.email : 'admin';
@@ -1293,7 +1305,7 @@ router.post('/api/admin/skill-definitions', rbac.requireAdmin(), (req, res) => {
  * Item #15 — CRUD for Leadership Skills configuration (A4)
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/leadership-definitions', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/leadership-definitions', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const skills = queryAll("SELECT * FROM skill_definitions WHERE skill_type = 'LEADERSHIP' ORDER BY skill_name");
     res.json({ success: true, skills });
@@ -1309,7 +1321,7 @@ router.get('/api/admin/leadership-definitions', rbac.requireAdmin(), (req, res) 
  * Item #15 — CRUD for Leadership Skills configuration (A4)
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/leadership-definitions', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/leadership-definitions', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const { skillName, description, requiredLevelPerBand } = req.body;
     const userEmail = req.user ? req.user.email : 'admin';
@@ -1340,7 +1352,7 @@ router.post('/api/admin/leadership-definitions', rbac.requireAdmin(), (req, res)
  * Item #16 — CRUD for org hierarchy (A6)
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/org-hierarchy', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/org-hierarchy', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const groups = queryAll('SELECT DISTINCT business_group_code, business_group_label FROM employees WHERE business_group_label IS NOT NULL AND is_active = 1 ORDER BY business_group_label');
     const departments = queryAll('SELECT DISTINCT department_code, department_label, business_group_label FROM employees WHERE department_label IS NOT NULL AND is_active = 1 ORDER BY department_label');
@@ -1367,7 +1379,7 @@ router.get('/api/admin/org-hierarchy', rbac.requireAdmin(), (req, res) => {
  * Item #16 — CRUD for org hierarchy (A6)
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/org-hierarchy', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/org-hierarchy', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const { employeeNo, businessGroupLabel, departmentLabel } = req.body;
     const userEmail = req.user ? req.user.email : 'admin';
@@ -1402,7 +1414,7 @@ router.post('/api/admin/org-hierarchy', rbac.requireAdmin(), (req, res) => {
  * Get system audit log
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/audit-log', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/audit-log', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const logs = AuditLog.getRecent(100);
     res.json({ success: true, logs });
@@ -1417,7 +1429,7 @@ router.get('/api/admin/audit-log', rbac.requireAdmin(), (req, res) => {
  * Upload employee database from CSV data
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/upload-employees', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/upload-employees', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const { headers, rows } = req.body;
 
@@ -1486,7 +1498,7 @@ router.post('/api/admin/upload-employees', rbac.requireAdmin(), (req, res) => {
  * Preserves manually assigned DATA_SPOC and ADMIN roles.
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/derive-roles', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/derive-roles', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const result = Employees.runFullRoleDerivation();
 
@@ -1521,7 +1533,7 @@ router.post('/api/admin/derive-roles', rbac.requireAdmin(), (req, res) => {
  * List supervisors that couldn't be matched (need override or are external)
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/unresolved-supervisors', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/unresolved-supervisors', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const unresolved = Employees.getUnresolvedSupervisors();
     res.json({ success: true, unresolved });
@@ -1536,7 +1548,7 @@ router.get('/api/admin/unresolved-supervisors', rbac.requireAdmin(), (req, res) 
  * Get all supervisor override rules
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/supervisor-overrides', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/supervisor-overrides', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const overrides = Employees.getOverrides();
     res.json({ success: true, overrides });
@@ -1552,7 +1564,7 @@ router.get('/api/admin/supervisor-overrides', rbac.requireAdmin(), (req, res) =>
  * Body: { supervisorName, resolvedEmployeeNo, reason }
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/supervisor-override', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/supervisor-override', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const { supervisorName, resolvedEmployeeNo, reason } = req.body;
 
@@ -1584,7 +1596,7 @@ router.post('/api/admin/supervisor-override', rbac.requireAdmin(), (req, res) =>
  * Remove a supervisor override rule
  * RBAC: ADMIN role only
  */
-router.delete('/api/admin/supervisor-override/:id', rbac.requireAdmin(), (req, res) => {
+router.delete('/api/admin/supervisor-override/:id', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (!id) {
@@ -1609,7 +1621,7 @@ router.delete('/api/admin/supervisor-override/:id', rbac.requireAdmin(), (req, r
  * Alias for derive-roles — same logic
  * RBAC: ADMIN role only
  */
-router.post('/api/admin/re-derive-roles', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/re-derive-roles', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     // Re-run resolve + derive (lookup already built)
     const resolveResults = Employees.resolveSupervisors();
@@ -1637,7 +1649,7 @@ router.post('/api/admin/re-derive-roles', rbac.requireAdmin(), (req, res) => {
  * Get all employees with current roles for role assignment UI
  * RBAC: ADMIN role only
  */
-router.get('/api/admin/role-assignment', rbac.requireAdmin(), (req, res) => {
+router.get('/api/admin/role-assignment', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const employees = Employees.getRoleAssignmentList();
 
@@ -1666,7 +1678,7 @@ router.get('/api/admin/role-assignment', rbac.requireAdmin(), (req, res) => {
  * RBAC: ADMIN role only
  * Body: { employeeNo, newRole }
  */
-router.post('/api/admin/update-role', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/update-role', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const { employeeNo, newRole } = req.body;
 
@@ -1711,7 +1723,7 @@ router.post('/api/admin/update-role', rbac.requireAdmin(), (req, res) => {
  * RBAC: ADMIN role only
  * Body: { headers, rows } where rows have EmployeeNo and Role columns
  */
-router.post('/api/admin/update-roles-bulk', rbac.requireAdmin(), (req, res) => {
+router.post('/api/admin/update-roles-bulk', auth.authMiddleware, rbac.requireAdmin(), (req, res) => {
   try {
     const { headers, rows } = req.body;
 

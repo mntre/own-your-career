@@ -54,8 +54,6 @@ function initManagerPortal() {
     ManagerPortal.currentManager = user;
     loadTeamMembersOverview();
     setupEventListeners();
-    // Load placeholder data for testing
-    loadPlaceholderTeamData();
   });
 }
 
@@ -90,8 +88,24 @@ function getCurrentUser(callback) {
       callback({ employeeId: '1', name: 'Manager', email: userEmail });
     }
   } else {
-    // For Converge platform, would fetch from OAuth
-    callback({ employeeId: '1', name: 'Current Manager' });
+    // For Converge platform, get user from session storage (set during login)
+    const sessionData = sessionStorage.getItem('oyc_user');
+    if (sessionData) {
+      try {
+        const userData = JSON.parse(sessionData);
+        callback({
+          employeeId: userData.email,
+          name: userData.name || 'Manager',
+          email: userData.email
+        });
+      } catch (e) {
+        console.error('[ManagerPortal] Error parsing session:', e);
+        callback({ employeeId: '1', name: 'Current Manager' });
+      }
+    } else {
+      console.warn('[ManagerPortal] No session data found');
+      callback({ employeeId: '1', name: 'Current Manager' });
+    }
   }
 }
 
@@ -249,25 +263,13 @@ function loadTeamMembersOverview() {
 
   console.log('[ManagerPortal] Loading team members for manager ID:', ManagerPortal.currentManager.employeeId);
 
-  // Check for placeholder data in localStorage (for testing)
-  const placeholderTeam = localStorage.getItem('placeholderTeam');
-  const placeholderWorkflow = localStorage.getItem('placeholderWorkflow');
-  
-  if (placeholderTeam && placeholderWorkflow) {
-    console.log('[ManagerPortal] Using placeholder data from localStorage for testing');
-    const team = JSON.parse(placeholderTeam);
-    const workflow = JSON.parse(placeholderWorkflow);
-    
-    // Merge workflow status into team data
-    const teamWithStatus = team.map(member => ({
-      ...member,
-      ...workflow[member.employeeId]
-    }));
-    
-    ManagerPortal.teamMembers = teamWithStatus;
-    displayTeamOverview(teamWithStatus);
-    return;
-  }
+  // Clear any old placeholder data from localStorage
+  localStorage.removeItem('placeholderTeam');
+  localStorage.removeItem('placeholderWorkflow');
+  localStorage.removeItem('placeholderOKRs');
+  localStorage.removeItem('placeholderSkillsAssessment');
+  localStorage.removeItem('placeholderSelfAssessment');
+  localStorage.removeItem('placeholderFeedForward');
 
   if (PLATFORM === 'APPSCRIPT') {
     console.log('[ManagerPortal] Calling backend getTeamMembersWithStatusData...');
@@ -329,13 +331,19 @@ function loadTeamMembersOverview() {
           displayTeamOverview(teamData);
         } else {
           console.error('[ManagerPortal] API error:', result.message);
-          // Fall back to placeholder if API fails
-          loadPlaceholderTeamData();
+          // Show error in the table
+          const tableBody = document.getElementById('teamTableBody');
+          if (tableBody) {
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#c62828;">API Error: ' + (result.message || 'Unknown') + '</td></tr>';
+          }
         }
       })
       .catch(error => {
         console.error('[ManagerPortal] Network error:', error);
-        loadPlaceholderTeamData();
+        const tableBody = document.getElementById('teamTableBody');
+        if (tableBody) {
+          tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#c62828;">Network Error: ' + (error.message || error) + '</td></tr>';
+        }
       });
   }
 }
