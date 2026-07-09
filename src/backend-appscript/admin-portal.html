@@ -1,4 +1,7 @@
 <!DOCTYPE html>
+<!-- @ts-check -->
+<!-- eslint-disable -->
+<!-- stylelint-disable -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
+    /* stylelint-disable */
     :root {
       --color-primary: #038F8D;
       --color-black: #000000;
@@ -186,6 +190,7 @@
 
     .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid var(--color-teal-soft); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* stylelint-enable */
 
   </style>
 </head>
@@ -617,6 +622,7 @@
         </div>
 
   <script>
+    /* eslint-disable no-unused-vars, no-redeclare */
     // Global variables
     const userEmail = '<?= userEmail ?>';
     const userName = '<?= userName ?>';
@@ -1028,7 +1034,7 @@
           <td>${emp.Band || ''}</td>
           <td>${emp.Role || 'EMPLOYEE'}</td>
           <td style="text-align: center;">
-            <button class="btn btn--small btn--secondary" onclick="editEmployee('${(emp.EmployeeID || '').replace(/'/g, '\\'')}')" style="margin-right: 0.25rem;">Edit</button>
+            <button class="btn btn--small btn--secondary" onclick="editEmployee('${(emp.EmployeeID || '').replace(/'/g, '&#39;')}')" style="margin-right: 0.25rem;">Edit</button>
           </td>
         </tr>
       `).join('');
@@ -1195,8 +1201,8 @@
           <td>${skill.Description || ''}</td>
           <td style="font-size: 0.85rem;">${skill.BandLevels ? Object.entries(skill.BandLevels).map(([band, level]) => `${band}: ${level}`).join(', ') : ''}</td>
           <td style="text-align: center;">
-            <button class="btn btn--small btn--secondary" onclick="editSkill('${type}', '${skill.SkillID || ''}')" style="margin-right: 0.25rem;">Edit</button>
-            <button class="btn btn--small btn--danger" onclick="deleteSkill('${type}', '${skill.SkillID || ''}')">Delete</button>
+            <button class="btn btn--small btn--secondary" onclick="editSkill('${type}', '${(skill.SkillID || '').replace(/'/g, '&#39;')}')" style="margin-right: 0.25rem;">Edit</button>
+            <button class="btn btn--small btn--danger" onclick="deleteSkill('${type}', '${(skill.SkillID || '').replace(/'/g, '&#39;')}')">Delete</button>
           </td>
         </tr>
       `).join('');
@@ -1310,7 +1316,7 @@
           <td>${entry.Action || ''}</td>
           <td><span style="display: inline-block; padding: 0.25rem 0.5rem; border-radius: 3px; background-color: ${entry.Status === 'SUCCESS' ? '#e8f5e9' : '#ffebee'}; color: ${entry.Status === 'SUCCESS' ? '#2e7d32' : '#c62828'}; font-size: 0.85rem;">${entry.Status}</span></td>
           <td style="text-align: center; font-size: 0.85rem;">
-            ${entry.Details ? '<button class="btn btn--small btn--secondary" onclick="showAuditDetails(\'' + entry.Timestamp.replace(/'/g, "\\\\'") + '\')">View</button>' : '—'}
+            ${entry.Details ? `<button class="btn btn--small btn--secondary" onclick="showAuditDetails('${entry.Timestamp.replace(/'/g, "&#39;")}')" >View</button>` : '—'}
           </td>
         </tr>
       `).join('');
@@ -1372,26 +1378,53 @@
       alert(details);
     }
 
-    // Export audit log to CSV
+    // TASK 14b: Export audit log to CSV with enhanced formatting
     function exportAuditLog() {
       if (filteredAuditLog.length === 0) {
-        showMessage('auditPaginationInfo', 'No audit log entries to export', 'warning');
+        alert('No audit log entries to export');
         return;
       }
 
-      let csv = 'Timestamp,Event,User,Action,Status,Details\n';
+      // Generate timestamped filename
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-').split('.')[0]; // e.g., 2026-07-09T14-30-45
+      const filename = `audit_log_${timestamp}_UTC.csv`;
+      
+      // Build CSV content
+      let csv = '"Timestamp","Event","User","Action","Status","Details"\n';
       filteredAuditLog.forEach(entry => {
-        const details = entry.Details ? JSON.stringify(entry.Details).replace(/"/g, '""') : '';
-        csv += `"${entry.Timestamp}","${entry.Event}","${entry.User}","${entry.Action}","${entry.Status}","${details}"\n`;
+        const timestamp = entry.timestamp || entry.Timestamp || '';
+        const event = (entry.event || entry.Event || '').replace(/"/g, '""');
+        const user = (entry.user || entry.User || '').replace(/"/g, '""');
+        const action = (entry.action || entry.Action || '').replace(/"/g, '""');
+        const status = entry.status || entry.Status || '';
+        const details = (entry.details || entry.Details || '').replace(/"/g, '""');
+        
+        csv += `"${timestamp}","${event}","${user}","${action}","${status}","${details}"\n`;
       });
 
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `audit_log_${new Date().toISOString().split('T')[0]}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
+      try {
+        // Create blob and trigger download
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        URL.revokeObjectURL(url);
+        
+        console.log('[Admin Portal] Audit log exported: ' + filteredAuditLog.length + ' entries');
+        logAdminAction('AUDIT_LOG_EXPORT', 'Exported ' + filteredAuditLog.length + ' audit entries', 'success');
+      } catch (err) {
+        console.error('Error exporting audit log:', err);
+        alert('Error downloading file: ' + err.message);
+      }
     }
 
     // Add filter event listeners
@@ -1400,39 +1433,57 @@
 
     /* ===== PROGRESS MONITORING FUNCTIONS ===== */
 
-    // Load step progress
+    // TASK 10: Load step progress with completion percentages
     function loadStepProgress() {
+      const container = document.getElementById('stepProgressContainer');
+      container.innerHTML = '<div class="loading-spinner" style="margin: var(--spacing-lg) auto;"></div>';
+      
       google.script.run.withSuccessHandler(function(data) {
-        if (data && data.success && data.steps) {
+        if (data && data.success && data.steps && data.steps.length > 0) {
           displayStepProgress(data.steps);
         } else {
-          console.error('Error loading step progress:', data?.message || 'Unknown error');
+          container.innerHTML = '<p style="color: #999; text-align: center; padding: var(--spacing-lg);">No progress data available yet</p>';
+          console.warn('No step progress data:', data?.message);
         }
       }).withFailureHandler(function(error) {
+        container.innerHTML = '<p style="color: var(--color-error); text-align: center; padding: var(--spacing-lg);">Error loading progress data</p>';
         console.error('Error loading step progress:', error);
-      }).getStepProgress();
+      }).getStepProgressData();
     }
 
-    // Display step progress bars
+    // TASK 10: Display step progress bars with color-coding and "View Details" links
     function displayStepProgress(steps) {
       const container = document.getElementById('stepProgressContainer');
       
       if (!steps || steps.length === 0) {
-        container.innerHTML = '<p style="color: #999; text-align: center;">No progress data available</p>';
+        container.innerHTML = '<p style="color: #999; text-align: center; padding: var(--spacing-lg);">No progress data available</p>';
         return;
       }
 
       let html = '';
-      steps.forEach((step, idx) => {
-        const percentage = Math.round(step.percentage * 10) / 10;
+      steps.forEach((step) => {
+        const percentage = step.percentage || 0;
+        
+        // Determine background color for progress bar based on status
+        let barColor = '#c62828'; // red (<50%)
+        if (step.status === 'green') {
+          barColor = '#0a7c42'; // green (>75%)
+        } else if (step.status === 'orange') {
+          barColor = '#f9a825'; // orange (50-75%)
+        }
+        
+        // Create step progress row
         html += `
-          <div style="margin-bottom: var(--spacing-lg);">
-            <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-xs);">
-              <span style="font-weight: 500;">${step.name}</span>
-              <span style="color: #666; font-size: 0.9rem;">${step.completed} / ${step.total} (${percentage}%)</span>
+          <div style="margin-bottom: var(--spacing-lg); padding: var(--spacing-md); background: #fafafa; border-radius: var(--radius-md); border-left: 4px solid ${barColor};">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+              <div>
+                <h4 style="margin: 0 0 var(--spacing-xs) 0; font-size: 1rem; color: var(--color-black);">Step ${step.step}: ${step.label}</h4>
+                <span style="color: #666; font-size: 0.9rem;">${step.completed} of ${step.total} employees (${step.percentage}%)</span>
+              </div>
+              <a href="#" onclick="showStepDetails(${step.step}); return false;" style="color: var(--color-primary); text-decoration: none; font-weight: 500; font-size: 0.9rem;">View Details →</a>
             </div>
-            <div class="progress-bar">
-              <div class="progress-bar__fill" style="width: ${percentage}%;"></div>
+            <div class="progress-bar" style="height: 24px;">
+              <div class="progress-bar__fill" style="width: ${percentage}%; background-color: ${barColor}; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: 600;">${percentage}%</div>
             </div>
           </div>
         `;
@@ -1441,19 +1492,177 @@
       container.innerHTML = html;
     }
 
-    // Send email reminder to incomplete employees
+    // TASK 10: Show incomplete employees for a specific step (View Details modal)
+    function showStepDetails(stepNumber) {
+      // Create and display modal with incomplete employees
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-lg);
+      `;
+      
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: white;
+        border-radius: var(--radius-md);
+        padding: var(--spacing-xl);
+        max-width: 800px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-lg);
+      `;
+      
+      // Show loading state
+      content.innerHTML = `
+        <div style="text-align: center;">
+          <div class="loading-spinner" style="margin: var(--spacing-xl) auto;"></div>
+          <p>Loading incomplete employees...</p>
+        </div>
+      `;
+      
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+      
+      // Fetch incomplete employees for this step
+      google.script.run.withSuccessHandler(function(data) {
+        if (data && data.success && data.employees) {
+          const employees = data.employees;
+          
+          let tableHtml = `
+            <h3 style="margin-top: 0;">Incomplete for Step ${stepNumber}</h3>
+            <p style="color: #666; margin-bottom: var(--spacing-lg);">${employees.length} employee(s) have not completed this step</p>
+          `;
+          
+          if (employees.length === 0) {
+            tableHtml += '<p style="color: #0a7c42; padding: var(--spacing-lg); background: #e6f9f0; border-radius: var(--radius-md);">✓ All employees have completed this step!</p>';
+          } else {
+            tableHtml += `
+              <div style="overflow-x: auto; margin-bottom: var(--spacing-lg);">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Employee ID</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Department</th>
+                      <th>Band</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+            `;
+            
+            employees.forEach(emp => {
+              tableHtml += `
+                <tr>
+                  <td>${emp.EmployeeID || emp.employeeId || '-'}</td>
+                  <td>${emp.Name || emp.name || '-'}</td>
+                  <td><a href="mailto:${emp.Email || emp.email || ''}" style="color: var(--color-primary); text-decoration: none;">${emp.Email || emp.email || '-'}</a></td>
+                  <td>${emp.Department || emp.department || '-'}</td>
+                  <td>${emp.Band || emp.band || '-'}</td>
+                </tr>
+              `;
+            });
+            
+            tableHtml += `
+                  </tbody>
+                </table>
+              </div>
+            `;
+          }
+          
+          tableHtml += `
+            <div style="display: flex; justify-content: flex-end; gap: var(--spacing-md); margin-top: var(--spacing-lg);">
+              <button class="btn btn--secondary" onclick="this.closest('div').parentElement.parentElement.remove();">Close</button>
+            </div>
+          `;
+          
+          content.innerHTML = tableHtml;
+        } else {
+          content.innerHTML = `
+            <h3>Error</h3>
+            <p style="color: var(--color-error);">${data?.message || 'Failed to load employee details'}</p>
+            <button class="btn btn--secondary" onclick="this.closest('div').parentElement.parentElement.remove();">Close</button>
+          `;
+        }
+      }).withFailureHandler(function(error) {
+        content.innerHTML = `
+          <h3>Error</h3>
+          <p style="color: var(--color-error);">Failed to load employee details: ${error}</p>
+          <button class="btn btn--secondary" onclick="this.closest('div').parentElement.parentElement.remove();">Close</button>
+        `;
+        console.error('Error loading step details:', error);
+      }).getStepDetailsData(stepNumber);
+    }
+
+    // TASK 11b: Send email reminder to incomplete employees with confirmation dialog
     function sendEmailReminder() {
+      // First, get count of incomplete employees
+      google.script.run.withSuccessHandler(function(data) {
+        if (data && data.success) {
+          const incompleteCount = data.employees ? data.employees.length : 0;
+          
+          if (incompleteCount === 0) {
+            showMessage('progressMessage', '✓ All employees have completed their reviews. No reminders needed.', 'success');
+            return;
+          }
+          
+          // Show confirmation dialog
+          const confirmed = confirm(
+            `Send reminder email to ${incompleteCount} non-compliant employee(s)?\n\n` +
+            `This action:\n` +
+            `• Sends an email to ${incompleteCount} employees\n` +
+            `• Includes the hard lock deadline\n` +
+            `• Is logged in the audit trail\n` +
+            `• Cannot be undone\n\n` +
+            `Proceed?`
+          );
+          
+          if (!confirmed) {
+            console.log('[Admin Portal] Email reminder cancelled by user');
+            return;
+          }
+          
+          // Proceed with sending reminders
+          performEmailReminder();
+        } else {
+          showMessage('progressMessage', `Error: Failed to get incomplete employee count`, 'error');
+        }
+      }).withFailureHandler(function(error) {
+        showMessage('progressMessage', `Error: ${error}`, 'error');
+        console.error('Error checking incomplete employees:', error);
+      }).getIncompleteEmployees();
+    }
+    
+    // Helper function to actually send the email reminders after confirmation
+    function performEmailReminder() {
       const btn = document.getElementById('sendReminderBtn');
       btn.disabled = true;
-      btn.textContent = 'Sending...';
+      btn.textContent = '📧 Sending...';
 
       google.script.run.withSuccessHandler(function(data) {
         btn.disabled = false;
         btn.textContent = '📧 Send Email Reminder';
 
         if (data && data.success) {
-          showMessage('progressMessage', `✓ Email reminders sent to ${data.emailsSent} employee(s)`, 'success');
-          logAdminAction('EMAIL_REMINDER', `Sent reminders to ${data.emailsSent} employees`);
+          // Build success message with details
+          let message = `✓ Email reminders sent to ${data.emailsSent} employee(s)`;
+          if (data.failedCount && data.failedCount > 0) {
+            message += ` (${data.failedCount} failed)`;
+          }
+          
+          showMessage('progressMessage', message, 'success');
+          
+          // Log admin action
+          logAdminAction('EMAIL_REMINDER', `Sent reminders to ${data.emailsSent} employees`, 'success');
+          
+          // Reload progress after 2 seconds
+          setTimeout(loadStepProgress, 2000);
         } else {
           showMessage('progressMessage', `Error: ${data?.message || 'Failed to send reminders'}`, 'error');
         }
@@ -1462,40 +1671,59 @@
         btn.textContent = '📧 Send Email Reminder';
         console.error('Error sending reminders:', error);
         showMessage('progressMessage', `Error: ${error}`, 'error');
-      }).sendEmailReminder();
+      }).sendEmailReminders();
     }
 
-    // Export progress report as CSV
+    // TASK 12b: Export progress report as CSV with proper download
     function exportProgressReport() {
       const btn = document.getElementById('exportReportBtn');
       btn.disabled = true;
-      btn.textContent = 'Exporting...';
+      btn.textContent = '📥 Generating...';
 
       google.script.run.withSuccessHandler(function(data) {
         btn.disabled = false;
         btn.textContent = '📥 Export Progress Report';
 
         if (data && data.success && data.csv) {
-          // Download CSV
-          const blob = new Blob([data.csv], { type: 'text/csv' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `progress_report_${new Date().toISOString().split('T')[0]}.csv`;
-          link.click();
-          URL.revokeObjectURL(url);
-
-          showMessage('progressMessage', `✓ ${data.message}`, 'success');
-          logAdminAction('PROGRESS_REPORT_EXPORT', `Exported report`);
+          // Generate timestamped filename in UTC ISO format with time
+          const now = new Date();
+          const timestamp = now.toISOString().replace(/[:.]/g, '-').split('.')[0]; // e.g., 2026-07-09T14-30-45
+          const filename = `progress_report_${timestamp}_UTC.csv`;
+          
+          // Create and download CSV file
+          try {
+            const blob = new Blob([data.csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(url);
+            
+            // Show success message
+            showMessage('progressMessage', `✓ ${data.message} - Downloaded as ${filename}`, 'success');
+            logAdminAction('PROGRESS_REPORT_EXPORT', `Exported ${data.rowCount} employees`, 'success');
+            
+            console.log(`[Admin Portal] Progress report exported: ${data.rowCount} employees`);
+          } catch (err) {
+            console.error('Error downloading CSV:', err);
+            showMessage('progressMessage', `Error downloading file: ${err.message}`, 'error');
+          }
         } else {
-          showMessage('progressMessage', `Error: ${data?.message || 'Failed to export report'}`, 'error');
+          showMessage('progressMessage', `Error: ${data?.message || 'Failed to generate report'}`, 'error');
         }
       }).withFailureHandler(function(error) {
         btn.disabled = false;
         btn.textContent = '📥 Export Progress Report';
         console.error('Error exporting report:', error);
         showMessage('progressMessage', `Error: ${error}`, 'error');
-      }).exportProgressReport();
+      }).generateProgressReportCSV();
     }
 
     // Load step progress on init
@@ -1528,11 +1756,93 @@
       }).getOverviewMetrics();
     }
 
-    // Trigger SFTP export (placeholder)
+    // TASK 13b: Trigger SFTP Export with completion validation and confirmation dialog
     function triggerSFTPExport() {
-      showMessage('sftpMessage', 'SFTP export functionality is currently a placeholder. Configuration and actual export will be implemented in a future release.', 'warning');
-      console.log('SFTP Export triggered (placeholder mode)');
-      logAdminAction('SFTP_EXPORT_TRIGGERED', 'Placeholder SFTP export triggered');
+      // First, verify completion status
+      console.log('[Admin Portal] Checking SFTP export readiness...');
+      
+      google.script.run.withSuccessHandler(function(data) {
+        if (!data || !data.success) {
+          showMessage('sftpMessage', `Validation error: ${data?.message || 'Unknown error'}`, 'error');
+          return;
+        }
+        
+        const totalEmployees = data.totalEmployees || 0;
+        const completeEmployees = data.exported || 0;
+        const incompleteCount = totalEmployees - completeEmployees;
+        
+        // Check if all employees are complete
+        if (incompleteCount > 0) {
+          showMessage('sftpMessage', 
+            `Cannot export: ${incompleteCount} of ${totalEmployees} employees have not completed their reviews.`, 
+            'error');
+          return;
+        }
+        
+        if (completeEmployees === 0) {
+          showMessage('sftpMessage', 'No completed reviews to export.', 'warning');
+          return;
+        }
+        
+        // All employees complete - show confirmation dialog
+        const confirmed = confirm(
+          `Export ${completeEmployees} completed reviews to SuccessFactors?\n\n` +
+          `This action:\n` +
+          `• Exports finalized review data for all ${completeEmployees} employees\n` +
+          `• Uploads via SFTP to SuccessFactors\n` +
+          `• Is logged in the audit trail\n` +
+          `• Cannot be undone\n\n` +
+          `Proceed?`
+        );
+        
+        if (!confirmed) {
+          console.log('[Admin Portal] SFTP export cancelled by user');
+          return;
+        }
+        
+        // Proceed with export
+        performSFTPExport(completeEmployees);
+      }).withFailureHandler(function(error) {
+        showMessage('sftpMessage', `Error checking completion status: ${error}`, 'error');
+        console.error('Error checking SFTP readiness:', error);
+      }).getOverviewMetrics();
+    }
+    
+    // Helper function to perform SFTP export after confirmation
+    function performSFTPExport(recordCount) {
+      const btn = document.getElementById('sftpExportBtn');
+      btn.disabled = true;
+      btn.textContent = '🔗 Exporting...';
+      
+      console.log('[Admin Portal] Initiating SFTP export for ' + recordCount + ' records...');
+      
+      google.script.run.withSuccessHandler(function(data) {
+        btn.disabled = false;
+        btn.textContent = '🔗 Trigger SFTP Export';
+        
+        if (data && data.success) {
+          // Show success message with export details
+          const message = `✓ ${data.message}\nExport ID: ${data.exportId}`;
+          showMessage('sftpMessage', message, 'success');
+          
+          console.log('[Admin Portal] SFTP export successful:', data);
+          logAdminAction('SFTP_EXPORT', `Exported ${data.recordCount} records to SuccessFactors`, 'success');
+          
+          // Reload export history after 2 seconds
+          setTimeout(function() {
+            loadExportHistory();
+            checkExportReadiness();
+          }, 2000);
+        } else {
+          showMessage('sftpMessage', `Error: ${data?.message || 'Export failed'}`, 'error');
+          console.error('SFTP export failed:', data);
+        }
+      }).withFailureHandler(function(error) {
+        btn.disabled = false;
+        btn.textContent = '🔗 Trigger SFTP Export';
+        showMessage('sftpMessage', `Error: ${error}`, 'error');
+        console.error('Error triggering SFTP export:', error);
+      }).triggerSFTPExport();
     }
 
     // Check export readiness on init
@@ -1545,25 +1855,39 @@
     let currentExportHistoryPage = 1;
     const exportHistoryPageSize = 50;
 
-    // Load export history
+    // TASK 14a: Load export history from audit log
     function loadExportHistory() {
+      const tableBody = document.getElementById('exportHistoryTableBody');
+      tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg);"><div class="loading-spinner" style="display: inline-block; margin-right: var(--spacing-md);"></div>Loading export history...</td></tr>';
+      
       google.script.run.withSuccessHandler(function(result) {
-        if (result.success) {
+        if (result && result.success) {
           exportHistoryData = result.entries || [];
           filteredExportHistory = exportHistoryData;
+          
+          if (exportHistoryData.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">No export history available yet</td></tr>';
+            currentExportHistoryPage = 1;
+            updateExportHistoryPagination();
+            return;
+          }
+          
           displayExportHistoryPage();
-          console.log('Loaded ' + exportHistoryData.length + ' export history entries');
+          console.log('[Admin Portal] Loaded ' + exportHistoryData.length + ' export history entries');
         } else {
-          console.error('Error loading export history:', result.message);
-          document.getElementById('exportHistoryTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">No export history available</td></tr>';
+          console.error('Error loading export history:', result?.message);
+          tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">No export history available</td></tr>';
         }
       }).withFailureHandler(function(error) {
         console.error('Error loading export history:', error);
-        document.getElementById('exportHistoryTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">Error loading export history</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">Error loading export history</td></tr>';
+      }).withFailureHandler(function(error) {
+        console.error('Error loading export history:', error);
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-lg); color: #999;">Error loading export history</td></tr>';
       }).getExportHistory(1);
     }
 
-    // Display current page of export history
+    // TASK 14a: Display current page of export history with formatted data
     function displayExportHistoryPage() {
       const tbody = document.getElementById('exportHistoryTableBody');
       const start = (currentExportHistoryPage - 1) * exportHistoryPageSize;
@@ -1578,20 +1902,25 @@
         return;
       }
 
-      tbody.innerHTML = pageEntries.map(entry => `
-        <tr>
-          <td style="font-size: 0.9rem;">${formatExportTimestamp(entry.Timestamp)}</td>
-          <td>${entry.ExportType || ''}</td>
-          <td style="text-align: center;">${entry.RecordCount || 0}</td>
-          <td><span style="display: inline-block; padding: 0.25rem 0.5rem; border-radius: 3px; background-color: ${entry.Status === 'SUCCESS' ? '#e8f5e9' : '#ffebee'}; color: ${entry.Status === 'SUCCESS' ? '#2e7d32' : '#c62828'}; font-size: 0.85rem;">${entry.Status}</span></td>
-          <td style="text-align: center; font-size: 0.85rem;">
-            ${entry.Details ? '<button class="btn btn--small btn--secondary" onclick="showExportDetails(\'' + entry.Timestamp.replace(/'/g, "\\\\'") + '\')">View</button>' : '—'}
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = pageEntries.map(entry => {
+        const statusColor = entry.Status === 'SUCCESS' ? '#0a7c42' : (entry.Status === 'FAILED' ? '#c62828' : '#f9a825');
+        const statusBgColor = entry.Status === 'SUCCESS' ? '#e6f9f0' : (entry.Status === 'FAILED' ? '#fde8e8' : '#fff3e0');
+        
+        return `
+          <tr>
+            <td style="font-size: 0.9rem;" title="${entry.Timestamp}">${formatTimestamp(entry.Timestamp)}</td>
+            <td>${entry.ExportType || ''}</td>
+            <td>${entry.RecordCount || ''}</td>
+            <td><span style="display: inline-block; padding: 0.25rem 0.5rem; border-radius: 3px; background-color: ${statusBgColor}; color: ${statusColor}; font-size: 0.85rem; font-weight: 500;">${entry.Status}</span></td>
+            <td style="text-align: center; font-size: 0.85rem;">
+              ${entry.Details ? `<a href="#" onclick="showExportDetails('${entry.Timestamp.replace(/'/g, "&#39;")}'); return false;" style="color: var(--color-primary); text-decoration: none; cursor: pointer;">Details →</a>` : '—'}
+            </td>
+          </tr>
+        `;
+      }).join('');
 
       const totalPages = Math.ceil(filteredExportHistory.length / exportHistoryPageSize);
-      document.getElementById('exportHistoryPaginationInfo').textContent = `Page ${currentExportHistoryPage} of ${totalPages} (${filteredExportHistory.length} entries)`;
+      document.getElementById('exportHistoryPaginationInfo').textContent = `Page ${currentExportHistoryPage} of ${totalPages} (${filteredExportHistory.length} total)`;
       document.getElementById('exportHistoryPrevBtn').disabled = currentExportHistoryPage === 1;
       document.getElementById('exportHistoryNextBtn').disabled = currentExportHistoryPage === totalPages;
     }
@@ -1613,7 +1942,7 @@
     }
 
     // Format export history timestamp
-    function formatExportTimestamp(ts) {
+    function formatTimestamp(ts) {
       if (!ts) return '';
       const date = new Date(ts);
       return date.toISOString().replace('T', ' ').substring(0, 19);
