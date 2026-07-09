@@ -3987,3 +3987,1387 @@ function verifyDataSPOCAccess(userEmail) {
     };
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/*                    ADMIN PORTAL: AUDIT LOGGING (TASK 2)                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Logs an admin action to the AdminAuditLog sheet.
+ * Records: Timestamp (UTC ISO), Event, User (email), Action, Status, Details (JSON)
+ * Uses LockService for concurrent write protection.
+ * 
+ * @param {string} event - Event type (e.g., 'EMPLOYEE_UPLOAD', 'CONFIG_CHANGE', 'SKILL_CREATED', 'SFTP_EXPORT')
+ * @param {string} userEmail - Admin's email address
+ * @param {string} action - What was done (e.g., 'Upload 100 employees', 'Changed hard lock date', etc.)
+ * @param {string} status - 'SUCCESS' or 'FAILURE'
+ * @param {Object} details - Additional context (JSON object, e.g., {rowCount: 100, errors: 5})
+ * @returns {boolean} True if logged successfully
+ */
+function logAdminAction(event, userEmail, action, status, details) {
+  try {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      console.error('[logAdminAction] Could not acquire lock for audit logging');
+      return false;
+    }
+
+    // Get or create AdminAuditLog sheet
+    let auditSheet;
+    try {
+      auditSheet = getSheet_('AdminAuditLog');
+    } catch (e) {
+      console.log('[logAdminAction] AdminAuditLog sheet not found, creating...');
+      const ss = getSpreadsheet_();
+      auditSheet = ss.insertSheet('AdminAuditLog');
+      const headers = ['Timestamp', 'Event', 'User', 'Action', 'Status', 'Details'];
+      auditSheet.appendRow(headers);
+    }
+
+    // Prepare audit log entry
+    const timestamp = new Date().toISOString();
+    const detailsJson = typeof details === 'object' ? JSON.stringify(details) : (details || '');
+
+    const logEntry = [timestamp, event, userEmail, action, status, detailsJson];
+
+    // Append to sheet with lock protection
+    auditSheet.appendRow(logEntry);
+
+    console.log(`[logAdminAction] Audit log entry created: event=${event}, user=${userEmail}, status=${status}`);
+
+    lock.releaseLock();
+    return true;
+  } catch (e) {
+    console.error(`[logAdminAction] Error logging admin action: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Retrieves recent admin audit log entries (paginated).
+ * Returns up to 50 most recent entries.
+ * 
+ * @param {number} page - Page number (1-indexed), default = 1
+ * @returns {Object} {success: boolean, entries: Array, totalCount: number, pageCount: number}
+ */
+function getAdminAuditLog(page) {
+  try {
+    page = page || 1;
+    const pageSize = 50;
+
+    let auditSheet;
+    try {
+      auditSheet = getSheet_('AdminAuditLog');
+    } catch (e) {
+      console.log('[getAdminAuditLog] AdminAuditLog sheet not found');
+      return { success: false, entries: [], totalCount: 0, pageCount: 0, message: 'Audit log not available' };
+    }
+
+    const headerMap = getHeaderMap_(auditSheet);
+    const dataRange = auditSheet.getRange(2, 1, Math.max(1, auditSheet.getLastRow() - 1), auditSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    // Reverse to get most recent first
+    values.reverse();
+
+    // Paginate
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, values.length);
+    const pageData = values.slice(startIndex, endIndex);
+
+    // Convert to objects
+    const entries = pageData.map(row => {
+      const entry = {};
+      Object.entries(headerMap).forEach(([colName, colIndex]) => {
+        entry[colName] = row[colIndex];
+      });
+      // Parse details JSON
+      try {
+        entry.Details = entry.Details ? JSON.parse(entry.Details) : {};
+      } catch (e) {
+        entry.Details = { raw: entry.Details };
+      }
+      return entry;
+    });
+
+    const totalCount = values.length;
+    const pageCount = Math.ceil(totalCount / pageSize);
+
+    console.log(`[getAdminAuditLog] Returned page ${page} of ${pageCount} (${entries.length} entries)`);
+
+    return { success: true, entries: entries, totalCount: totalCount, pageCount: pageCount, currentPage: page };
+  } catch (e) {
+    console.error(`[getAdminAuditLog] Error retrieving audit log: ${e.message}`);
+    return { success: false, entries: [], totalCount: 0, pageCount: 0, message: e.message };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*           ADMIN PORTAL: SYSTEM CONFIGURATION (TASK 3)                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gets system configuration values.
+ * Returns object with: hardLockDate, reviewPeriodStart, reviewPeriodEnd, exceededThreshold
+ * 
+ * @returns {Object} {success: boolean, config: {...}}
+ */
+function getSystemConfig() {
+  try {
+    const systemConfigSheet = getSheet_('SystemConfig');
+    const headerMap = getHeaderMap_(systemConfigSheet);
+    
+    const lastRow = systemConfigSheet.getLastRow();
+    if (lastRow < 2) {
+      // Sheet is empty, return defaults
+      return {
+        success: true,
+        config: {
+          hardLockDate: '',
+          reviewPeriodStart: '',
+          reviewPeriodEnd: '',
+          exceededThreshold: 101
+        }
+      };
+    }
+
+    const dataRange = systemConfigSheet.getRange(2, 1, lastRow - 1, systemConfigSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    const config = {};
+    const keyCol = headerMap['Key'] !== undefined ? headerMap['Key'] : 0;
+    const valueCol = headerMap['Value'] !== undefined ? headerMap['Value'] : 1;
+
+    values.forEach(row => {
+      const key = row[keyCol];
+      const value = row[valueCol];
+      if (key) {
+        config[key] = value;
+      }
+    });
+
+    console.log('[getSystemConfig] Retrieved config:', JSON.stringify(config));
+
+    return {
+      success: true,
+      config: {
+        hardLockDate: config.HARD_LOCK_DATE || '',
+        reviewPeriodStart: config.REVIEW_PERIOD_START || '',
+        reviewPeriodEnd: config.REVIEW_PERIOD_END || '',
+        exceededThreshold: parseFloat(config.EXCEEDED_THRESHOLD || 101)
+      }
+    };
+  } catch (e) {
+    console.error(`[getSystemConfig] Error: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Updates system configuration (hard lock date, review periods, threshold).
+ * Logs change to AdminAuditLog.
+ * 
+ * @param {Object} config - {hardLockDate, reviewPeriodStart, reviewPeriodEnd, exceededThreshold}
+ * @returns {Object} {success: boolean, message: string}
+ */
+function updateSystemConfig(config) {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      return { success: false, message: 'Could not acquire lock' };
+    }
+
+    const systemConfigSheet = getSheet_('SystemConfig');
+    
+    // Get all rows to find and update config entries
+    const headerMap = getHeaderMap_(systemConfigSheet);
+    const lastRow = systemConfigSheet.getLastRow();
+    
+    if (lastRow < 2) {
+      // Create header and initial rows if sheet is empty
+      const headers = ['Key', 'Value'];
+      systemConfigSheet.appendRow(headers);
+    }
+
+    const keyCol = headerMap['Key'] !== undefined ? headerMap['Key'] + 1 : 1;
+    const valueCol = headerMap['Value'] !== undefined ? headerMap['Value'] + 1 : 2;
+
+    // Data to update
+    const updates = {
+      'HARD_LOCK_DATE': config.hardLockDate,
+      'REVIEW_PERIOD_START': config.reviewPeriodStart,
+      'REVIEW_PERIOD_END': config.reviewPeriodEnd,
+      'EXCEEDED_THRESHOLD': String(config.exceededThreshold)
+    };
+
+    // Get all current data
+    const dataRange = systemConfigSheet.getRange(2, 1, Math.max(1, systemConfigSheet.getLastRow() - 1), systemConfigSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    // Track which keys were updated
+    const updatedKeys = new Set();
+
+    // Update existing rows
+    values.forEach((row, rowIdx) => {
+      const key = row[keyCol - 1];
+      if (updates.hasOwnProperty(key)) {
+        row[valueCol - 1] = updates[key];
+        systemConfigSheet.getRange(rowIdx + 2, valueCol).setValue(updates[key]);
+        updatedKeys.add(key);
+      }
+    });
+
+    // Add missing keys as new rows
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!updatedKeys.has(key)) {
+        systemConfigSheet.appendRow([key, value]);
+      }
+    });
+
+    // Log the change
+    logAdminAction(
+      'CONFIG_CHANGE',
+      userEmail,
+      'Updated system configuration (lock date, review periods, threshold)',
+      'SUCCESS',
+      { changes: updates }
+    );
+
+    lock.releaseLock();
+
+    console.log('[updateSystemConfig] Configuration updated successfully');
+    return { success: true, message: 'Configuration saved successfully' };
+  } catch (e) {
+    console.error(`[updateSystemConfig] Error: ${e.message}`);
+    try {
+      logAdminAction('CONFIG_CHANGE', Session.getActiveUser().getEmail(), 'Update system configuration', 'FAILURE', { error: e.message });
+    } catch (logErr) {
+      console.error('[updateSystemConfig] Could not log error:', logErr.message);
+    }
+    return { success: false, message: e.message };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*         ADMIN PORTAL: OVERVIEW METRICS (TASK 9)                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Calculates overview metrics: Total Employees, Steps Completed, Completion Rate, Pending Review.
+ * 
+ * @returns {Object} {success: boolean, metrics: {...}}
+ */
+function getOverviewMetrics() {
+  try {
+    // Get total employees
+    const employeeSheet = getSheet_('Employee Database');
+    const totalEmployees = Math.max(0, employeeSheet.getLastRow() - 1);
+
+    // Get completion data from WorkflowStatus sheet
+    const workflowSheet = getSheet_('WorkflowStatus');
+    const headerMap = getHeaderMap_(workflowSheet);
+    const dataRange = workflowSheet.getRange(2, 1, Math.max(1, workflowSheet.getLastRow() - 1), workflowSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    let stepsCompleted = 0;
+    values.forEach(row => {
+      const rowObj = {};
+      Object.entries(headerMap).forEach(([colName, colIndex]) => {
+        rowObj[colName] = row[colIndex];
+      });
+      // allLocked column indicates all 7 steps complete
+      if (rowObj.allLocked === true || rowObj.allLocked === 'TRUE') {
+        stepsCompleted++;
+      }
+    });
+
+    const completionRate = totalEmployees > 0 ? (stepsCompleted / totalEmployees) * 100 : 0;
+    const pendingReview = totalEmployees - stepsCompleted;
+
+    const metrics = {
+      totalEmployees: totalEmployees,
+      stepsCompleted: stepsCompleted,
+      completionRate: completionRate,
+      pendingReview: pendingReview
+    };
+
+    console.log('[getOverviewMetrics] Metrics:', JSON.stringify(metrics));
+
+    return { success: true, metrics: metrics };
+  } catch (e) {
+    console.error(`[getOverviewMetrics] Error: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+
+/**
+ * Gets the active spreadsheet (helper for admin functions).
+ * @returns {Spreadsheet} Google Sheets spreadsheet object
+ */
+function getSpreadsheet_() {
+  const spreadsheetId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  if (!spreadsheetId) {
+    throw new Error('SPREADSHEET_ID not configured in Script Properties');
+  }
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  if (!ss) {
+    throw new Error('Spreadsheet not found. Check SPREADSHEET_ID in Script Properties.');
+  }
+  return ss;
+}
+
+/**
+ * Gets header map for a sheet (helper for admin functions).
+ * @param {Sheet} sheet - Google Sheets sheet object
+ * @returns {Object} Map of column names to indices (0-indexed)
+ */
+function getHeaderMap_(sheet) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const map = {};
+  headers.forEach((header, i) => {
+    map[header.trim()] = i;
+  });
+  return map;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*    ADMIN PORTAL: EMPLOYEE UPLOAD WITH SAP HRMF VALIDATION (TASK 5)        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * SAP SuccessFactors HRMF CSV column mappings.
+ * Maps HRMF export columns to system columns.
+ */
+const HRMF_COLUMN_MAPPING = {
+  'Employee No.': 'EmployeeID',
+  'Full Name': 'Name',
+  'Email Address': 'Email',
+  'Business Group (Label)': 'Group',
+  'Department (Label)': 'Department',
+  'Band': 'Band',
+  'Immediate Supervisor': 'ManagerID',
+  'Position Position Title (Label)': 'JobTitle'
+};
+
+/**
+ * Expected HRMF export columns.
+ */
+const HRMF_EXPECTED_COLUMNS = [
+  'Employee No.',
+  'Full Name',
+  'Email Address',
+  'Business Group (Label)',
+  'Department (Label)',
+  'Band',
+  'Immediate Supervisor',
+  'Position Position Title (Label)'
+];
+
+/**
+ * Validates employee data against SAP HRMF format.
+ * Performs strict validation on all required fields.
+ * 
+ * @param {Array} employees - Array of employee objects from CSV
+ * @returns {Object} {success: true, validCount, invalidCount, errors: [...]}
+ */
+function validateEmployeeUpload(employees) {
+  try {
+    console.log(`[validateEmployeeUpload] Validating ${employees.length} employee records`);
+
+    let validCount = 0;
+    let invalidCount = 0;
+    const errors = [];
+    const seenIds = new Set();
+    const seenEmails = new Set();
+
+    employees.forEach((emp, idx) => {
+      const rowNum = idx + 2; // +1 for header, +1 for 1-indexed
+      const rowErrors = [];
+
+      // Check required fields exist and have values
+      const requiredFields = ['Employee No.', 'Full Name', 'Email Address', 'Band'];
+      requiredFields.forEach(field => {
+        if (!emp[field] || emp[field].trim() === '') {
+          rowErrors.push(`Row ${rowNum}: Missing required field "${field}"`);
+        }
+      });
+
+      // Validate email format
+      if (emp['Email Address']) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emp['Email Address'])) {
+          rowErrors.push(`Row ${rowNum}: Invalid email format "${emp['Email Address']}"`);
+        }
+      }
+
+      // Check for duplicate Employee IDs
+      if (emp['Employee No.']) {
+        const empId = String(emp['Employee No.']).trim();
+        if (seenIds.has(empId)) {
+          rowErrors.push(`Row ${rowNum}: Duplicate Employee ID "${empId}"`);
+        } else {
+          seenIds.add(empId);
+        }
+      }
+
+      // Check for duplicate emails
+      if (emp['Email Address']) {
+        const email = emp['Email Address'].trim().toLowerCase();
+        if (seenEmails.has(email)) {
+          rowErrors.push(`Row ${rowNum}: Duplicate email "${email}"`);
+        } else {
+          seenEmails.add(email);
+        }
+      }
+
+      if (rowErrors.length > 0) {
+        errors.push(...rowErrors);
+        invalidCount++;
+      } else {
+        validCount++;
+      }
+    });
+
+    console.log(`[validateEmployeeUpload] Result: ${validCount} valid, ${invalidCount} invalid, ${errors.length} errors`);
+
+    return {
+      success: true,
+      validCount: validCount,
+      invalidCount: invalidCount,
+      errors: errors.slice(0, 20) // Return first 20 errors
+    };
+  } catch (e) {
+    console.error(`[validateEmployeeUpload] Error: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Uploads validated employees to Employee Database sheet.
+ * Automatically maps HRMF columns to system columns.
+ * Logs upload event to AdminAuditLog.
+ * 
+ * @param {Array} employees - Array of validated employee objects
+ * @returns {Object} {success: boolean, uploadedCount: number, message: string}
+ */
+function uploadEmployees(employees) {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      return { success: false, message: 'Could not acquire lock' };
+    }
+
+    const employeeSheet = getSheet_('Employee Database');
+    const headerMap = getHeaderMap_(employeeSheet);
+
+    // Verify required system columns exist
+    const requiredCols = ['EmployeeID', 'Name', 'Email', 'Band', 'Department', 'Group', 'ManagerID', 'JobTitle'];
+    const missingCols = requiredCols.filter(col => !(col in headerMap));
+    if (missingCols.length > 0) {
+      lock.releaseLock();
+      return { success: false, message: `Missing columns in Employee Database: ${missingCols.join(', ')}` };
+    }
+
+    let uploadedCount = 0;
+    let skippedCount = 0;
+    const uploadErrors = [];
+
+    employees.forEach((emp, idx) => {
+      try {
+        // Map HRMF columns to system columns
+        const mappedEmployee = {
+          'EmployeeID': emp['Employee No.'] || '',
+          'Name': emp['Full Name'] || '',
+          'Email': emp['Email Address'] || '',
+          'Band': emp['Band'] || '',
+          'Department': emp['Department (Label)'] || '',
+          'Group': emp['Business Group (Label)'] || '',
+          'ManagerID': emp['Immediate Supervisor'] || '',
+          'JobTitle': emp['Position Position Title (Label)'] || '',
+          'Role': 'EMPLOYEE', // Default role
+          'Status': 'Active'
+        };
+
+        // Build row array in column order
+        const rowArray = [];
+        Object.keys(headerMap).forEach(colName => {
+          rowArray.push(mappedEmployee[colName] || '');
+        });
+
+        // Append row to sheet
+        employeeSheet.appendRow(rowArray);
+        uploadedCount++;
+      } catch (e) {
+        skippedCount++;
+        uploadErrors.push(`Row ${idx + 2}: ${e.message}`);
+      }
+    });
+
+    // Log the upload
+    logAdminAction(
+      'EMPLOYEE_UPLOAD',
+      userEmail,
+      `Uploaded ${uploadedCount} employees from SAP HRMF CSV`,
+      'SUCCESS',
+      {
+        totalRecords: employees.length,
+        uploadedCount: uploadedCount,
+        skippedCount: skippedCount,
+        errors: uploadErrors.slice(0, 5)
+      }
+    );
+
+    lock.releaseLock();
+
+    console.log(`[uploadEmployees] Upload complete: ${uploadedCount} uploaded, ${skippedCount} skipped`);
+
+    return {
+      success: true,
+      uploadedCount: uploadedCount,
+      message: `Successfully uploaded ${uploadedCount} employees. ${skippedCount} records were skipped.`
+    };
+  } catch (e) {
+    console.error(`[uploadEmployees] Error: ${e.message}`);
+    try {
+      logAdminAction('EMPLOYEE_UPLOAD', Session.getActiveUser().getEmail(), 'Upload employees', 'FAILURE', { error: e.message });
+    } catch (logErr) {
+      console.error('[uploadEmployees] Could not log error:', logErr.message);
+    }
+    return { success: false, message: e.message };
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*  ADMIN PORTAL: EMPLOYEE DATABASE CRUD - VIEW, EDIT, DELETE (TASK 6)       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gets all employees from Employee Database sheet.
+ * Returns full employee objects for display and filtering.
+ * 
+ * @returns {Object} {success: boolean, employees: Array}
+ */
+function getAllEmployees() {
+  try {
+    const employeeSheet = getSheet_('Employee Database');
+    const headerMap = getHeaderMap_(employeeSheet);
+    const lastRow = employeeSheet.getLastRow();
+
+    if (lastRow < 2) {
+      console.log('[getAllEmployees] No employees found');
+      return { success: true, employees: [] };
+    }
+
+    const dataRange = employeeSheet.getRange(2, 1, lastRow - 1, employeeSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    const employees = values.map(row => {
+      const emp = {};
+      Object.entries(headerMap).forEach(([colName, colIndex]) => {
+        emp[colName] = row[colIndex];
+      });
+      return emp;
+    });
+
+    console.log(`[getAllEmployees] Retrieved ${employees.length} employees`);
+    return { success: true, employees: employees };
+  } catch (e) {
+    console.error(`[getAllEmployees] Error: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Updates an employee record.
+ * Validates email format, checks for duplicates.
+ * Logs change to AdminAuditLog.
+ * 
+ * @param {Object} employee - {EmployeeID, Name, Email, Department, Group, Band, Role}
+ * @returns {Object} {success: boolean, message: string}
+ */
+function updateEmployee(employee) {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      return { success: false, message: 'Could not acquire lock' };
+    }
+
+    const employeeSheet = getSheet_('Employee Database');
+    const headerMap = getHeaderMap_(employeeSheet);
+    const lastRow = employeeSheet.getLastRow();
+
+    if (lastRow < 2) {
+      lock.releaseLock();
+      return { success: false, message: 'No employees found' };
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(employee.Email)) {
+      lock.releaseLock();
+      return { success: false, message: 'Invalid email format' };
+    }
+
+    // Find and update employee row
+    const dataRange = employeeSheet.getRange(2, 1, lastRow - 1, employeeSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    let found = false;
+    let rowIndex = -1;
+
+    values.forEach((row, idx) => {
+      const empId = row[headerMap['EmployeeID']];
+      if (String(empId) === String(employee.EmployeeID)) {
+        found = true;
+        rowIndex = idx;
+      }
+    });
+
+    if (!found) {
+      lock.releaseLock();
+      return { success: false, message: 'Employee not found' };
+    }
+
+    // Update row
+    const updateRow = values[rowIndex];
+    Object.entries(headerMap).forEach(([colName, colIndex]) => {
+      if (employee.hasOwnProperty(colName)) {
+        updateRow[colIndex] = employee[colName];
+      }
+    });
+
+    employeeSheet.getRange(rowIndex + 2, 1, 1, employeeSheet.getLastColumn()).setValues([updateRow]);
+
+    // Log the change
+    logAdminAction(
+      'EMPLOYEE_UPDATED',
+      userEmail,
+      `Updated employee: ${employee.Name} (ID: ${employee.EmployeeID})`,
+      'SUCCESS',
+      { employeeId: employee.EmployeeID, changes: employee }
+    );
+
+    lock.releaseLock();
+
+    console.log(`[updateEmployee] Updated employee ${employee.EmployeeID}`);
+    return { success: true, message: 'Employee updated successfully' };
+  } catch (e) {
+    console.error(`[updateEmployee] Error: ${e.message}`);
+    try {
+      logAdminAction('EMPLOYEE_UPDATED', Session.getActiveUser().getEmail(), 'Update employee', 'FAILURE', { error: e.message });
+    } catch (logErr) {
+      console.error('[updateEmployee] Could not log error:', logErr.message);
+    }
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Deletes an employee record.
+ * Logs deletion to AdminAuditLog.
+ * 
+ * @param {string|number} employeeId - Employee ID to delete
+ * @returns {Object} {success: boolean, message: string}
+ */
+function deleteEmployee(employeeId) {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      return { success: false, message: 'Could not acquire lock' };
+    }
+
+    const employeeSheet = getSheet_('Employee Database');
+    const headerMap = getHeaderMap_(employeeSheet);
+    const lastRow = employeeSheet.getLastRow();
+
+    if (lastRow < 2) {
+      lock.releaseLock();
+      return { success: false, message: 'No employees found' };
+    }
+
+    // Find employee row
+    const dataRange = employeeSheet.getRange(2, 1, lastRow - 1, employeeSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    let rowToDelete = -1;
+    let employeeName = '';
+
+    values.forEach((row, idx) => {
+      const empId = row[headerMap['EmployeeID']];
+      if (String(empId) === String(employeeId)) {
+        rowToDelete = idx;
+        employeeName = row[headerMap['Name']] || '';
+      }
+    });
+
+    if (rowToDelete === -1) {
+      lock.releaseLock();
+      return { success: false, message: 'Employee not found' };
+    }
+
+    // Delete row
+    employeeSheet.deleteRow(rowToDelete + 2); // +2 for header and 0-indexing
+
+    // Log the deletion
+    logAdminAction(
+      'EMPLOYEE_DELETED',
+      userEmail,
+      `Deleted employee: ${employeeName} (ID: ${employeeId})`,
+      'SUCCESS',
+      { employeeId: employeeId, employeeName: employeeName }
+    );
+
+    lock.releaseLock();
+
+    console.log(`[deleteEmployee] Deleted employee ${employeeId}`);
+    return { success: true, message: 'Employee deleted successfully' };
+  } catch (e) {
+    console.error(`[deleteEmployee] Error: ${e.message}`);
+    try {
+      logAdminAction('EMPLOYEE_DELETED', Session.getActiveUser().getEmail(), 'Delete employee', 'FAILURE', { error: e.message });
+    } catch (logErr) {
+      console.error('[deleteEmployee] Could not log error:', logErr.message);
+    }
+    return { success: false, message: e.message };
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*  ADMIN PORTAL: CORE & LEADERSHIP SKILLS DEFINITION (TASKS 7 & 8)          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gets all skills of a specific type (core or leadership).
+ * 
+ * @param {string} type - 'core' or 'leadership'
+ * @returns {Object} {success: boolean, skills: Array}
+ */
+function getSkills(type) {
+  try {
+    const sheetName = type === 'core' ? 'CoreSkills' : 'LeadershipSkills';
+    const skillsSheet = getSheet_(sheetName);
+    const headerMap = getHeaderMap_(skillsSheet);
+    const lastRow = skillsSheet.getLastRow();
+
+    if (lastRow < 2) {
+      console.log(`[getSkills] No ${type} skills found`);
+      return { success: true, skills: [] };
+    }
+
+    const dataRange = skillsSheet.getRange(2, 1, lastRow - 1, skillsSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    const skills = values.map(row => {
+      const skill = {};
+      Object.entries(headerMap).forEach(([colName, colIndex]) => {
+        skill[colName] = row[colIndex];
+      });
+      // Parse BandLevels if stored as JSON
+      if (typeof skill.BandLevels === 'string') {
+        try {
+          skill.BandLevels = JSON.parse(skill.BandLevels);
+        } catch (e) {
+          skill.BandLevels = {};
+        }
+      }
+      return skill;
+    });
+
+    console.log(`[getSkills] Retrieved ${skills.length} ${type} skills`);
+    return { success: true, skills: skills };
+  } catch (e) {
+    console.error(`[getSkills] Error: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Creates a new skill (core or leadership).
+ * Stores required levels per band as JSON.
+ * Logs action to AdminAuditLog.
+ * 
+ * @param {string} type - 'core' or 'leadership'
+ * @param {Object} skill - {SkillName, Description, BandLevels: {Band1: level, Band2: level, ...}}
+ * @returns {Object} {success: boolean, message: string}
+ */
+function createSkill(type, skill) {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      return { success: false, message: 'Could not acquire lock' };
+    }
+
+    const sheetName = type === 'core' ? 'CoreSkills' : 'LeadershipSkills';
+    let skillsSheet;
+    
+    try {
+      skillsSheet = getSheet_(sheetName);
+    } catch (e) {
+      console.log(`[createSkill] ${sheetName} sheet not found, creating...`);
+      const ss = getSpreadsheet_();
+      skillsSheet = ss.insertSheet(sheetName);
+      const headers = ['SkillID', 'SkillName', 'Description', 'BandLevels', 'LastModifiedBy', 'LastModifiedAt'];
+      skillsSheet.appendRow(headers);
+    }
+
+    // Create skill record
+    const skillRecord = [
+      Utilities.getUuid(), // SkillID
+      skill.SkillName,
+      skill.Description,
+      JSON.stringify(skill.BandLevels || {}),
+      userEmail,
+      new Date().toISOString()
+    ];
+
+    skillsSheet.appendRow(skillRecord);
+
+    // Log action
+    logAdminAction(
+      'SKILL_CREATED',
+      userEmail,
+      `Created ${type} skill: ${skill.SkillName}`,
+      'SUCCESS',
+      { skillType: type, skillName: skill.SkillName }
+    );
+
+    lock.releaseLock();
+
+    console.log(`[createSkill] Created ${type} skill: ${skill.SkillName}`);
+    return { success: true, message: `${type} skill created successfully` };
+  } catch (e) {
+    console.error(`[createSkill] Error: ${e.message}`);
+    try {
+      logAdminAction('SKILL_CREATED', Session.getActiveUser().getEmail(), `Create ${type} skill`, 'FAILURE', { error: e.message });
+    } catch (logErr) {
+      console.error('[createSkill] Could not log error:', logErr.message);
+    }
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Updates an existing skill.
+ * Logs change to AdminAuditLog.
+ * 
+ * @param {string} type - 'core' or 'leadership'
+ * @param {Object} skill - {SkillID, SkillName, Description, BandLevels}
+ * @returns {Object} {success: boolean, message: string}
+ */
+function updateSkill(type, skill) {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      return { success: false, message: 'Could not acquire lock' };
+    }
+
+    const sheetName = type === 'core' ? 'CoreSkills' : 'LeadershipSkills';
+    const skillsSheet = getSheet_(sheetName);
+    const headerMap = getHeaderMap_(skillsSheet);
+    const lastRow = skillsSheet.getLastRow();
+
+    // Find and update skill row
+    const dataRange = skillsSheet.getRange(2, 1, lastRow - 1, skillsSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    let found = false;
+    values.forEach((row, idx) => {
+      if (row[headerMap['SkillID']] === skill.SkillID) {
+        found = true;
+        row[headerMap['SkillName']] = skill.SkillName;
+        row[headerMap['Description']] = skill.Description;
+        row[headerMap['BandLevels']] = JSON.stringify(skill.BandLevels || {});
+        row[headerMap['LastModifiedBy']] = userEmail;
+        row[headerMap['LastModifiedAt']] = new Date().toISOString();
+
+        skillsSheet.getRange(idx + 2, 1, 1, skillsSheet.getLastColumn()).setValues([row]);
+      }
+    });
+
+    if (!found) {
+      lock.releaseLock();
+      return { success: false, message: 'Skill not found' };
+    }
+
+    // Log action
+    logAdminAction(
+      'SKILL_UPDATED',
+      userEmail,
+      `Updated ${type} skill: ${skill.SkillName}`,
+      'SUCCESS',
+      { skillType: type, skillName: skill.SkillName }
+    );
+
+    lock.releaseLock();
+
+    console.log(`[updateSkill] Updated ${type} skill: ${skill.SkillName}`);
+    return { success: true, message: `${type} skill updated successfully` };
+  } catch (e) {
+    console.error(`[updateSkill] Error: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Deletes a skill.
+ * Logs deletion to AdminAuditLog.
+ * 
+ * @param {string} type - 'core' or 'leadership'
+ * @param {string} skillId - Skill ID to delete
+ * @returns {Object} {success: boolean, message: string}
+ */
+function deleteSkill(type, skillId) {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      return { success: false, message: 'Could not acquire lock' };
+    }
+
+    const sheetName = type === 'core' ? 'CoreSkills' : 'LeadershipSkills';
+    const skillsSheet = getSheet_(sheetName);
+    const headerMap = getHeaderMap_(skillsSheet);
+    const lastRow = skillsSheet.getLastRow();
+
+    // Find skill row
+    const dataRange = skillsSheet.getRange(2, 1, lastRow - 1, skillsSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    let rowToDelete = -1;
+    let skillName = '';
+
+    values.forEach((row, idx) => {
+      if (row[headerMap['SkillID']] === skillId) {
+        rowToDelete = idx;
+        skillName = row[headerMap['SkillName']] || '';
+      }
+    });
+
+    if (rowToDelete === -1) {
+      lock.releaseLock();
+      return { success: false, message: 'Skill not found' };
+    }
+
+    // Delete row
+    skillsSheet.deleteRow(rowToDelete + 2); // +2 for header and 0-indexing
+
+    // Log deletion
+    logAdminAction(
+      'SKILL_DELETED',
+      userEmail,
+      `Deleted ${type} skill: ${skillName}`,
+      'SUCCESS',
+      { skillType: type, skillName: skillName }
+    );
+
+    lock.releaseLock();
+
+    console.log(`[deleteSkill] Deleted ${type} skill: ${skillName}`);
+    return { success: true, message: `${type} skill deleted successfully` };
+  } catch (e) {
+    console.error(`[deleteSkill] Error: ${e.message}`);
+    return { success: false, message: e.message };
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*        ADMIN PORTAL: PROGRESS MONITORING (TASK 13, 14, 15)                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gets completion progress for each of 7 workflow steps.
+ * Counts how many employees have completed each step.
+ * Returns completion percentage for admin dashboard.
+ * 
+ * @returns {Object} {success: boolean, steps: [{name, completed, total, percentage}, ...]}
+ */
+function getStepProgress() {
+  try {
+    // Get total employees
+    const employeeSheet = getSheet_('Employee Database');
+    const totalEmployees = Math.max(0, employeeSheet.getLastRow() - 1);
+
+    if (totalEmployees === 0) {
+      return { success: true, steps: [] };
+    }
+
+    // Get workflow data from WorkflowStatus sheet
+    const workflowSheet = getSheet_('WorkflowStatus');
+    const headerMap = getHeaderMap_(workflowSheet);
+    const dataRange = workflowSheet.getRange(2, 1, Math.max(1, workflowSheet.getLastRow() - 1), workflowSheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    // Step column names (map from expected workflow columns)
+    const stepColumns = [
+      'step1Completed',  // Skills Assessment
+      'step2Completed',  // OKR Upload
+      'step3Completed',  // Self-Assessment
+      'step4Completed',  // Feed Forward
+      'step5Completed',  // Manager Acknowledgement
+      'step6Completed',  // View Scores
+      'step7Completed'   // Employee Acknowledgement
+    ];
+
+    const stepNames = [
+      'Step 1: Skills Assessment',
+      'Step 2: OKR Upload',
+      'Step 3: Self-Assessment',
+      'Step 4: Feed Forward',
+      'Step 5: Manager Acknowledgement',
+      'Step 6: View Scores',
+      'Step 7: Employee Acknowledgement'
+    ];
+
+    const stepProgress = [];
+
+    for (let stepIdx = 0; stepIdx < stepColumns.length; stepIdx++) {
+      const colName = stepColumns[stepIdx];
+      const colIndex = headerMap[colName];
+
+      let completed = 0;
+      if (colIndex !== undefined) {
+        values.forEach(row => {
+          const cellValue = row[colIndex];
+          if (cellValue === true || cellValue === 'TRUE' || cellValue === 'Yes' || cellValue === 1) {
+            completed++;
+          }
+        });
+      }
+
+      const percentage = totalEmployees > 0 ? (completed / totalEmployees) * 100 : 0;
+
+      stepProgress.push({
+        name: stepNames[stepIdx],
+        completed: completed,
+        total: totalEmployees,
+        percentage: Math.round(percentage * 10) / 10  // Round to 1 decimal
+      });
+    }
+
+    console.log('[getStepProgress] Calculated step progress:', JSON.stringify(stepProgress));
+    return { success: true, steps: stepProgress };
+  } catch (e) {
+    console.error(`[getStepProgress] Error: ${e.message}`);
+    return { success: false, message: e.message, steps: [] };
+  }
+}
+
+/**
+ * Sends email reminder to all employees with incomplete workflows.
+ * Identifies employees who haven't completed all 7 steps.
+ * Sends single email to each incomplete employee (one-time action per admin click).
+ * Logs action to AdminAuditLog.
+ * 
+ * @returns {Object} {success: boolean, message: string, emailsSent: number}
+ */
+function sendEmailReminder() {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+      return { success: false, message: 'Could not acquire lock' };
+    }
+
+    // Get employees
+    const employeeSheet = getSheet_('Employee Database');
+    const headerMap = getHeaderMap_(employeeSheet);
+    const emailCol = headerMap['Email'];
+    const nameCol = headerMap['Name'];
+
+    if (emailCol === undefined) {
+      return { success: false, message: 'Email column not found' };
+    }
+
+    // Get workflow data
+    const workflowSheet = getSheet_('WorkflowStatus');
+    const workflowHeaders = getHeaderMap_(workflowSheet);
+    const allLockedCol = workflowHeaders['allLocked'];
+
+    const employeeData = employeeSheet.getRange(2, 1, Math.max(1, employeeSheet.getLastRow() - 1), employeeSheet.getLastColumn()).getValues();
+    const workflowData = workflowSheet.getRange(2, 1, Math.max(1, workflowSheet.getLastRow() - 1), workflowSheet.getLastColumn()).getValues();
+
+    let emailsSent = 0;
+    const incompleteEmployees = [];
+
+    // Find incomplete employees
+    for (let i = 0; i < employeeData.length && i < workflowData.length; i++) {
+      const empEmail = employeeData[i][emailCol];
+      const empName = employeeData[i][nameCol] || empEmail;
+      const allLocked = allLockedCol !== undefined ? workflowData[i][allLockedCol] : false;
+
+      if (empEmail && empEmail.trim() && (!allLocked || allLocked === 'FALSE' || allLocked === false)) {
+        incompleteEmployees.push({ email: empEmail, name: empName });
+      }
+    }
+
+    // Send emails
+    incompleteEmployees.forEach(emp => {
+      try {
+        const subject = 'Own Your Career - Action Required: Complete Your Performance Review';
+        const body = `Dear ${emp.name},\n\n` +
+          `This is a reminder that your performance review submission is incomplete.\n\n` +
+          `Please complete the remaining steps in the Own Your Career portal:\n` +
+          `- Review your assigned tasks and feedback\n` +
+          `- Submit any pending forms\n` +
+          `- Provide your acknowledgement\n\n` +
+          `Please complete by the deadline set by your administrator.\n\n` +
+          `Best regards,\nPerformance Management Team`;
+
+        GmailApp.sendEmail(emp.email, subject, body);
+        emailsSent++;
+        console.log(`[sendEmailReminder] Email sent to ${emp.email}`);
+      } catch (emailError) {
+        console.error(`[sendEmailReminder] Failed to send email to ${emp.email}: ${emailError.message}`);
+      }
+    });
+
+    // Log action to audit log
+    logAdminAction(
+      'EMAIL_REMINDER',
+      `Sent email reminder to ${emailsSent} incomplete employees`,
+      'SUCCESS',
+      { emailsSent: emailsSent, incompleteCount: incompleteEmployees.length }
+    );
+
+    lock.releaseLock();
+
+    return {
+      success: true,
+      message: `Email reminders sent to ${emailsSent} employee(s) with incomplete workflows`,
+      emailsSent: emailsSent
+    };
+  } catch (e) {
+    console.error(`[sendEmailReminder] Error: ${e.message}`);
+    logAdminAction('EMAIL_REMINDER', 'Failed to send email reminders', 'FAILURE', { error: e.message });
+    return { success: false, message: `Error sending reminders: ${e.message}` };
+  }
+}
+
+/**
+ * Exports progress report as CSV.
+ * Includes: Employee Name, Email, Department, Group, Band, Completion Step, Status, Last Updated.
+ * Returns as downloadable CSV file.
+ * Logs action to AdminAuditLog.
+ * 
+ * @returns {Object} {success: boolean, message: string, csv: string}
+ */
+function exportProgressReport() {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+
+    // Get employees
+    const employeeSheet = getSheet_('Employee Database');
+    const headerMap = getHeaderMap_(employeeSheet);
+    const nameCol = headerMap['Name'];
+    const emailCol = headerMap['Email'];
+    const deptCol = headerMap['Department'];
+    const groupCol = headerMap['Group'];
+    const bandCol = headerMap['Band'];
+
+    if (nameCol === undefined || emailCol === undefined) {
+      return { success: false, message: 'Required columns not found in Employee sheet' };
+    }
+
+    // Get workflow data
+    const workflowSheet = getSheet_('WorkflowStatus');
+    const workflowHeaders = getHeaderMap_(workflowSheet);
+    const employeeIdCol = workflowHeaders['EmployeeID'];
+
+    const employeeData = employeeSheet.getRange(2, 1, Math.max(1, employeeSheet.getLastRow() - 1), employeeSheet.getLastColumn()).getValues();
+    const workflowData = workflowSheet.getRange(2, 1, Math.max(1, workflowSheet.getLastRow() - 1), workflowSheet.getLastColumn()).getValues();
+
+    // Build CSV
+    let csv = 'Employee Name,Email,Department,Group,Band,Completion Step,Status,Last Updated\n';
+
+    for (let i = 0; i < employeeData.length && i < workflowData.length; i++) {
+      const name = (employeeData[i][nameCol] || '').toString().replace(/"/g, '""');
+      const email = (employeeData[i][emailCol] || '').toString().replace(/"/g, '""');
+      const dept = (employeeData[i][deptCol] || '').toString().replace(/"/g, '""');
+      const group = (employeeData[i][groupCol] || '').toString().replace(/"/g, '""');
+      const band = (employeeData[i][bandCol] || '').toString().replace(/"/g, '""');
+
+      // Determine completion step from workflow
+      let completionStep = 'Not Started';
+      let status = 'Pending';
+
+      // Check each step column to find highest completed step
+      const stepCols = ['step1Completed', 'step2Completed', 'step3Completed', 'step4Completed', 'step5Completed', 'step6Completed', 'step7Completed'];
+      const stepNames = ['Step 1: Skills Assessment', 'Step 2: OKR Upload', 'Step 3: Self-Assessment', 'Step 4: Feed Forward', 'Step 5: Manager Ack', 'Step 6: View Scores', 'Step 7: Employee Ack'];
+
+      for (let s = 0; s < stepCols.length; s++) {
+        const colIndex = workflowHeaders[stepCols[s]];
+        if (colIndex !== undefined) {
+          const cellValue = workflowData[i][colIndex];
+          if (cellValue === true || cellValue === 'TRUE' || cellValue === 'Yes' || cellValue === 1) {
+            completionStep = stepNames[s];
+          }
+        }
+      }
+
+      // Check if all steps complete
+      const allLockedCol = workflowHeaders['allLocked'];
+      if (allLockedCol !== undefined) {
+        const allLocked = workflowData[i][allLockedCol];
+        if (allLocked === true || allLocked === 'TRUE' || allLocked === 'Yes' || allLocked === 1) {
+          status = 'Complete';
+        }
+      }
+
+      const lastUpdated = new Date().toISOString().split('T')[0];
+
+      csv += `"${name}","${email}","${dept}","${group}","${band}","${completionStep}","${status}","${lastUpdated}"\n`;
+    }
+
+    // Log action
+    logAdminAction(
+      'PROGRESS_REPORT_EXPORT',
+      `Exported progress report for ${employeeData.length} employees`,
+      'SUCCESS',
+      { recordCount: employeeData.length }
+    );
+
+    return {
+      success: true,
+      message: `Progress report exported with ${employeeData.length} employee records`,
+      csv: csv
+    };
+  } catch (e) {
+    console.error(`[exportProgressReport] Error: ${e.message}`);
+    logAdminAction('PROGRESS_REPORT_EXPORT', 'Failed to export progress report', 'FAILURE', { error: e.message });
+    return { success: false, message: `Error exporting report: ${e.message}` };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*        ADMIN PORTAL: EXPORT HISTORY (TASK 17)                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gets export history from ExportHistory sheet.
+ * Returns paginated list of all export events (SFTP exports, progress reports, etc).
+ * 
+ * @param {number} page - Page number (1-indexed), default = 1
+ * @returns {Object} {success: boolean, entries: Array, totalCount: number, pageCount: number}
+ */
+function getExportHistory(page) {
+  try {
+    page = page || 1;
+    const pageSize = 50;
+
+    let historySheet;
+    try {
+      historySheet = getSheet_('ExportHistory');
+    } catch (e) {
+      // Sheet doesn't exist, create it
+      console.log('[getExportHistory] Creating ExportHistory sheet');
+      const ss = getSpreadsheet_();
+      historySheet = ss.insertSheet('ExportHistory');
+      historySheet.appendRow(['Timestamp', 'ExportType', 'RecordCount', 'Status', 'Details']);
+      return { success: true, entries: [], totalCount: 0, pageCount: 0, message: 'Export history sheet created' };
+    }
+
+    const headerMap = getHeaderMap_(historySheet);
+    const lastRow = historySheet.getLastRow();
+
+    if (lastRow < 2) {
+      return { success: true, entries: [], totalCount: 0, pageCount: 0 };
+    }
+
+    const dataRange = historySheet.getRange(2, 1, lastRow - 1, historySheet.getLastColumn());
+    const values = dataRange.getValues();
+
+    // Reverse to get most recent first
+    values.reverse();
+
+    // Paginate
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, values.length);
+    const pageData = values.slice(startIndex, endIndex);
+
+    // Convert to objects
+    const entries = pageData.map(row => {
+      const entry = {};
+      Object.entries(headerMap).forEach(([colName, colIndex]) => {
+        entry[colName] = row[colIndex];
+      });
+      // Parse details JSON if present
+      try {
+        entry.Details = entry.Details ? JSON.parse(entry.Details) : {};
+      } catch (e) {
+        entry.Details = { raw: entry.Details };
+      }
+      return entry;
+    });
+
+    const totalCount = values.length;
+    const pageCount = Math.ceil(totalCount / pageSize);
+
+    console.log(`[getExportHistory] Returned page ${page} of ${pageCount} (${entries.length} entries)`);
+
+    return { success: true, entries: entries, totalCount: totalCount, pageCount: pageCount, currentPage: page };
+  } catch (e) {
+    console.error(`[getExportHistory] Error: ${e.message}`);
+    return { success: false, entries: [], totalCount: 0, pageCount: 0, message: e.message };
+  }
+}
+
+/**
+ * Logs an export event to ExportHistory sheet.
+ * Records: Timestamp, ExportType, RecordCount, Status, Details.
+ * Used by SFTP export and progress report export functions.
+ * 
+ * @param {string} exportType - Type of export (e.g., 'SFTP_EXPORT', 'PROGRESS_REPORT')
+ * @param {number} recordCount - Number of records exported
+ * @param {string} status - 'SUCCESS' or 'FAILURE'
+ * @param {Object} details - Additional details as JSON object
+ * @returns {boolean} True if logged successfully
+ */
+function logExport(exportType, recordCount, status, details) {
+  try {
+    let historySheet;
+    try {
+      historySheet = getSheet_('ExportHistory');
+    } catch (e) {
+      // Create sheet if it doesn't exist
+      const ss = getSpreadsheet_();
+      historySheet = ss.insertSheet('ExportHistory');
+      historySheet.appendRow(['Timestamp', 'ExportType', 'RecordCount', 'Status', 'Details']);
+    }
+
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(5000)) {
+      console.warn('[logExport] Could not acquire lock');
+      return false;
+    }
+
+    const timestamp = new Date().toISOString();
+    const detailsJson = details ? JSON.stringify(details) : '';
+
+    historySheet.appendRow([
+      timestamp,
+      exportType,
+      recordCount,
+      status,
+      detailsJson
+    ]);
+
+    lock.releaseLock();
+    console.log(`[logExport] Logged ${exportType}: ${status} (${recordCount} records)`);
+    return true;
+  } catch (e) {
+    console.error(`[logExport] Error logging export: ${e.message}`);
+    return false;
+  }
+}
