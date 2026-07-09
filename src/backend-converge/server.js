@@ -19,7 +19,30 @@ function createServer() {
 
   // Middleware
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000'],
+    origin: function(origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+      
+      // Allow all localhost variants
+      const allowedPatterns = [
+        /^http:\/\/localhost(:\d+)?$/,
+        /^http:\/\/127\.0\.0\.1(:\d+)?$/
+      ];
+      
+      // Allow any origin from CORS_ORIGIN env var (comma-separated)
+      const envOrigins = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+      
+      const isAllowed = allowedPatterns.some(p => p.test(origin)) ||
+                        envOrigins.includes(origin) ||
+                        envOrigins.includes('*');
+      
+      // In development or if no CORS_ORIGIN is set, allow same-host requests
+      if (isAllowed || process.env.NODE_ENV !== 'production') {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true
   }));
 

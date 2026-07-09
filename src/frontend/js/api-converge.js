@@ -16,10 +16,22 @@
 const APIConverge = {
   /**
    * Base API endpoint URL
-   * In development: 'http://localhost:3001/api'
-   * In production: 'https://yourdomain.com/api'
+   * Auto-detects based on environment:
+   * - If running on localhost → use localhost:3001
+   * - If running on a server (EC2, etc.) → use same host with port 3001
    */
-  BASE_URL: 'http://localhost:3001/api',
+  BASE_URL: (function() {
+    var host = window.location.hostname;
+    var protocol = window.location.protocol;
+    
+    // Local development
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:3001/api';
+    }
+    
+    // Production/EC2: use same host, port 3001
+    return protocol + '//' + host + ':3001/api';
+  })(),
   
   /**
    * Alternative base URL for local testing without backend
