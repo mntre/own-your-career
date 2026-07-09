@@ -59,7 +59,7 @@ const PORTALS = {
  * - EMPLOYEE → Employee only (1 portal, auto-redirect)
  * - MANAGER → Manager + Employee (2 portals, picker)
  * - DATA_SPOC → Data SPOC + Employee (2 portals, picker)
- * - ADMIN → Admin + Manager + Employee (3 portals, picker)
+ * - ADMIN → Admin + Manager + Data SPOC + Employee (4 portals, picker)
  * 
  * @param {string} role - Primary role from database
  * @returns {Object[]} Array of portal objects
@@ -71,6 +71,7 @@ function getAccessiblePortals(role) {
     case 'ADMIN':
       portals.push(PORTALS.admin);
       portals.push(PORTALS.manager);
+      portals.push(PORTALS.dataspoc);
       portals.push(PORTALS.employee);
       break;
     case 'MANAGER':
