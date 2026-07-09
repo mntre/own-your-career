@@ -1,0 +1,307 @@
+================================================================================
+  PENDING WORK BREAKDOWN — Own Your Career PMGM 2026
+  Due: July 10, 2026 | Launch: July 17, 2026
+  Status: 43/49 items complete (~88%)
+================================================================================
+
+EXECUTIVE SUMMARY
+─────────────────────────────────────────────────────────────────────────────
+
+Total Pending:  6 items
+- HIGH PRIORITY:   3 items (BLOCKING LAUNCH)
+- MEDIUM PRIORITY: 2 items (Nice-to-have, stakeholder feedback)
+- LOW PRIORITY:    1 item (Can defer to Phase 2)
+
+Critical Path: Items 1, 2, 3 — MUST finish by July 10
+
+
+🔴 HIGH PRIORITY — BLOCKING LAUNCH (Items 1-3)
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─ ITEM #1: Email Service Implementation (Converge Cloud)
+│  File:     src/backend-converge/email.js
+│  Status:   ❌ Empty (TODO comments only)
+│  Effort:   4-6 hours (Medium)
+│  Why:      Without email, users won't know workflow status
+│
+│  What to Build:
+│  ✓ SMTP configuration (nodemailer)
+│  ✓ 6 email templates (one per step transition)
+│  ✓ Email queue system (optional but recommended)
+│  ✓ Wire into 6 route handlers
+│  ✓ Error handling (fail gracefully)
+│
+│  Templates Needed:
+│    1. Skills Assessment Complete → Data SPOC
+│    2. OKR Upload Complete → Employee
+│    3. Self-Assessment Complete → Manager
+│    4. Feed Forward Complete → Manager
+│    5. Manager Ack Complete → Employee
+│    6. Employee Ack Complete → Admin
+│
+│  Config Required:
+│    SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD (add to .env)
+└─
+
+┌─ ITEM #2: Email Service Implementation (Google Apps Script)
+│  File:     src/backend-appscript/Email.gs
+│  Status:   ❌ Empty (TODO comments only)
+│  Effort:   3-4 hours (Medium)
+│  Why:      AppScript users also need email notifications
+│
+│  What to Build:
+│  ✓ GmailApp email sending
+│  ✓ Same 6 templates as Converge
+│  ✓ Gmail quota management
+│  ✓ Error logging (to Sheets audit trail)
+│  ✓ Wire into Code.gs workflow functions
+│
+│  Key Details:
+│    - Gmail limit: 100 emails/day per project
+│    - Use GmailApp.sendEmail() API
+│    - Fail silently (don't crash workflow)
+│    - Log all failures for admin review
+└─
+
+┌─ ITEM #3: Step 7 Acknowledgement Form (Employee Portal)
+│  File:     src/frontend/html/employee-portal.html
+│  Status:   ⚠️  Partial (Step 6 exists, Step 7 form missing)
+│  Effort:   1-2 hours (Small)
+│  Why:      Employees can't finalize review; workflow can't close
+│
+│  What to Build:
+│  ✓ HTML form with checkbox (required) + optional comment
+│  ✓ Submit button + success message
+│  ✓ Form disappears after submission
+│  ✓ JavaScript handler → API call
+│  ✓ Timeline badge updates to green checkmark
+│
+│  Form Content:
+│    - Checkbox: "I acknowledge reviewed my feedback and scores"
+│    - Textarea: Optional comments (max 500 chars)
+│    - Button: "Confirm & Complete Review"
+│    - Info: "This finalizes your review. All data will lock."
+│
+│  API Call:
+│    POST /api/acknowledgement { step: 7, comment: "..." }
+│    Backend validates & locks workflow
+└─
+
+
+🟡 MEDIUM PRIORITY — UI Polish (Items 4-5)
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─ ITEM #4: Employee Portal — Section Renames & Timeline Fix
+│  File:     src/frontend/html/employee-portal.html
+│  Status:   ⏳ TODO
+│  Effort:   1 hour (Small)
+│  Why:      Stakeholder feedback — improves clarity
+│
+│  Current (Wrong):
+│    Step 1 (Skills) | Step 2 (OKR) | Step 3 | Step 4 | Step 5 | Step 6 | Step 7
+│
+│  New (Correct):
+│    Step 3 (Self-Assessment) | Step 6 (View Overall Score) | Step 7 (Final Ack)
+│
+│  Changes Needed:
+│  ✓ Remove Steps 1, 2, 4, 5 from employee timeline
+│  ✓ Rename "View Scores" → "View Overall Score (Read-Only)"
+│  ✓ Add disclaimer box above Step 3
+│  ✓ Update section headings
+│
+│  Disclaimer Text:
+│    "The Final Acknowledgment Form will become available once you,
+│     your manager, and the data SPOC have all submitted your respective forms."
+└─
+
+┌─ ITEM #5: Manager Portal — Column Renames + Add Column
+│  File:     src/frontend/html/manager-portal.html
+│  Status:   ⏳ TODO
+│  Effort:   30 minutes (Small)
+│  Why:      Stakeholder feedback — consistency
+│
+│  Column Changes:
+│    OLD → NEW
+│    "Step 1: Skills"           → "Skills Assessment"
+│    "Step 4: Feed Forward"     → "Feed Forward"
+│    "Step 5: Acknowledgement"  → "Final Acknowledgement"
+│    [NEW]                      → "View Overall Score" (enabled after Step 5)
+│
+│  Final Column Order:
+│    Employee Name | Department | Band | Skills Assessment | Feed Forward |
+│    Final Acknowledgement | View Overall Score | Actions
+└─
+
+
+🟢 LOW PRIORITY — Backend/Optional (Item 6)
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─ ITEM #6: SFTP Export to SuccessFactors
+│  File:     src/shared/export.js + routes.js
+│  Status:   🧪 Stub (logs only, no real export)
+│  Effort:   6-8 hours (Large)
+│  Why:      Post-launch integration (not critical for go-live)
+│
+│  Blockers: None — this is optional for launch
+│
+│  Current State:
+│    Route exists: POST /api/admin/export-sftp
+│    Behavior: Logs "Export requested" but doesn't actually send
+│
+│  What to Build:
+│  ✓ CSV generation (query all completed employees)
+│  ✓ SFTP upload (ssh2-sftp-client)
+│  ✓ Export history tracking (DB logging)
+│  ✓ Error handling + retry logic
+│  ✓ UI in admin portal (trigger button)
+│
+│  Dependencies:
+│    - Confirm export format with SF team / Ernica (FIRST)
+│    - Required fields: Employee ID, OKR Score, Bracket, Skills, Feed Forward
+│    - File format: CSV or XML (TBD)
+│
+│  Timeline:
+│    - Can be done post-launch as Phase 2 work
+│    - Manual export workaround available in interim
+└─
+
+
+📋 EXECUTION PLAN
+═════════════════════════════════════════════════════════════════════════════
+
+PRIORITY ORDER (Recommended):
+
+Day 1 (July 10):
+  1. Item #3 → Step 7 form                     1-2h ✓ COMPLETE FIRST
+  2. Item #1 → Converge email service          4-6h ✓ COMPLETE SECOND
+  3. Item #4 → Employee portal UI renames      1h   ✓ COMPLETE THIRD
+
+  Subtotal: 6-9 hours (complete by EOD)
+
+Day 2 (July 11):
+  1. Item #2 → AppScript email service         3-4h ✓ COMPLETE
+  2. Item #5 → Manager portal columns          30m  ✓ COMPLETE
+  3. Item #6 → SFTP export                     6-8h ⏳ OPTIONAL (defer if time runs out)
+
+  Subtotal: 9-13 hours
+
+Testing (July 12-15):
+  - E2E test all 7 steps (both platforms)
+  - Verify all 6 email types send
+  - Hard lock enforcement test
+  - Stakeholder UAT
+  - Deployment readiness
+
+
+📊 WORK BREAKDOWN TABLE
+═════════════════════════════════════════════════════════════════════════════
+
+#  Item Description                     Status  Priority  Effort   Blocker
+── ─────────────────────────────────────────────────────────────────────────
+1  Email (Converge)                     ❌ TODO  🔴 HIGH   4-6h     YES
+2  Email (AppScript)                    ❌ TODO  🔴 HIGH   3-4h     YES
+3  Step 7 Acknowledgement Form          ⚠️ PART  🔴 HIGH   1-2h     YES
+4  Employee Portal UI Renames           ⏳ TODO  🟡 MED    1h       NO
+5  Manager Portal Column Updates        ⏳ TODO  🟡 MED    30m      NO
+6  SFTP Export to SuccessFactors        🧪 STUB 🟢 LOW    6-8h     NO
+
+
+🎯 SUCCESS CRITERIA (Before Launch)
+═════════════════════════════════════════════════════════════════════════════
+
+✓ All emails sent successfully (6 types tested)
+✓ Step 7 form functional and workflow closes
+✓ All 7 steps work end-to-end (both platforms)
+✓ Hard gates enforce step sequencing
+✓ Hard lock date prevents edits after deadline
+✓ UI clearly distinguishes locked/unlocked states
+✓ 100% UAT pass rate (all personas)
+✓ Zero critical/high defects open
+✓ Stakeholder sign-off obtained
+
+
+🚀 LAUNCH CHECKLIST (July 17)
+═════════════════════════════════════════════════════════════════════════════
+
+BEFORE LAUNCH:
+□ Items 1-5 COMPLETE (Item 6 optional)
+□ All emails tested in staging & production
+□ E2E test all 7 steps (Manager, Data SPOC, Employee portals)
+□ Hard lock enforcement verified
+□ UAT sign-off from Jelyn, Luigi, Zaira
+□ Zero critical/high defects
+□ Monitoring & alerting configured
+□ Team trained on system operation
+
+AFTER LAUNCH:
+□ Monitor email delivery rates
+□ Monitor workflow progression
+□ Monitor error logs & audit trail
+□ Support team ready for issues
+□ Phase 2 planning (Item 6 + enhancements)
+
+
+💡 KEY REMINDERS
+═════════════════════════════════════════════════════════════════════════════
+
+Item #1 (Converge Email):
+  - Use nodemailer package (already in package.json)
+  - Configure SMTP in .env (not hardcoded)
+  - 6 templates, 6 route integration points
+  - Fail gracefully if email fails (don't crash server)
+
+Item #2 (AppScript Email):
+  - Use GmailApp (simpler than MailApp)
+  - Respect 100 emails/day quota
+  - Log failures to Sheets audit trail
+  - Fail silently (workflow must continue)
+
+Item #3 (Step 7 Form):
+  - Checkbox REQUIRED before submit
+  - Optional comment field (nice to have)
+  - Lock all data after submission
+  - Show success message + timestamp
+
+Item #4 (Employee Portal UX):
+  - Remove all manager steps (1, 2, 4, 5) from timeline
+  - Add disclaimer about Final Acknowledgement
+  - Simplify for employee clarity
+
+Item #5 (Manager Portal UX):
+  - Rename columns for consistency
+  - Add "View Overall Score" column
+  - Link disabled until Step 5 complete
+
+Item #6 (SFTP Export):
+  - CONFIRM export format with SF team FIRST
+  - Can be deferred to post-launch
+  - Focus on Items 1-5 first
+
+
+📞 QUESTIONS / CLARIFICATIONS NEEDED
+═════════════════════════════════════════════════════════════════════════════
+
+Before Item #1 (Email):
+  Q: What's the SMTP server? (Gmail, company mail, SendGrid?)
+  Q: What domain should emails come from?
+  Q: Email signature/footer text?
+
+Before Item #2 (AppScript Email):
+  Q: Same templates as Item #1?
+  Q: Any Gmail quota concerns with 1000+ employees?
+
+Before Item #6 (SFTP Export):
+  Q: Confirm export file format (CSV? XML?)
+  Q: Which fields are required in export?
+  Q: SF team's SFTP connection details?
+  Q: Export schedule (one-time or recurring)?
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+Full detailed spec available in:
+  → src/consolidated-updates.md
+
+For questions or clarifications, reference that document.
+
+═════════════════════════════════════════════════════════════════════════════

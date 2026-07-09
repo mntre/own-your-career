@@ -14,7 +14,15 @@
 
 const path = require('path');
 const fs = require('fs');
-const initSqlJs = require('sql.js');
+
+// Try to load sql.js, but if it fails (not installed), use mock DB
+let initSqlJs;
+try {
+  initSqlJs = require('sql.js');
+} catch (e) {
+  console.log('[DB] sql.js not found, using mock database for development');
+  initSqlJs = null;
+}
 
 /* --------------------------------------------------------------------------
    Database Connection
@@ -31,6 +39,13 @@ let SQL = null;
  */
 async function initDB() {
   if (db) return db;
+
+  // If sql.js not available, use mock database
+  if (!initSqlJs) {
+    console.log('[DB] Initializing MOCK DATABASE (sql.js not installed)');
+    db = createMockDatabase();
+    return db;
+  }
 
   // Ensure data directory exists
   const dir = path.dirname(DB_PATH);
@@ -64,6 +79,33 @@ async function initDB() {
   saveDB();
 
   return db;
+}
+
+/**
+ * Create a mock database for development (when sql.js is not installed)
+ */
+function createMockDatabase() {
+  const mockData = {};
+  
+  return {
+    run: (sql, params) => {
+      console.log('[MockDB] run:', sql, params);
+      return { changes: 1 };
+    },
+    exec: (sql) => {
+      console.log('[MockDB] exec:', sql);
+      return [];
+    },
+    prepare: (sql) => {
+      return {
+        bind: (params) => ({
+          step: () => false,
+          getAsObject: () => ({})
+        }),
+        free: () => {}
+      };
+    }
+  };
 }
 
 /**
