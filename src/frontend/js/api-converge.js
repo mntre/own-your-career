@@ -29,7 +29,13 @@ const APIConverge = {
       return 'http://localhost:3001/api';
     }
     
-    // Production/EC2: use same host, port 3001
+    // Production/EC2 with HTTPS: use same-origin /api path (nginx proxies to backend)
+    if (protocol === 'https:') {
+      console.log('[APIConverge] BASE_URL (HTTPS proxy):', protocol + '//' + host + '/api');
+      return protocol + '//' + host + '/api';
+    }
+    
+    // HTTP on remote server: use same host, port 3001
     var url = protocol + '//' + host + ':3001/api';
     console.log('[APIConverge] BASE_URL resolved to:', url);
     return url;
