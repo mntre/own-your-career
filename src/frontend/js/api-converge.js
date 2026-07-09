@@ -17,8 +17,8 @@ const APIConverge = {
   /**
    * Base API endpoint URL
    * Auto-detects based on environment:
-   * - If running on localhost → use localhost:3001
-   * - If running on a server (EC2, etc.) → use same host with port 3001
+   * - If running on localhost → use localhost:5500
+   * - If running on a server (EC2, etc.) → use same host with port 5500
    */
   BASE_URL: (function() {
     var host = window.location.hostname;
@@ -26,7 +26,7 @@ const APIConverge = {
     
     // Local development
     if (host === 'localhost' || host === '127.0.0.1') {
-      return 'http://localhost:3001/api';
+      return 'http://localhost:5500/api';
     }
     
     // Production/EC2 with HTTPS: use same-origin /api path (nginx proxies to backend)
@@ -35,8 +35,8 @@ const APIConverge = {
       return protocol + '//' + host + '/api';
     }
     
-    // HTTP on remote server: use same host, port 3001
-    var url = protocol + '//' + host + ':3001/api';
+    // HTTP on remote server: use same host, port 5500
+    var url = protocol + '//' + host + ':5500/api';
     console.log('[APIConverge] BASE_URL resolved to:', url);
     return url;
   })(),

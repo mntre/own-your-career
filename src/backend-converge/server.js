@@ -77,7 +77,7 @@ function createServer() {
  * Starts the server
  */
 async function startServer() {
-  const PORT = process.env.PORT || 3001;
+  const PORT = process.env.PORT || 5500;
   const app = createServer();
 
   // Initialize database

@@ -15,6 +15,96 @@
 'use strict';
 
 /**
+ * Create mock API for local development on port 5500
+ */
+function getMockAPI() {
+  return {
+    login: async function(email, role, googleCredential) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const MOCK_ALLOWLIST = [
+        { email: 'manager@example.com', role: 'MANAGER', name: 'Sample Manager', department: 'Sales' },
+        { email: 'employee@example.com', role: 'EMPLOYEE', name: 'Sample Employee', department: 'Sales' },
+        { email: 'dataspoc@example.com', role: 'DATA_SPOC', name: 'Sample Data SPOC', department: 'People Operations' },
+        { email: 'admin@example.com', role: 'ADMIN', name: 'Sample Admin', department: 'People Operations' },
+        { email: 'luigi.espiritu@convergeict.com', role: 'ADMIN', name: 'Luigi Gabriel Espiritu', department: 'People Transformation' },
+        { email: 'ma.bajar@convergeict.com', role: 'ADMIN', name: 'Ma. Zaira Rodelle Bajar', department: 'People Transformation' },
+        { email: 'michael.escobilla@convergeict.com', role: 'DATA_SPOC', name: 'Michael Ryan Escobilla', department: 'People Transformation' },
+        { email: 'charvin.penaverde@convergeict.com', role: 'MANAGER', name: 'Charvin Kale Peñaverde', department: 'People Transformation' },
+        { email: 'p.jeremy.carino@convergeict.com', role: 'EMPLOYEE', name: 'Jeremy Louise Cariño', department: 'People Productivity' },
+        { email: 'p.ernica.castronero@convergeict.com', role: 'EMPLOYEE', name: 'Ernica Castronero', department: 'People Productivity' }
+      ];
+      
+      let user;
+      if (role) {
+        user = MOCK_ALLOWLIST.find(u => u.email === email && u.role === role);
+      } else {
+        user = MOCK_ALLOWLIST.find(u => u.email === email);
+      }
+      
+      if (!user) {
+        return {
+          success: false,
+          message: 'Access denied. Your email is not registered in the system.'
+        };
+      }
+      
+      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const payload = btoa(JSON.stringify({
+        sub: email, email: email, role: user.role,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (30 * 60)
+      }));
+      const token = `${header}.${payload}.mock_sig`;
+      
+      return {
+        success: true,
+        token: token,
+        user: { email: user.email, role: user.role, name: user.name, department: user.department },
+        message: 'Login successful (mock)'
+      };
+    },
+    
+    logout: async function() {
+      return { success: true, message: 'Logged out successfully' };
+    },
+    
+    verifyToken: function(token) {
+      if (!token) return false;
+      try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return false;
+        const payload = JSON.parse(atob(parts[1]));
+        return payload.exp > Math.floor(Date.now() / 1000);
+      } catch (e) { return false; }
+    },
+    
+    decodeToken: function(token) {
+      try {
+        const parts = token.split('.');
+        return JSON.parse(atob(parts[1]));
+      } catch (e) { return null; }
+    },
+    
+    getWorkflowStatus: async function(employeeNo) {
+      return { success: true, employeeNo, status: { step1Complete: false, step2Complete: false, step3Complete: false, step4Complete: false, step5Complete: false, step6Complete: false, step7Complete: false }, isLocked: false };
+    },
+
+    getScores: async function(employeeNo) {
+      return { success: true, employeeNo, scores: { skills: [], okr: null, feedForward: null, selfAssessment: null, performanceBracket: null } };
+    },
+
+    saveSelfAssessment: async function(employeeNo, q1, q2, q3, q4) {
+      return { success: true, message: 'Self-assessment submitted (mock)' };
+    },
+
+    getTeam: async function(managerId) {
+      return { success: true, managerId, team: [] };
+    }
+  };
+}
+
+/**
  * Platform-agnostic API object
  * Routes method calls to platform-specific implementations
  * 
@@ -38,14 +128,21 @@ const API = (() => {
     return APIAppScript;
   }
   
+  // If running on port 5500 (local development), use mock API (backend has issues)
+  const isPort5500 = window.location.port === '5500';
+  if (isPort5500) {
+    console.log('[API Adapter] Running on port 5500 - using MOCK API for development');
+    // Return inline mock API instead of trying to connect to backend
+    return getMockAPI();
+  }
+
   // Converge Cloud platform — use real backend API
-  // The backend runs on port 3001, frontend on 5500 during development
   if (typeof APIConverge !== 'undefined') {
     console.log('[API Adapter] Using Converge Cloud HTTP backend (APIConverge)');
     return APIConverge;
   }
 
-  // Fallback: mock API only if APIConverge is not loaded AND running locally via file://
+  // Fallback: mock API if running via file://
   const isTestingMode = (window.location.protocol === 'file:');
   
   if (isTestingMode) {
