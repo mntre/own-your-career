@@ -443,6 +443,64 @@ router.get('/api/okr-ownership/mine', auth.authMiddleware, rbac.requireRole(['DA
 });
 
 /**
+ * GET /api/okr-ownership/details
+ * Get all OKR uploads for the current SPOC with employees under each hierarchy
+ * Returns: { success, uploads: [{ corporate, businessGroup, department, team, uploadedAt, employeeCount, employees: [...] }] }
+ */
+router.get('/api/okr-ownership/details', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    const spocEmail = req.user.email;
+
+    // Get all hierarchies owned by this SPOC
+    const ownerships = queryAll(
+      'SELECT * FROM okr_ownership WHERE owned_by_email = $email ORDER BY created_at DESC',
+      { $email: spocEmail }
+    );
+
+    // For each hierarchy, fetch employees under it
+    const uploads = ownerships.map(ownership => {
+      const employees = queryAll(
+        `SELECT DISTINCT e.employee_no, e.full_name, e.band 
+         FROM employees e
+         JOIN okr_data o ON e.employee_no = o.employee_no
+         WHERE e.is_active = 1 
+         AND o.corporate = $corp 
+         AND (COALESCE(o.business_group, '') = $grp OR COALESCE(e.business_group_label, '') = $grp)
+         AND (COALESCE(o.department, '') = $dept OR COALESCE(e.department_label, '') = $dept)
+         AND (COALESCE(o.team, '') = $team OR COALESCE(e.team_label, '') = $team OR $team = '')
+         ORDER BY e.full_name`,
+        { 
+          $corp: ownership.corporate,
+          $grp: ownership.business_group || '',
+          $dept: ownership.department || '',
+          $team: ownership.team || ''
+        }
+      );
+
+      return {
+        id: ownership.id,
+        corporate: ownership.corporate,
+        businessGroup: ownership.business_group,
+        department: ownership.department,
+        team: ownership.team,
+        uploadedAt: ownership.created_at,
+        employeeCount: employees.length,
+        employees: employees.map(e => ({
+          employeeNo: e.employee_no,
+          fullName: e.full_name,
+          band: e.band
+        }))
+      };
+    });
+
+    res.json({ success: true, uploads });
+  } catch (error) {
+    console.error('[Route] OKR ownership details error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching upload status: ' + error.message });
+  }
+});
+
+/**
  * DELETE /api/okr-upload
  * Delete OKR data for a hierarchy selection (only the owning SPOC or ADMIN can delete)
  * Body: { corporate, businessGroup, department, team }

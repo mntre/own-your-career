@@ -398,6 +398,15 @@ const APIConverge = {
   },
 
   /**
+   * Get OKR upload status for current SPOC
+   * Returns all hierarchies they own + employees under each
+   * @returns {Promise<Object>} {success, uploads: [...]}
+   */
+  getOkrUploadStatus: async function() {
+    return this.request('GET', '/okr-ownership/details');
+  },
+
+  /**
    * Delete OKR upload for a hierarchy selection
    * @param {Object} params - { corporate, businessGroup, department, team }
    * @returns {Promise<Object>} {success, message, deletedCount}

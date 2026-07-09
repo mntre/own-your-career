@@ -265,6 +265,23 @@ p {
   background-color: var(--color-teal-mid);
 }
 
+.btn--danger {
+  background-color: #c62828;
+  color: var(--color-white);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.btn--danger:hover {
+  background-color: #a01a1a;
+}
+
+.btn-sm {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.85rem;
+}
+
 .btn--disabled,
 .btn:disabled {
   background-color: var(--color-teal-soft);
@@ -1587,5 +1604,184 @@ p {
   .acknowledgement-form .form-group--checkbox input {
     margin-right: 0;
     margin-bottom: var(--spacing-md);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Data SPOC Portal — Tab Navigation & My Uploads
+   -------------------------------------------------------------------------- */
+
+/* Tab Navigation */
+.dataspoc-tabs {
+  display: flex;
+  gap: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-teal-soft);
+  margin-bottom: var(--spacing-lg);
+}
+
+.dataspoc-tab {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s ease;
+  font-family: var(--font-body);
+}
+
+.dataspoc-tab:hover {
+  color: var(--color-black);
+  background-color: #f9fbfb;
+}
+
+.dataspoc-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.dataspoc-tab-content {
+  animation: portalFadeIn 0.2s ease-out;
+}
+
+/* My Uploads Accordion */
+.dataspoc-upload-accordion {
+  border: 1px solid var(--color-teal-soft);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.dataspoc-accordion-item {
+  border-bottom: 1px solid var(--color-teal-soft);
+}
+
+.dataspoc-accordion-item:last-child {
+  border-bottom: none;
+}
+
+.dataspoc-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: #f9fbfb;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  gap: var(--spacing-md);
+}
+
+.dataspoc-accordion-header-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  cursor: pointer;
+  flex: 1;
+}
+
+.dataspoc-accordion-header:hover {
+  background-color: #f0f6f7;
+}
+
+.dataspoc-accordion-header.expanded {
+  background-color: #e6f9f5;
+}
+
+.dataspoc-accordion-toggle {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  margin-right: var(--spacing-md);
+  transition: transform 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.dataspoc-accordion-header.expanded .dataspoc-accordion-toggle {
+  transform: rotate(180deg);
+}
+
+.dataspoc-accordion-title {
+  flex: 1;
+  font-weight: 600;
+  color: var(--color-black);
+}
+
+.dataspoc-accordion-meta {
+  font-size: 0.85rem;
+  color: #666;
+  margin-right: var(--spacing-md);
+  white-space: nowrap;
+}
+
+.dataspoc-accordion-content {
+  display: none;
+  padding: var(--spacing-lg);
+  background-color: var(--color-white);
+  border-top: 1px solid var(--color-teal-soft);
+}
+
+.dataspoc-accordion-content.expanded {
+  display: block;
+}
+
+/* My Uploads Table */
+.dataspoc-employees-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.dataspoc-employees-table th {
+  text-align: left;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: #f0f6f7;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-teal-soft);
+  color: var(--color-black);
+}
+
+.dataspoc-employees-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid #eff0f0;
+  color: #333;
+}
+
+.dataspoc-employees-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dataspoc-employees-table tbody tr:hover {
+  background-color: #f9fbfb;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dataspoc-tabs {
+    flex-wrap: wrap;
+  }
+
+  .dataspoc-tab {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.85rem;
+  }
+
+  .dataspoc-accordion-header {
+    padding: var(--spacing-md);
+  }
+
+  .dataspoc-accordion-content {
+    padding: var(--spacing-md);
+  }
+
+  .dataspoc-employees-table {
+    font-size: 0.85rem;
+  }
+
+  .dataspoc-employees-table th,
+  .dataspoc-employees-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
   }
 }
