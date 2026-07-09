@@ -19,52 +19,23 @@
   <main class="portal-main">
     <!-- Step Workflow Timeline (Horizontal) -->
     <section class="step-timeline">
-      <div class="step-item step-1 completed">
-        <div class="step-badge">
-          <div class="step-label">Step 1</div>
-          <div class="step-text">Skills ✓</div>
-        </div>
-      </div>
-
-      <div class="step-item step-2 completed" id="step-2-item" style="cursor: pointer;">
-        <div class="step-badge">
-          <div class="step-label">Step 2</div>
-          <div class="step-text">OKR ✓</div>
-        </div>
-      </div>
-
+      <!-- Steps 1, 2, 4, 5 hidden for Employee Portal (manager tasks) -->
+      
       <div class="step-item step-3 in-progress" style="cursor: pointer;">
         <div class="step-badge">
-          <div class="step-label">Step 3</div>
           <div class="step-text">Self-Assessment</div>
-        </div>
-      </div>
-
-      <div class="step-item step-4 locked" id="step-4-item">
-        <div class="step-badge">
-          <div class="step-label">Step 4</div>
-          <div class="step-text">Feed Forward 🔒</div>
-        </div>
-      </div>
-
-      <div class="step-item step-5 locked">
-        <div class="step-badge">
-          <div class="step-label">Step 5</div>
-          <div class="step-text">Mgr Ack 🔒</div>
         </div>
       </div>
 
       <div class="step-item step-6 locked">
         <div class="step-badge">
-          <div class="step-label">Step 6</div>
-          <div class="step-text">View Scores 🔒</div>
+          <div class="step-text">View Overall Score 🔒</div>
         </div>
       </div>
 
       <div class="step-item step-7 locked">
         <div class="step-badge">
-          <div class="step-label">Step 7</div>
-          <div class="step-text">My Ack 🔒</div>
+          <div class="step-text">Final Acknowledgement 🔒</div>
         </div>
       </div>
     </section>
@@ -115,8 +86,6 @@
             <button type="button" class="btn btn--secondary" id="save-draft-btn">Save Draft</button>
           </div>
         </form>
-
-        <p class="form-guidance form-note">Self Assessment can be edited until the deadline. Once Feed Forward (Step 4) begins, this form becomes read-only.</p>
       </div>
     </section>
 
@@ -155,7 +124,7 @@
     <!-- Step 6: View Scores & Feedback (Item #34) -->
     <section class="scores-view" id="step-6-content" style="display: none;">
       <div class="card">
-        <h2 class="card__header">Step 6: Your Performance Scores & Feedback</h2>
+        <h2 class="card__header">Step 6: View Overall Score</h2>
         <p class="form-guidance">Read-only view of all your scores and manager feedback.</p>
         
         <div id="scores-loading" style="padding: 1rem; text-align: center;">Loading scores...</div>
@@ -172,6 +141,74 @@
           <h3>Manager Feed Forward</h3>
           <div id="scores-feedforward"></div>
         </div>
+      </div>
+    </section>
+
+    <!-- Step 7: Final Acknowledgement Form -->
+    <section class="final-acknowledgement" id="step-7-content" style="display: none;">
+      <div class="card">
+        <h2 class="card__header">Final Acknowledgement</h2>
+        <p class="form-guidance">Please acknowledge that you have reviewed all your performance feedback and scores.</p>
+
+        <form id="step-7-form">
+          <!-- Acknowledgement Checkbox (Better UI) -->
+          <div class="form-group" style="background: #f8f9fa; border: 2px solid #9AC0C3; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: flex-start; gap: 16px;">
+              <input 
+                type="checkbox" 
+                id="acknowledge-checkbox" 
+                name="acknowledge-checkbox" 
+                required
+                style="width: 24px; height: 24px; margin-top: 2px; cursor: pointer; accent-color: #038F8D;"
+              >
+              <label for="acknowledge-checkbox" style="display: block; margin: 0; cursor: pointer; font-size: 16px; font-weight: 500; color: #000;">
+                I acknowledge that I have reviewed my performance feedback and all scores.
+              </label>
+            </div>
+            <p style="margin: 12px 0 0 40px; font-size: 13px; color: #666;">
+              Once confirmed, your review will be finalized and all data will be locked.
+            </p>
+          </div>
+
+          <!-- Optional Comment -->
+          <div class="form-group">
+            <label for="acknowledge-comment" style="font-weight: 500; display: block; margin-bottom: 8px;">Comment (optional)</label>
+            <textarea id="acknowledge-comment" 
+                      name="acknowledge-comment"
+                      maxlength="500" 
+                      placeholder="Add any final comments..."
+                      style="width: 100%; border: 1px solid #9AC0C3; border-radius: 6px; padding: 12px; font-family: inherit; resize: vertical; min-height: 100px;"></textarea>
+            <small id="char-count" style="color: #999; display: block; margin-top: 6px;">0 / 500</small>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="form-actions" style="margin-top: 24px;">
+            <button type="submit" class="btn btn--primary" id="step-7-submit" style="min-width: 200px;">
+              Confirm & Complete Review
+            </button>
+          </div>
+        </form>
+
+        <p class="form-guidance form-note" style="margin-top: 16px; background: #fff3e0; border-left: 4px solid #e65100; padding: 12px 16px; border-radius: 6px;">
+          ⚠️ <strong>Important:</strong> Once you submit this acknowledgement, your review will be finalized and all data will be locked. You will not be able to make any changes.
+        </p>
+      </div>
+    </section>
+
+    <!-- Disclaimer Message -->
+    <section class="disclaimer-section" id="disclaimer-section" style="margin-top: 2rem;">
+      <!-- Self-Assessment Note -->
+      <div class="info-box" style="background: #f0f7ff; border-left: 4px solid #038F8D; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+        <p style="margin: 0; color: #333; font-size: 14px;">
+          <strong>ℹ️ Note:</strong> Self Assessment can be edited until the deadline. Once Feed Forward begins, this form becomes read-only.
+        </p>
+      </div>
+
+      <!-- Final Acknowledgment Note -->
+      <div class="info-box" style="background: #f0f7ff; border-left: 4px solid #038F8D; padding: 16px; border-radius: 8px;">
+        <p style="margin: 0; color: #333; font-size: 14px;">
+          <strong>ℹ️ Note:</strong> The Final Acknowledgment Form will become available once you, your manager, and the data SPOC have all submitted your respective forms.
+        </p>
       </div>
     </section>
   </main>
@@ -231,15 +268,6 @@
       step3Item.onclick = function() {
         showStep3Content();
       };
-
-      // Wire Step 6 click to load scores (Item #34)
-      const step6Item = document.querySelector('.step-6');
-      if (step6Item) {
-        step6Item.style.cursor = 'pointer';
-        step6Item.onclick = function() {
-          showStep6Content();
-        };
-      }
 
       // Check workflow status on load for read-only enforcement (Items #28, #29)
       checkReadOnlyState();
@@ -425,6 +453,232 @@
       lockBanner.textContent = message;
       document.querySelector('main').prepend(lockBanner);
     }
+
+    /**
+     * Show Step 7 content (Final Acknowledgement)
+     */
+    function showStep7Content() {
+      document.getElementById('step-2-content').style.display = 'none';
+      document.getElementById('step-3-content').style.display = 'none';
+      document.getElementById('step-4-content').style.display = 'none';
+      document.getElementById('step-6-content').style.display = 'none';
+      document.getElementById('step-7-content').style.display = 'block';
+    }
+
+    // Wire Step 7 checkbox enable/disable for submit button
+    const acknowledgeCheckbox = document.getElementById('acknowledge-checkbox');
+    const step7Submit = document.getElementById('step-7-submit');
+    
+    if (acknowledgeCheckbox && step7Submit) {
+      acknowledgeCheckbox.addEventListener('change', function() {
+        step7Submit.disabled = !this.checked;
+      });
+      // Initially disable submit button
+      step7Submit.disabled = true;
+    }
+
+    // Character counter for optional comment
+    const acknowledgeComment = document.getElementById('acknowledge-comment');
+    const charCount = document.getElementById('char-count');
+    
+    if (acknowledgeComment && charCount) {
+      acknowledgeComment.addEventListener('input', function() {
+        charCount.textContent = this.value.length + ' / 500';
+      });
+    }
+
+    // Wire Step 7 form submission
+    const step7Form = document.getElementById('step-7-form');
+    if (step7Form) {
+      step7Form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const comment = document.getElementById('acknowledge-comment').value.trim();
+        const token = sessionStorage.getItem('oyc_token');
+        let employeeNo = '';
+        
+        if (token && typeof API !== 'undefined' && API.decodeToken) {
+          const decoded = API.decodeToken(token);
+          employeeNo = decoded ? decoded.email : '';
+        }
+
+        if (!employeeNo) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
+
+        const submitBtn = document.getElementById('step-7-submit');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        if (typeof API !== 'undefined' && API.saveAcknowledgement) {
+          API.saveAcknowledgement(employeeNo, 7, comment)
+            .then(result => {
+              if (result.success) {
+                alert('Review finalized! All data is now locked.');
+                // Disable form and show confirmation
+                step7Form.style.display = 'none';
+                const confirmMsg = document.createElement('div');
+                confirmMsg.style.cssText = 'background: #e8f5e9; border: 1px solid #4caf50; padding: 16px; border-radius: 8px; text-align: center; color: #2e7d32;';
+                confirmMsg.innerHTML = '<strong>✓ Review Acknowledged</strong><p>Your acknowledgement has been recorded. All review data is now locked.</p>';
+                document.getElementById('step-7-content').querySelector('.card').appendChild(confirmMsg);
+              } else {
+                alert('Error: ' + result.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirm & Complete Review';
+              }
+            })
+            .catch(err => {
+              alert('Network error. Please try again.');
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Confirm & Complete Review';
+            });
+        } else {
+          alert('Review finalized! (offline mode)');
+          submitBtn.textContent = 'Submitted ✓';
+        }
+      });
+    }
+
+    // Wire Step 7 timeline click
+    const step7Item = document.querySelector('.step-7');
+    if (step7Item) {
+      step7Item.style.cursor = 'pointer';
+      step7Item.onclick = function() {
+        // Check if Step 7 is locked
+        if (step7Item.classList.contains('locked')) {
+          showLockedStepModal('Final Acknowledgement', 'This step will be available after you, your manager, and the data SPOC have all submitted your respective forms.');
+          return;
+        }
+        showStep7Content();
+      };
+    }
+
+    /**
+     * Show a styled modal for locked steps instead of browser alert
+     */
+    function showLockedStepModal(title, message) {
+      // Remove existing modal if any
+      const existingModal = document.getElementById('locked-step-modal');
+      if (existingModal) existingModal.remove();
+
+      // Create modal overlay
+      const modal = document.createElement('div');
+      modal.id = 'locked-step-modal';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      `;
+
+      // Create modal content
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 32px;
+        max-width: 400px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      `;
+
+      content.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
+        <h3 style="margin: 0 0 16px; font-size: 18px; font-weight: 600; color: #000;">
+          ${title}
+        </h3>
+        <p style="margin: 0 0 24px; color: #666; font-size: 14px; line-height: 1.6;">
+          ${message}
+        </p>
+        <button id="close-modal-btn" style="
+          background: #038F8D;
+          color: white;
+          border: none;
+          padding: 12px 32px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s;
+        ">
+          Got it
+        </button>
+      `;
+
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+
+      // Close button handler
+      document.getElementById('close-modal-btn').addEventListener('click', function() {
+        modal.remove();
+      });
+
+      // Close on background click
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
+    }
+
+    // Wire Step 6 click to load scores (Item #34) — PLACED AFTER showLockedStepModal() DEFINITION
+    const step6Item = document.querySelector('.step-6');
+    if (step6Item) {
+      step6Item.style.cursor = 'pointer';
+      step6Item.onclick = function() {
+        // Check if Step 6 is locked
+        if (step6Item.classList.contains('locked')) {
+          showLockedStepModal('View Overall Score', 'This will be available after your manager completes the Feed Forward and Acknowledgement.');
+          return;
+        }
+        showStep6Content();
+      };
+    }
+
+    // Check workflow status and unlock steps accordingly
+    function updateStepAvailability() {
+      const token = sessionStorage.getItem('oyc_token');
+      let employeeNo = '';
+      if (token && typeof API !== 'undefined' && API.decodeToken) {
+        const decoded = API.decodeToken(token);
+        employeeNo = decoded ? decoded.email : '';
+      }
+
+      if (employeeNo && typeof API !== 'undefined' && API.getWorkflowStatus) {
+        API.getWorkflowStatus(employeeNo).then(result => {
+          if (result.success && result.status) {
+            const status = result.status;
+            
+            // Step 7 unlock conditions:
+            // - Step 5 (Manager Acknowledgement) must be complete
+            // - AND Step 6 (View Scores) must be accessible
+            const step7Item = document.querySelector('.step-7');
+            const step6Item = document.querySelector('.step-6');
+            
+            if (step7Item) {
+              if (status.step5Complete) {
+                // Manager has acknowledged - unlock Step 7
+                step7Item.classList.remove('locked');
+                step7Item.style.cursor = 'pointer';
+              } else {
+                // Still locked until manager completes Step 5
+                step7Item.classList.add('locked');
+              }
+            }
+          }
+        }).catch(() => { /* Silently fail — offline mode */ });
+      }
+    }
+
+    // Call on page load
+    updateStepAvailability();
   </script>
 </body>
 </html>
