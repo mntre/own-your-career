@@ -269,6 +269,9 @@
     </section>
   </main>
 
+  <script src="../js/platform.js"></script>
+  <script src="../js/api-converge.js"></script>
+  <script src="../js/api-adapter.js"></script>
   <script src="../js/validation.js"></script>
   <script src="../js/calculations.js"></script>
   <script src="../js/gates.js"></script>
@@ -851,9 +854,67 @@
             alert(`⚠️ This selection was already uploaded by ${ownerName}.\n\nPlease contact them or your Admin if you need to make changes.`);
             return;
           }
+
+          // Check if current SPOC already has a draft for this selection
+          if (ownershipResult.success && ownershipResult.owned && ownershipResult.isOwner) {
+            const proceed = confirm(
+              '📋 You already have a draft for this selection.\n\n' +
+              'Do you want to overwrite it with the new CSV data?\n\n' +
+              '• Click OK to overwrite with new data\n' +
+              '• Click Cancel to keep your existing draft (use "Resume Latest Draft" instead)'
+            );
+            if (!proceed) return;
+          }
         } catch (err) {
           console.warn('[DataSPOC] Ownership check failed (proceeding anyway):', err);
-          // Non-blocking: if the check fails (e.g., server down), allow the user to proceed
+        }
+      }
+
+      // Also check drafts table for existing draft at this selection
+      if (typeof API !== 'undefined' && API.getOkrDrafts && !window._resumingDraft) {
+        try {
+          const draftsResult = await API.getOkrDrafts();
+          if (draftsResult.success && draftsResult.drafts && draftsResult.drafts.length > 0) {
+            const matchingDraft = draftsResult.drafts.find(d =>
+              d.corporate === corporate &&
+              (d.businessGroup || '') === (group || '') &&
+              (d.department || '') === (dept || '') &&
+              (d.team || '') === (team || '')
+            );
+
+            if (matchingDraft) {
+              const proceed = confirm(
+                '📋 You still have a draft for this selection.\n\n' +
+                `Last saved: ${new Date(matchingDraft.updatedAt).toLocaleString()}\n\n` +
+                'Do you want to overwrite it with the new CSV data?\n\n' +
+                '• Click OK to overwrite with new data\n' +
+                '• Click Cancel to keep your existing draft (use "Resume Latest Draft" instead)'
+              );
+              if (!proceed) return;
+            }
+          }
+        } catch (err) {
+          console.warn('[DataSPOC] Draft check failed (proceeding anyway):', err);
+        }
+      }
+      // Reset the resume flag
+      window._resumingDraft = false;
+
+      // === AUTO-SAVE DRAFT TO BACKEND ===
+      // Save immediately when form is generated (persists CSV data + hierarchy selection)
+      if (typeof API !== 'undefined' && API.saveOkrDraft) {
+        try {
+          await API.saveOkrDraft({
+            corporate: corporate,
+            businessGroup: group || null,
+            department: dept || null,
+            team: team || null,
+            csvData: JSON.stringify(window.pendingCSVHierarchy),
+            formData: null
+          });
+          console.log('[DataSPOC] Draft auto-saved on Generate OKR Form');
+        } catch (err) {
+          console.warn('[DataSPOC] Auto-save draft failed:', err);
         }
       }
       
@@ -2606,31 +2667,31 @@
 
         console.log('[DataSPOC] Found', result.drafts.length, 'saved draft(s)');
 
-        // Show draft notification
+        // Show draft notification with each draft as a clickable item
         const feedbackDiv = document.getElementById('csv-upload-feedback');
-        const draftList = result.drafts.map(d => {
-          const parts = [d.corporate, d.businessGroup, d.department, d.team].filter(Boolean);
-          const lastSaved = d.updatedAt ? new Date(d.updatedAt).toLocaleString() : 'Unknown';
-          return `• ${parts.join(' > ')} (saved: ${lastSaved})`;
-        }).join('<br>');
 
         feedbackDiv.className = 'upload-feedback upload-feedback--info';
-        feedbackDiv.innerHTML = `<strong>📋 You have saved draft(s):</strong><br>${draftList}<br><br>` +
-          `<button class="btn btn--primary" id="resume-draft-btn" style="margin-right:8px;padding:6px 14px;font-size:13px;">Resume Latest Draft</button>` +
-          `<button class="btn btn--secondary" id="discard-drafts-btn" style="padding:6px 14px;font-size:13px;">Discard All</button>`;
+        feedbackDiv.innerHTML = '<strong>\uD83D\uDCCB You have saved draft(s) \u2014 click one to resume:</strong><br><br>' +
+          result.drafts.map(function(d, idx) {
+            var parts = [d.corporate, d.businessGroup, d.department, d.team].filter(Boolean);
+            var lastSaved = d.updatedAt ? new Date(d.updatedAt).toLocaleString() : 'Unknown';
+            return '<button class="btn btn--primary resume-draft-item" data-draft-index="' + idx + '" style="display:block;margin:6px 0;padding:8px 14px;font-size:13px;text-align:left;width:100%;">\uD83D\uDCC2 ' + parts.join(' > ') + '<br><span style="font-size:11px;opacity:0.8;">Saved: ' + lastSaved + '</span></button>';
+          }).join('') + '<br>' +
+          '<button class="btn btn--secondary" id="discard-drafts-btn" style="padding:6px 14px;font-size:13px;">Discard All</button>';
         feedbackDiv.style.display = 'block';
 
         // Store drafts for later use
         window.savedDrafts = result.drafts;
 
-        // Resume button handler
+        // Attach click handlers
         setTimeout(function() {
-          const resumeBtn = document.getElementById('resume-draft-btn');
+          var draftBtns = document.querySelectorAll('.resume-draft-item');
           const discardBtn = document.getElementById('discard-drafts-btn');
 
-          if (resumeBtn) {
-            resumeBtn.addEventListener('click', function() {
-              const draft = window.savedDrafts[0]; // Latest draft
+          draftBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var draftIndex = parseInt(this.getAttribute('data-draft-index'));
+              var draft = window.savedDrafts[draftIndex];
               if (!draft) return;
 
               // Restore CSV hierarchy data
@@ -2641,35 +2702,15 @@
                     window.pendingCSVHierarchy = csvHierarchy;
                     window.csvHierarchyData = csvHierarchy;
                     populateHierarchyDropdowns(csvHierarchy);
-
-                    // Auto-select the hierarchy values from the draft
-                    setTimeout(function() {
-                      if (draft.corporate) {
-                        document.getElementById('corporate').value = draft.corporate;
-                        document.getElementById('corporate').dispatchEvent(new Event('change'));
-                      }
-                      setTimeout(function() {
-                        if (draft.businessGroup) {
-                          document.getElementById('group').value = draft.businessGroup;
-                          document.getElementById('group').dispatchEvent(new Event('change'));
-                        }
-                        setTimeout(function() {
-                          if (draft.department) {
-                            document.getElementById('department').value = draft.department;
-                            document.getElementById('department').dispatchEvent(new Event('change'));
-                          }
-                          setTimeout(function() {
-                            if (draft.team) {
-                              document.getElementById('team').value = draft.team;
-                            }
-                          }, 100);
-                        }, 100);
-                      }, 100);
-                    }, 100);
                   }
                 } catch (e) {
                   console.warn('[DataSPOC] Failed to parse draft CSV data:', e);
+                  alert('Failed to restore draft. Please re-upload your CSV file.');
+                  return;
                 }
+              } else {
+                alert('Draft has no CSV data. Please re-upload your CSV file.');
+                return;
               }
 
               // Restore form data to memory (will be applied when form is generated)
@@ -2695,16 +2736,75 @@
                 }
               }
 
-              // Show delete button (CSV is "loaded" from draft)
+              // Set hierarchy dropdown values
+              if (draft.corporate) {
+                document.getElementById('corporate').value = draft.corporate;
+                document.getElementById('group').disabled = false;
+                document.getElementById('group').classList.remove('disabled-field');
+              }
+              if (draft.businessGroup) {
+                document.getElementById('group').value = draft.businessGroup;
+                document.getElementById('department').disabled = false;
+                document.getElementById('department').classList.remove('disabled-field');
+              }
+              if (draft.department) {
+                document.getElementById('department').value = draft.department;
+                document.getElementById('team').disabled = false;
+                document.getElementById('team').classList.remove('disabled-field');
+              }
+              if (draft.team) {
+                document.getElementById('team').value = draft.team;
+              }
+
+              // Show delete button
               document.getElementById('delete-okr-btn').style.display = 'inline-flex';
 
-              // Update feedback
-              feedbackDiv.className = 'upload-feedback upload-feedback--success';
-              feedbackDiv.innerHTML = '✓ Draft restored. Select your hierarchy and click "Generate OKR Form" to continue editing.';
+              // Hide feedback
+              feedbackDiv.style.display = 'none';
 
-              console.log('[DataSPOC] Draft restored successfully');
+              // === DIRECTLY GENERATE OKR FORM (skip ownership check — this is our own draft) ===
+              const corporate = draft.corporate;
+              const group = draft.businessGroup;
+              const dept = draft.department;
+              const team = draft.team;
+              const allKeyResults = window.pendingCSVHierarchy.keyResults;
+
+              if (!allKeyResults || allKeyResults.length === 0) {
+                alert('No key results found in saved draft. Please re-upload your CSV file.');
+                return;
+              }
+
+              // Determine which form to show based on hierarchy level
+              if (dept && !team) {
+                document.getElementById('form-department-title').textContent = `OKR Upload: ${corporate} > ${group} > ${dept}`;
+                populateDepartmentOKRTable(allKeyResults, corporate, group, dept);
+                restoreDepartmentOKRDraft(dept);
+                document.getElementById('okr-section-dept').style.display = 'block';
+                document.getElementById('okr-section-team').style.display = 'none';
+                document.getElementById('okr-section-group').style.display = 'none';
+              } else if (dept && team) {
+                document.getElementById('form-department-title').textContent = `OKR Upload: ${corporate} > ${group} > ${dept} > ${team}`;
+                populateTeamOKRTable(allKeyResults, corporate, group, dept, team);
+                restoreTeamOKRDraft(team);
+                document.getElementById('okr-section-team').style.display = 'block';
+                document.getElementById('okr-section-dept').style.display = 'none';
+                document.getElementById('okr-section-group').style.display = 'none';
+              } else {
+                document.getElementById('form-department-title').textContent = `Group OKR Upload: ${corporate} > ${group}`;
+                populateGroupOKRTable(allKeyResults, corporate, group);
+                restoreGroupOKRDraft(group);
+                document.getElementById('okr-section-group').style.display = 'block';
+                document.getElementById('okr-section-dept').style.display = 'none';
+                document.getElementById('okr-section-team').style.display = 'none';
+              }
+
+              // Switch to OKR form view
+              document.getElementById('step-2-content').style.display = 'none';
+              document.getElementById('okr-form-content').style.display = 'block';
+
+              console.log('[DataSPOC] Draft restored — OKR form displayed directly');
             });
-          }
+          });
 
           if (discardBtn) {
             discardBtn.addEventListener('click', async function() {

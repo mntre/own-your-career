@@ -38,14 +38,16 @@ const API = (() => {
     return APIAppScript;
   }
   
-  // Converge Cloud platform — check if we're in local/testing mode
-  // Phase 1: Use mock API everywhere until backend is fully wired
+  // Converge Cloud platform — use real backend API
+  // The backend runs on port 3001, frontend on 5500 during development
+  if (typeof APIConverge !== 'undefined') {
+    console.log('[API Adapter] Using Converge Cloud HTTP backend (APIConverge)');
+    return APIConverge;
+  }
+
+  // Fallback: mock API only if APIConverge is not loaded
   const isTestingMode = (
     window.location.protocol === 'file:' ||
-    window.location.port === '5500' ||
-    window.location.port === '5501' ||
-    window.location.port === '3000' ||
-    window.location.port === '3001' ||
     !window.location.port ||
     window.location.port === '443' ||
     window.location.port === '80'
