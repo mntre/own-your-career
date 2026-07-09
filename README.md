@@ -33,9 +33,10 @@ This repository contains the source code for the **2026 Performance Management &
 **Users:** Immediate Supervisors (People Managers)
 
 **Functions:**
-- **Step 1:** Skills Assessment (Core & Leadership Skills rating)
-- **Step 4:** Feed Forward (Manager Assessment) form
-- **Step 5:** Acknowledgement (Manager confirms mid-performance review)
+- **Skills Assessment:** Manager rates core and leadership skills for their team members
+- **Feed Forward:** Manager provides assessment and feedback
+- **Final Acknowledgement:** Manager confirms mid-performance review took place
+- **View Overall Score:** View calculated overall performance scores for team members
 - **Performance Summary:** Dashboard/summary of team's skills
 - **My Details:** View own employee information
 
@@ -52,9 +53,11 @@ This repository contains the source code for the **2026 Performance Management &
 **Users:** All Employees
 
 **Functions:**
-- **Step 3:** Self-Assessment form (4 mandatory questions)
-- **Step 6:** View all scores and feedback (read-only after manager acknowledgement)
-- **Step 7:** Acknowledgement (Employee confirms review)
+- **Self-Assessment:** Employee completes self-assessment form (4 mandatory questions)
+- **View Overall Score:** View calculated overall performance score (unlocked when all forms complete)
+- **Final Acknowledgement:** Employee confirms review took place (unlocked when all forms complete)
+
+**Disclaimer:** "The Final Acknowledgment Form will become available once you, your manager, and the data SPOC have all submitted your respective forms."
 
 ### Portal 4: Admin Portal (PMGM Team)
 **Users:** PMGM Team Members (System Administrators)
@@ -200,32 +203,99 @@ See `.kiro/steering/tech.md` for development environment configuration and deplo
 
 ## Current Status & Roadmap
 
-For detailed status on completed and pending work, see `src/consolidated-updates.md`. This includes:
-- Implementation details and development notes
-- Phase-specific testing guides
-- Troubleshooting and debugging tips
+For detailed notes, see `src/consolidated-updates.md`.
 
-**Current Progress:** 35 of 49 items complete (~71%)  
+**Current Progress:** 43 of 49 items complete (~88%)  
 **Last Updated:** July 9, 2026  
-**Next Milestone:** Email service + UAT (due July 15)  
+**All Pending Items Due:** July 10, 2026  
 **Launch Date:** July 17, 2026
 
-### Recently Completed (July 9)
-- ✅ Data SPOC Portal: "My Uploads" tab with accordion view of submitted hierarchies
-- ✅ Data SPOC Portal: Delete functionality moved to My Uploads tab
-- ✅ Data SPOC Portal: "Confirm & Close" now saves to backend + deletes draft
-- ✅ Backend: `GET /api/okr-ownership/details` endpoint (hierarchy + employee list)
-- ✅ Backend: OKR ownership, draft save/resume, and delete operations verified
-- ✅ Database: SQLite (oyc.db) persistence confirmed across sessions
+### Completed (verified in code)
 
-### Pending (High Priority)
-- [ ] Email notification service (auto-trigger at step transitions)
-- [ ] Employee Portal: Step 3 Self-Assessment (Converge backend integration)
-- [ ] Manager Portal: Step 1 Skills Assessment (Converge backend integration)
-- [ ] Manager Portal: Step 4 Feed Forward (Converge backend integration)
-- [ ] Hard lock date enforcement across all portals
-- [ ] UAT testing with all personas
-- [ ] SFTP export to SuccessFactors
+**Employee Portal**
+- ✅ Step 3: Self-Assessment form (4 questions, submit, draft save, API integration)
+- ✅ Step 6: View Scores & Feedback (read-only, loads skills/OKR/bracket/feed forward from API)
+- ✅ Step timeline UI (all 7 steps with locked/in-progress/completed states)
+- ✅ Hard lock date enforcement (disables all forms with banner)
+- ✅ Read-only enforcement after Step 5
+
+**Manager Portal**
+- ✅ Step 1: Skills Assessment (Core + Leadership tables, RAG status, save draft, submit)
+- ✅ Step 4: Feed Forward (2 questions + rating + employee summary cards, save draft, submit)
+- ✅ Step 5: Manager Acknowledgement (checkbox confirmation + optional comment)
+- ✅ Team overview table with gate-aware action buttons
+- ✅ Change detection polling (AppScript)
+
+**Data SPOC Portal**
+- ✅ Step 2: OKR Upload (CSV parse, hierarchy dropdowns, form generation)
+- ✅ OKR computation results grid (Team/Dept/Group/Corporate + bracket)
+- ✅ "My Uploads" tab with accordion view
+- ✅ OKR ownership system (exclusive per hierarchy)
+- ✅ Draft save/resume + delete operations
+- ✅ "Confirm & Close" saves to backend + deletes draft
+
+**Admin Portal**
+- ✅ Employee CSV upload + database management
+- ✅ System config (hard lock date management)
+- ✅ Skills & Leadership definitions CRUD
+- ✅ Org hierarchy CRUD
+- ✅ Progress monitoring + stats
+- ✅ Export history + trigger SFTP export (placeholder)
+- ✅ Audit log + role derivation pipeline
+- ✅ Supervisor overrides
+
+**Backend — Converge (Express/SQLite)**
+- ✅ All API endpoints for Steps 1–7 (skills, OKR, self-assessment, feed forward, acknowledgement)
+- ✅ Auth middleware (JWT + Google OAuth verification)
+- ✅ RBAC middleware (role-based access control)
+- ✅ Full database schema (12+ tables, migrations, CRUD helpers)
+- ✅ OKR ownership, draft save/resume, delete operations
+- ✅ Workflow status tracking + gate validation per step
+- ✅ Role derivation pipeline (RD-2/RD-3/RD-4)
+- ✅ Supervisor resolution (employee_no match + name fallback)
+
+**Backend — AppScript**
+- ✅ Full server functions (auth, all workflow handlers, recursive team resolution)
+- ✅ Google Sheets CRUD layer (Database.gs)
+- ✅ WebApp.gs (hybrid routing, portal selector for multi-role users)
+- ✅ Hard lock enforcement
+
+**Frontend JS**
+- ✅ gates.js — Hard gate enforcement for all 7 steps
+- ✅ calculations.js — OKR formulas (role-based weights), performance brackets, RAG status
+- ✅ login.js — Google OAuth + test users + portal picker + session timeout (30min)
+- ✅ app.js — Routing, session management, RBAC portal verification
+- ✅ api-converge.js — Full API client (all endpoints)
+- ✅ api-appscript.js — google.script.run API layer
+- ✅ manager-portal.js — Team loading, form handlers, section management
+
+**Shared**
+- ✅ constants.js — Brackets, formulas, skills config, questions, workflow steps, brand config
+
+---
+
+### Pending — Due July 10, 2026
+
+#### HIGH PRIORITY (blocking launch)
+
+| # | Item | Description | Effort |
+|---|------|-------------|--------|
+| 1 | **Email Service (Converge)** | Implement SMTP transport in `src/backend-converge/email.js`. Configure nodemailer, build notification templates for each step transition (6 email types per the notification matrix), wire into route handlers after successful step completion. | Medium |
+| 2 | **Email Service (AppScript)** | Implement GmailApp/MailApp sending in `src/backend-appscript/Email.gs`. Same 6 notification templates, respect Gmail daily quotas, log sent notifications for audit trail. | Medium |
+| 3 | **Employee Portal — Step 7 Acknowledgement UI** | Backend endpoint exists (`POST /api/acknowledgement` with step=7) but **no HTML form** in `employee-portal.html`. Need: acknowledgement checkbox, optional comment field, submit button, lock-all-data confirmation. | Small |
+
+#### MEDIUM PRIORITY (stakeholder feedback — July 9 check-in)
+
+| # | Item | Description | Effort |
+|---|------|-------------|--------|
+| 4 | **Employee Portal — UI Renames** | Rename sections: "Self-Assessment", "View Overall Score" (unlocked when all forms complete), "Final Acknowledgement" (unlocked when all forms complete). Remove Step 1, Step 2, Step 4 from EE timeline. Merge Mgr Acknowledgement into EE Acknowledgement. Add disclaimer: "The Final Acknowledgment Form will become available once you, your manager, and the data SPOC have all submitted your respective forms." | Small |
+| 5 | **Manager Portal — Column Renames + Add Column** | Rename table columns: "Skills Assessment", "Feed Forward", "Final Acknowledgement". Add new column: "View Overall Score". | Small |
+
+#### LOW PRIORITY (functional but incomplete)
+
+| # | Item | Description | Effort |
+|---|------|-------------|--------|
+| 6 | **SFTP Export** | `src/shared/export.js` is a stub. Admin route exists but only logs — needs actual CSV generation in SuccessFactors format + SFTP upload logic. Confirm export template with SF team first. | Large |
 
 ---
 
