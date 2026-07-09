@@ -174,6 +174,38 @@ function createTables() {
   `);
 
   db.run(`
+    CREATE TABLE IF NOT EXISTS okr_ownership (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      corporate TEXT NOT NULL,
+      business_group TEXT,
+      department TEXT,
+      team TEXT,
+      owned_by_email TEXT NOT NULL,
+      owned_by_name TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(corporate, business_group, department, team)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS okr_drafts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      spoc_email TEXT NOT NULL,
+      corporate TEXT NOT NULL,
+      business_group TEXT,
+      department TEXT,
+      team TEXT,
+      csv_data TEXT,
+      form_data TEXT,
+      status TEXT DEFAULT 'DRAFT',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(spoc_email, corporate, business_group, department, team)
+    )
+  `);
+
+  db.run(`
     CREATE TABLE IF NOT EXISTS self_assessment (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       employee_no TEXT NOT NULL UNIQUE,
@@ -276,6 +308,8 @@ function createTables() {
   db.run('CREATE INDEX IF NOT EXISTS idx_employees_supervisor ON employees(immediate_supervisor)');
   db.run('CREATE INDEX IF NOT EXISTS idx_skills_employee ON skills_assessment(employee_no)');
   db.run('CREATE INDEX IF NOT EXISTS idx_okr_employee ON okr_data(employee_no)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_okr_ownership_selection ON okr_ownership(corporate, business_group, department, team)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_okr_ownership_email ON okr_ownership(owned_by_email)');
   db.run('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)');
   db.run('CREATE INDEX IF NOT EXISTS idx_overrides_name ON supervisor_overrides(supervisor_name)');
 }

@@ -368,11 +368,68 @@ const APIConverge = {
 
   /**
    * Upload OKR data (Step 2)
-   * @param {Object} okrData - { employeeNo, corporateOkr, groupOkr, departmentOkr, teamOkr, targetScore, actualScore, weight, okrStatus }
+   * @param {Object} okrData - { employeeNo, corporateOkr, groupOkr, departmentOkr, teamOkr, targetScore, actualScore, weight, okrStatus, corporate, businessGroup, department, team }
    * @returns {Promise<Object>} {success, message}
    */
   saveOkrUpload: async function(okrData) {
     return this.request('POST', '/okr-upload', okrData);
+  },
+
+  /**
+   * Check OKR ownership for a hierarchy selection
+   * @param {Object} params - { corporate, businessGroup, department, team }
+   * @returns {Promise<Object>} {success, owned, ownedBy: {email, name}, isOwner}
+   */
+  checkOkrOwnership: async function(params) {
+    const query = new URLSearchParams();
+    if (params.corporate) query.set('corporate', params.corporate);
+    if (params.businessGroup) query.set('businessGroup', params.businessGroup);
+    if (params.department) query.set('department', params.department);
+    if (params.team) query.set('team', params.team);
+    return this.request('GET', '/okr-ownership?' + query.toString());
+  },
+
+  /**
+   * Get all OKR ownership selections for current SPOC
+   * @returns {Promise<Object>} {success, selections: [...]}
+   */
+  getMyOkrUploads: async function() {
+    return this.request('GET', '/okr-ownership/mine');
+  },
+
+  /**
+   * Delete OKR upload for a hierarchy selection
+   * @param {Object} params - { corporate, businessGroup, department, team }
+   * @returns {Promise<Object>} {success, message, deletedCount}
+   */
+  deleteOkrUpload: async function(params) {
+    return this.request('DELETE', '/okr-upload', params);
+  },
+
+  /**
+   * Save OKR draft to backend (persists across devices/sessions)
+   * @param {Object} draftData - { corporate, businessGroup, department, team, csvData, formData }
+   * @returns {Promise<Object>} {success, message}
+   */
+  saveOkrDraft: async function(draftData) {
+    return this.request('POST', '/okr-draft', draftData);
+  },
+
+  /**
+   * Get all OKR drafts for the current SPOC
+   * @returns {Promise<Object>} {success, drafts: [...]}
+   */
+  getOkrDrafts: async function() {
+    return this.request('GET', '/okr-drafts');
+  },
+
+  /**
+   * Delete a specific OKR draft
+   * @param {number} draftId - Draft ID to delete
+   * @returns {Promise<Object>} {success, message}
+   */
+  deleteOkrDraft: async function(draftId) {
+    return this.request('DELETE', '/okr-draft/' + draftId);
   },
 
   /**

@@ -454,8 +454,9 @@
      * Clears the uploaded CSV file and resets hierarchy data
      * Removes all options from dropdowns (keeps only placeholders)
      * Hides the delete button and shows the upload form again
+     * Also releases OKR ownership on the backend if a selection was claimed
      */
-    document.getElementById('delete-okr-btn').addEventListener('click', function() {
+    document.getElementById('delete-okr-btn').addEventListener('click', async function() {
       const fileInput = document.getElementById('okr-csv-upload');
       const feedbackDiv = document.getElementById('csv-upload-feedback');
       const deleteBtn = document.getElementById('delete-okr-btn');
@@ -463,6 +464,46 @@
       const groupSelect = document.getElementById('group');
       const departmentSelect = document.getElementById('department');
       const teamSelect = document.getElementById('team');
+
+      // Get current selection before clearing (for ownership release)
+      const corporate = corporateSelect.value;
+      const group = groupSelect.value;
+      const department = departmentSelect.value;
+      const team = teamSelect.value;
+
+      // Release ownership on backend if a selection was made
+      if (corporate && typeof API !== 'undefined' && API.deleteOkrUpload) {
+        const confirmDelete = confirm(
+          '⚠️ Delete this OKR upload?\n\n' +
+          'This will:\n' +
+          '• Remove all OKR data for employees in this selection\n' +
+          '• Reset Step 2 completion for affected employees\n' +
+          '• Release your ownership of this selection\n\n' +
+          'Are you sure?'
+        );
+
+        if (!confirmDelete) return;
+
+        try {
+          const result = await API.deleteOkrUpload({
+            corporate: corporate,
+            businessGroup: group || undefined,
+            department: department || undefined,
+            team: team || undefined
+          });
+
+          if (result.success) {
+            console.log('[DataSPOC] OKR ownership released:', result.message);
+          } else {
+            console.warn('[DataSPOC] Delete failed:', result.message);
+            alert('Delete failed: ' + result.message);
+            return;
+          }
+        } catch (err) {
+          console.warn('[DataSPOC] Delete API error:', err);
+          // Still proceed with local cleanup if backend fails
+        }
+      }
       
       // Reset file input
       fileInput.value = '';
@@ -769,8 +810,9 @@
      * Handles Generate OKR Form button click
      * Displays OKR form with dynamic key result rows from CSV
      * Filters by selected Group, Department, and Team
+     * Checks OKR ownership before allowing form generation
      */
-    document.getElementById('generate-okr-btn').addEventListener('click', function() {
+    document.getElementById('generate-okr-btn').addEventListener('click', async function() {
       const corporate = document.getElementById('corporate').value;
       const group = document.getElementById('group').value;
       const dept = document.getElementById('department').value;
@@ -791,6 +833,28 @@
       if (!window.pendingCSVHierarchy) {
         alert('No CSV data loaded. Please upload a CSV file first.');
         return;
+      }
+
+      // === OKR OWNERSHIP CHECK ===
+      // Check if this hierarchy selection is already claimed by another SPOC
+      if (typeof API !== 'undefined' && API.checkOkrOwnership) {
+        try {
+          const ownershipResult = await API.checkOkrOwnership({
+            corporate: corporate,
+            businessGroup: group,
+            department: dept || undefined,
+            team: team || undefined
+          });
+
+          if (ownershipResult.success && ownershipResult.owned && !ownershipResult.isOwner) {
+            const ownerName = ownershipResult.ownedBy.name || ownershipResult.ownedBy.email;
+            alert(`⚠️ This selection was already uploaded by ${ownerName}.\n\nPlease contact them or your Admin if you need to make changes.`);
+            return;
+          }
+        } catch (err) {
+          console.warn('[DataSPOC] Ownership check failed (proceeding anyway):', err);
+          // Non-blocking: if the check fails (e.g., server down), allow the user to proceed
+        }
       }
       
       // Get all key results from CSV
@@ -1315,7 +1379,7 @@
      * Saves Group OKR form data only
      * Returns to OKR Uploading (My Organizational Data) view
      */
-    document.getElementById('save-draft-group-btn').addEventListener('click', function() {
+    document.getElementById('save-draft-group-btn').addEventListener('click', async function() {
       const corporate = document.getElementById('corporate').value;
       const group = document.getElementById('group').value;
       
@@ -1333,7 +1397,7 @@
         groupFormData[krIndex] = input.value;
       });
       
-      // Save to localStorage with a unique key
+      // Save to localStorage as fallback
       const draftKey = `okr_draft_group_${group}`;
       localStorage.setItem(draftKey, JSON.stringify(groupFormData));
       
@@ -1342,6 +1406,23 @@
         okrDraftData[group] = {};
       }
       okrDraftData[group].group = groupFormData;
+
+      // Save to backend (persists across devices)
+      if (typeof API !== 'undefined' && API.saveOkrDraft) {
+        try {
+          await API.saveOkrDraft({
+            corporate: corporate,
+            businessGroup: group,
+            department: null,
+            team: null,
+            csvData: JSON.stringify(window.pendingCSVHierarchy || null),
+            formData: JSON.stringify(groupFormData)
+          });
+          console.log('[DataSPOC] Draft saved to backend for group:', group);
+        } catch (err) {
+          console.warn('[DataSPOC] Backend draft save failed:', err);
+        }
+      }
       
       console.log('Group OKR Draft saved for:', group, groupFormData);
       alert('Group OKR draft saved successfully!');
@@ -1356,7 +1437,9 @@
      * Saves Department OKR form data only
      * Returns to OKR Uploading (My Organizational Data) view
      */
-    document.getElementById('save-draft-dept-btn').addEventListener('click', function() {
+    document.getElementById('save-draft-dept-btn').addEventListener('click', async function() {
+      const corporate = document.getElementById('corporate').value;
+      const group = document.getElementById('group').value;
       const dept = document.getElementById('department').value;
       
       if (!dept) {
@@ -1373,7 +1456,7 @@
         deptFormData[krIndex] = input.value;
       });
       
-      // Save to localStorage with a unique key
+      // Save to localStorage as fallback
       const draftKey = `okr_draft_dept_${dept}`;
       localStorage.setItem(draftKey, JSON.stringify(deptFormData));
       
@@ -1382,6 +1465,23 @@
         okrDraftData[dept] = {};
       }
       okrDraftData[dept].department = deptFormData;
+
+      // Save to backend (persists across devices)
+      if (typeof API !== 'undefined' && API.saveOkrDraft) {
+        try {
+          await API.saveOkrDraft({
+            corporate: corporate,
+            businessGroup: group,
+            department: dept,
+            team: null,
+            csvData: JSON.stringify(window.pendingCSVHierarchy || null),
+            formData: JSON.stringify(deptFormData)
+          });
+          console.log('[DataSPOC] Draft saved to backend for dept:', dept);
+        } catch (err) {
+          console.warn('[DataSPOC] Backend draft save failed:', err);
+        }
+      }
       
       console.log('Department OKR Draft saved for:', dept, deptFormData);
       alert('Department OKR draft saved successfully!');
@@ -1396,7 +1496,10 @@
      * Saves Team OKR form data only
      * Returns to OKR Uploading (My Organizational Data) view
      */
-    document.getElementById('save-draft-team-btn').addEventListener('click', function() {
+    document.getElementById('save-draft-team-btn').addEventListener('click', async function() {
+      const corporate = document.getElementById('corporate').value;
+      const group = document.getElementById('group').value;
+      const dept = document.getElementById('department').value;
       const team = document.getElementById('team').value;
       
       if (!team) {
@@ -1413,7 +1516,7 @@
         teamFormData[krIndex] = input.value;
       });
       
-      // Save to localStorage with a unique key
+      // Save to localStorage as fallback
       const draftKey = `okr_draft_team_${team}`;
       localStorage.setItem(draftKey, JSON.stringify(teamFormData));
       
@@ -1422,6 +1525,23 @@
         okrDraftData[team] = {};
       }
       okrDraftData[team].team = teamFormData;
+
+      // Save to backend (persists across devices)
+      if (typeof API !== 'undefined' && API.saveOkrDraft) {
+        try {
+          await API.saveOkrDraft({
+            corporate: corporate,
+            businessGroup: group,
+            department: dept,
+            team: team,
+            csvData: JSON.stringify(window.pendingCSVHierarchy || null),
+            formData: JSON.stringify(teamFormData)
+          });
+          console.log('[DataSPOC] Draft saved to backend for team:', team);
+        } catch (err) {
+          console.warn('[DataSPOC] Backend draft save failed:', err);
+        }
+      }
       
       console.log('Team OKR Draft saved for:', team, teamFormData);
       alert('Team OKR draft saved successfully!');
@@ -2398,9 +2518,14 @@
     /**
      * Updates the uploading status table with submission info for ALL members in department
      * Also saves OKR data to backend API (Item #32)
+     * Includes hierarchy ownership info for conflict prevention
      */
     function updateUploadingStatusForAllMembers(dept, status) {
       const currentDept = document.getElementById('department').value;
+      const corporate = document.getElementById('corporate').value;
+      const group = document.getElementById('group').value;
+      const department = document.getElementById('department').value;
+      const team = document.getElementById('team').value;
 
       // Save to Converge API (Item #32 — Wire DataSPOC Portal to Converge API)
       if (typeof API !== 'undefined' && API.saveOkrUpload && departmentMembers[dept]) {
@@ -2419,7 +2544,11 @@
               targetScore: null,
               actualScore: null,
               weight: null,
-              okrStatus: 'ON_TRACK'
+              okrStatus: 'ON_TRACK',
+              corporate: corporate,
+              businessGroup: group,
+              department: department || undefined,
+              team: team || undefined
             }).then(r => {
               if (r.success) console.log(`[DataSPOC] OKR saved for ${empNo}`);
               else console.warn(`[DataSPOC] OKR save failed for ${empNo}:`, r.message);
@@ -2463,6 +2592,146 @@
         });
       }
     }
+
+    /**
+     * On page load: Check for existing drafts from the backend
+     * If drafts exist, show a notification and allow the SPOC to resume
+     */
+    async function loadExistingDrafts() {
+      if (typeof API === 'undefined' || !API.getOkrDrafts) return;
+
+      try {
+        const result = await API.getOkrDrafts();
+        if (!result.success || !result.drafts || result.drafts.length === 0) return;
+
+        console.log('[DataSPOC] Found', result.drafts.length, 'saved draft(s)');
+
+        // Show draft notification
+        const feedbackDiv = document.getElementById('csv-upload-feedback');
+        const draftList = result.drafts.map(d => {
+          const parts = [d.corporate, d.businessGroup, d.department, d.team].filter(Boolean);
+          const lastSaved = d.updatedAt ? new Date(d.updatedAt).toLocaleString() : 'Unknown';
+          return `• ${parts.join(' > ')} (saved: ${lastSaved})`;
+        }).join('<br>');
+
+        feedbackDiv.className = 'upload-feedback upload-feedback--info';
+        feedbackDiv.innerHTML = `<strong>📋 You have saved draft(s):</strong><br>${draftList}<br><br>` +
+          `<button class="btn btn--primary" id="resume-draft-btn" style="margin-right:8px;padding:6px 14px;font-size:13px;">Resume Latest Draft</button>` +
+          `<button class="btn btn--secondary" id="discard-drafts-btn" style="padding:6px 14px;font-size:13px;">Discard All</button>`;
+        feedbackDiv.style.display = 'block';
+
+        // Store drafts for later use
+        window.savedDrafts = result.drafts;
+
+        // Resume button handler
+        setTimeout(function() {
+          const resumeBtn = document.getElementById('resume-draft-btn');
+          const discardBtn = document.getElementById('discard-drafts-btn');
+
+          if (resumeBtn) {
+            resumeBtn.addEventListener('click', function() {
+              const draft = window.savedDrafts[0]; // Latest draft
+              if (!draft) return;
+
+              // Restore CSV hierarchy data
+              if (draft.csvData) {
+                try {
+                  const csvHierarchy = JSON.parse(draft.csvData);
+                  if (csvHierarchy) {
+                    window.pendingCSVHierarchy = csvHierarchy;
+                    window.csvHierarchyData = csvHierarchy;
+                    populateHierarchyDropdowns(csvHierarchy);
+
+                    // Auto-select the hierarchy values from the draft
+                    setTimeout(function() {
+                      if (draft.corporate) {
+                        document.getElementById('corporate').value = draft.corporate;
+                        document.getElementById('corporate').dispatchEvent(new Event('change'));
+                      }
+                      setTimeout(function() {
+                        if (draft.businessGroup) {
+                          document.getElementById('group').value = draft.businessGroup;
+                          document.getElementById('group').dispatchEvent(new Event('change'));
+                        }
+                        setTimeout(function() {
+                          if (draft.department) {
+                            document.getElementById('department').value = draft.department;
+                            document.getElementById('department').dispatchEvent(new Event('change'));
+                          }
+                          setTimeout(function() {
+                            if (draft.team) {
+                              document.getElementById('team').value = draft.team;
+                            }
+                          }, 100);
+                        }, 100);
+                      }, 100);
+                    }, 100);
+                  }
+                } catch (e) {
+                  console.warn('[DataSPOC] Failed to parse draft CSV data:', e);
+                }
+              }
+
+              // Restore form data to memory (will be applied when form is generated)
+              if (draft.formData) {
+                try {
+                  const formData = JSON.parse(draft.formData);
+                  const key = draft.team || draft.department || draft.businessGroup;
+                  if (key && formData) {
+                    if (!okrDraftData[key]) okrDraftData[key] = {};
+                    if (draft.team) {
+                      okrDraftData[key].team = formData;
+                      localStorage.setItem(`okr_draft_team_${key}`, JSON.stringify(formData));
+                    } else if (draft.department) {
+                      okrDraftData[key].department = formData;
+                      localStorage.setItem(`okr_draft_dept_${key}`, JSON.stringify(formData));
+                    } else {
+                      okrDraftData[key].group = formData;
+                      localStorage.setItem(`okr_draft_group_${key}`, JSON.stringify(formData));
+                    }
+                  }
+                } catch (e) {
+                  console.warn('[DataSPOC] Failed to parse draft form data:', e);
+                }
+              }
+
+              // Show delete button (CSV is "loaded" from draft)
+              document.getElementById('delete-okr-btn').style.display = 'inline-flex';
+
+              // Update feedback
+              feedbackDiv.className = 'upload-feedback upload-feedback--success';
+              feedbackDiv.innerHTML = '✓ Draft restored. Select your hierarchy and click "Generate OKR Form" to continue editing.';
+
+              console.log('[DataSPOC] Draft restored successfully');
+            });
+          }
+
+          if (discardBtn) {
+            discardBtn.addEventListener('click', async function() {
+              if (!confirm('Discard all saved drafts? This cannot be undone.')) return;
+
+              // Delete all drafts from backend
+              for (const draft of window.savedDrafts) {
+                try {
+                  await API.deleteOkrDraft(draft.id);
+                } catch (e) {
+                  console.warn('[DataSPOC] Failed to delete draft:', e);
+                }
+              }
+
+              window.savedDrafts = [];
+              feedbackDiv.style.display = 'none';
+              console.log('[DataSPOC] All drafts discarded');
+            });
+          }
+        }, 50);
+      } catch (err) {
+        console.warn('[DataSPOC] Failed to load drafts:', err);
+      }
+    }
+
+    // Load drafts on page ready
+    loadExistingDrafts();
   </script>
 </body>
 </html>
