@@ -62,7 +62,12 @@ const App = {
     try {
       const parts = token.split('.');
       if (parts.length === 3) {
+        // Standard JWT format (header.payload.signature)
         const payload = JSON.parse(atob(parts[1]));
+        tokenValid = payload.exp > Math.floor(Date.now() / 1000);
+      } else if (parts.length === 1) {
+        // Base64-encoded payload (Converge backend format)
+        const payload = JSON.parse(atob(token));
         tokenValid = payload.exp > Math.floor(Date.now() / 1000);
       }
     } catch (e) {

@@ -225,6 +225,8 @@ router.post('/api/skills-assessment', auth.authMiddleware, rbac.requireRole(['MA
 // OKR Upload (Step 2)
 // Item #2 — POST /api/okr-upload
 // Item #13 — RBAC: DATA_SPOC only
+// Ownership: Only the SPOC who claimed the hierarchy selection can upload/edit
+// Flexible levels: corporate, group, department, team (not all required)
 router.post('/api/okr-upload', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
   try {
     // Item #10 — Hard lock date check
@@ -232,11 +234,109 @@ router.post('/api/okr-upload', auth.authMiddleware, rbac.requireRole(['DATA_SPOC
       return res.status(403).json({ success: false, message: 'System is locked. No further edits allowed after the hard lock date.' });
     }
 
-    const { employeeNo, corporateOkr, groupOkr, departmentOkr, teamOkr, targetScore, actualScore, weight, okrStatus } = req.body;
+    const { employeeNo, corporateOkr, groupOkr, departmentOkr, teamOkr, targetScore, actualScore, weight, okrStatus, corporate, businessGroup, department, team } = req.body;
     const uploadedBy = req.user.email;
 
     if (!employeeNo) {
       return res.status(400).json({ success: false, message: 'employeeNo is required.' });
+    }
+
+    // Check OKR ownership if hierarchy selection is provided (at least corporate required)
+    if (corporate) {
+      // Normalize: use empty string for null levels to allow flexible UNIQUE constraint
+      const ownershipCorp = corporate || '';
+      const ownershipGroup = businessGroup || '';
+      const ownershipDept = department || '';
+      const ownershipTeam = team || '';
+
+      // Check for EXACT match at the same level
+      const exactOwner = queryOne(
+        'SELECT * FROM okr_ownership WHERE corporate = $corp AND COALESCE(business_group, \'\') = $grp AND COALESCE(department, \'\') = $dept AND COALESCE(team, \'\') = $team',
+        { $corp: ownershipCorp, $grp: ownershipGroup, $dept: ownershipDept, $team: ownershipTeam }
+      );
+
+      if (exactOwner && exactOwner.owned_by_email !== uploadedBy) {
+        const ownerName = exactOwner.owned_by_name || exactOwner.owned_by_email;
+        return res.status(409).json({
+          success: false,
+          message: `This selection was already uploaded by ${ownerName}. Please contact them or your Admin if you need to make changes.`,
+          ownedBy: { email: exactOwner.owned_by_email, name: exactOwner.owned_by_name }
+        });
+      }
+
+      // Check for BROADER ownership (someone owns a parent level that covers this selection)
+      // e.g., someone owns Group level → blocks uploads to Department/Team under that group
+      let broaderOwner = null;
+
+      if (ownershipDept && ownershipGroup) {
+        // Check if someone owns at Group level (no dept/team) covering this department
+        broaderOwner = queryOne(
+          'SELECT * FROM okr_ownership WHERE corporate = $corp AND business_group = $grp AND (department IS NULL OR department = \'\') AND owned_by_email != $me',
+          { $corp: ownershipCorp, $grp: ownershipGroup, $me: uploadedBy }
+        );
+      }
+
+      if (!broaderOwner && ownershipTeam && ownershipDept) {
+        // Check if someone owns at Department level (no team) covering this team
+        broaderOwner = queryOne(
+          'SELECT * FROM okr_ownership WHERE corporate = $corp AND business_group = $grp AND department = $dept AND (team IS NULL OR team = \'\') AND owned_by_email != $me',
+          { $corp: ownershipCorp, $grp: ownershipGroup, $dept: ownershipDept, $me: uploadedBy }
+        );
+      }
+
+      if (broaderOwner) {
+        const ownerName = broaderOwner.owned_by_name || broaderOwner.owned_by_email;
+        return res.status(409).json({
+          success: false,
+          message: `This selection is covered by an upload from ${ownerName} at a broader level. Please contact them or your Admin if you need to make changes.`,
+          ownedBy: { email: broaderOwner.owned_by_email, name: broaderOwner.owned_by_name }
+        });
+      }
+
+      // Check for NARROWER ownership (someone already owns a child under this broader selection)
+      // e.g., trying to upload at Group level but someone already owns a Department under it
+      let narrowerOwners = [];
+
+      if (!ownershipDept && ownershipGroup) {
+        // Uploading at Group level — check if any dept/team under it is already owned by others
+        narrowerOwners = queryAll(
+          'SELECT * FROM okr_ownership WHERE corporate = $corp AND business_group = $grp AND department IS NOT NULL AND department != \'\' AND owned_by_email != $me',
+          { $corp: ownershipCorp, $grp: ownershipGroup, $me: uploadedBy }
+        );
+      } else if (!ownershipTeam && ownershipDept) {
+        // Uploading at Dept level — check if any team under it is already owned by others
+        narrowerOwners = queryAll(
+          'SELECT * FROM okr_ownership WHERE corporate = $corp AND business_group = $grp AND department = $dept AND team IS NOT NULL AND team != \'\' AND owned_by_email != $me',
+          { $corp: ownershipCorp, $grp: ownershipGroup, $dept: ownershipDept, $me: uploadedBy }
+        );
+      }
+
+      if (narrowerOwners.length > 0) {
+        const ownerNames = [...new Set(narrowerOwners.map(o => o.owned_by_name || o.owned_by_email))].join(', ');
+        return res.status(409).json({
+          success: false,
+          message: `Cannot upload at this level. Sub-selections under it are already owned by: ${ownerNames}. Please coordinate with them or contact your Admin.`,
+          ownedBy: narrowerOwners.map(o => ({ email: o.owned_by_email, name: o.owned_by_name }))
+        });
+      }
+
+      // Claim ownership if not yet claimed
+      if (!exactOwner) {
+        const spocEmployee = Employees.getByEmail(uploadedBy);
+        const spocName = spocEmployee ? spocEmployee.full_name : uploadedBy;
+
+        execute(`
+          INSERT INTO okr_ownership (corporate, business_group, department, team, owned_by_email, owned_by_name)
+          VALUES ($corp, $grp, $dept, $team, $email, $name)
+        `, {
+          $corp: ownershipCorp,
+          $grp: ownershipGroup || null,
+          $dept: ownershipDept || null,
+          $team: ownershipTeam || null,
+          $email: uploadedBy,
+          $name: spocName
+        });
+      }
     }
 
     // Upsert OKR data
@@ -271,12 +371,329 @@ router.post('/api/okr-upload', auth.authMiddleware, rbac.requireRole(['DATA_SPOC
     ensureWorkflowStatus(employeeNo);
     Workflow.completeStep(employeeNo, 2);
 
-    AuditLog.add('OKR_UPLOAD', uploadedBy, `OKR data uploaded for ${employeeNo}`, `Status: ${okrStatus || 'NOT_STARTED'}`);
+    AuditLog.add('OKR_UPLOAD', uploadedBy, `OKR data uploaded for ${employeeNo}`, `Corporate: ${corporate || 'N/A'}, Group: ${businessGroup || 'N/A'}, Dept: ${department || 'N/A'}, Team: ${team || 'N/A'}`);
 
     res.json({ success: true, message: 'OKR data uploaded successfully.' });
   } catch (error) {
     console.error('[Route] OKR upload error:', error);
     res.status(500).json({ success: false, message: 'Error uploading OKR data: ' + error.message });
+  }
+});
+
+/**
+ * GET /api/okr-ownership
+ * Check who owns a hierarchy selection (flexible levels)
+ * Query params: corporate (required), businessGroup, department, team (optional)
+ * Returns: { owned: true/false, ownedBy: { email, name }, isOwner: true/false }
+ */
+router.get('/api/okr-ownership', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    const { corporate, businessGroup, department, team } = req.query;
+    const currentUser = req.user.email;
+
+    if (!corporate) {
+      return res.status(400).json({ success: false, message: 'corporate is required.' });
+    }
+
+    const ownershipGroup = businessGroup || '';
+    const ownershipDept = department || '';
+    const ownershipTeam = team || '';
+
+    const owner = queryOne(
+      'SELECT * FROM okr_ownership WHERE corporate = $corp AND COALESCE(business_group, \'\') = $grp AND COALESCE(department, \'\') = $dept AND COALESCE(team, \'\') = $team',
+      { $corp: corporate, $grp: ownershipGroup, $dept: ownershipDept, $team: ownershipTeam }
+    );
+
+    if (!owner) {
+      return res.json({ success: true, owned: false, ownedBy: null, isOwner: false });
+    }
+
+    res.json({
+      success: true,
+      owned: true,
+      ownedBy: { email: owner.owned_by_email, name: owner.owned_by_name },
+      isOwner: owner.owned_by_email === currentUser,
+      uploadedAt: owner.created_at
+    });
+  } catch (error) {
+    console.error('[Route] OKR ownership check error:', error);
+    res.status(500).json({ success: false, message: 'Error checking OKR ownership: ' + error.message });
+  }
+});
+
+/**
+ * GET /api/okr-ownership/mine
+ * Get all hierarchy selections owned by the current Data SPOC
+ * Returns: { success, selections: [...] }
+ */
+router.get('/api/okr-ownership/mine', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    const currentUser = req.user.email;
+
+    const selections = queryAll(
+      'SELECT * FROM okr_ownership WHERE owned_by_email = $email ORDER BY corporate, business_group, department, team',
+      { $email: currentUser }
+    );
+
+    res.json({ success: true, selections });
+  } catch (error) {
+    console.error('[Route] My OKR ownership error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching your OKR uploads: ' + error.message });
+  }
+});
+
+/**
+ * GET /api/okr-ownership/details
+ * Get all OKR uploads for the current SPOC with employees under each hierarchy
+ * Returns: { success, uploads: [{ corporate, businessGroup, department, team, uploadedAt, employeeCount, employees: [...] }] }
+ */
+router.get('/api/okr-ownership/details', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    const spocEmail = req.user.email;
+
+    // Get all hierarchies owned by this SPOC
+    const ownerships = queryAll(
+      'SELECT * FROM okr_ownership WHERE owned_by_email = $email ORDER BY created_at DESC',
+      { $email: spocEmail }
+    );
+
+    // For each hierarchy, fetch employees matching that hierarchy level
+    const uploads = ownerships.map(ownership => {
+      // Build a dynamic query based on which hierarchy levels are set
+      let query = 'SELECT employee_no, full_name, band FROM employees WHERE is_active = 1';
+      const params = {};
+
+      if (ownership.business_group) {
+        query += ' AND business_group_label = $grp';
+        params.$grp = ownership.business_group;
+      }
+      if (ownership.department) {
+        query += ' AND department_label = $dept';
+        params.$dept = ownership.department;
+      }
+
+      query += ' ORDER BY full_name';
+
+      const employees = queryAll(query, Object.keys(params).length > 0 ? params : undefined);
+
+      return {
+        id: ownership.id,
+        corporate: ownership.corporate,
+        businessGroup: ownership.business_group,
+        department: ownership.department,
+        team: ownership.team,
+        uploadedAt: ownership.created_at,
+        employeeCount: employees.length,
+        employees: employees.map(e => ({
+          employeeNo: e.employee_no,
+          fullName: e.full_name,
+          band: e.band
+        }))
+      };
+    });
+
+    res.json({ success: true, uploads });
+  } catch (error) {
+    console.error('[Route] OKR ownership details error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching upload status: ' + error.message });
+  }
+});
+
+/**
+ * DELETE /api/okr-upload
+ * Delete OKR data for a hierarchy selection (only the owning SPOC or ADMIN can delete)
+ * Body: { corporate, businessGroup, department, team }
+ * Removes ownership claim + all OKR data for employees in that selection
+ */
+router.delete('/api/okr-upload', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    // Item #10 — Hard lock date check
+    if (isSystemLocked()) {
+      return res.status(403).json({ success: false, message: 'System is locked. No further edits allowed after the hard lock date.' });
+    }
+
+    const { corporate, businessGroup, department, team } = req.body;
+    const currentUser = req.user.email;
+    const isAdmin = req.user.role === 'ADMIN';
+
+    if (!corporate) {
+      return res.status(400).json({ success: false, message: 'corporate is required.' });
+    }
+
+    const ownershipGroup = businessGroup || '';
+    const ownershipDept = department || '';
+    const ownershipTeam = team || '';
+
+    // Check ownership
+    const owner = queryOne(
+      'SELECT * FROM okr_ownership WHERE corporate = $corp AND COALESCE(business_group, \'\') = $grp AND COALESCE(department, \'\') = $dept AND COALESCE(team, \'\') = $team',
+      { $corp: corporate, $grp: ownershipGroup, $dept: ownershipDept, $team: ownershipTeam }
+    );
+
+    if (!owner) {
+      return res.status(404).json({ success: false, message: 'No OKR upload found for this selection.' });
+    }
+
+    // Only the owning SPOC or an ADMIN can delete
+    if (owner.owned_by_email !== currentUser && !isAdmin) {
+      const ownerName = owner.owned_by_name || owner.owned_by_email;
+      return res.status(403).json({
+        success: false,
+        message: `Only ${ownerName} or an Admin can delete this upload.`
+      });
+    }
+
+    // Build query to find affected employees based on selection level
+    let empQuery = 'SELECT employee_no FROM employees WHERE is_active = 1';
+    const empParams = {};
+
+    if (businessGroup) {
+      empQuery += ' AND business_group_label = $grp';
+      empParams.$grp = businessGroup;
+    }
+    if (department) {
+      empQuery += ' AND department_label = $dept';
+      empParams.$dept = department;
+    }
+
+    const affectedEmployees = queryAll(empQuery, Object.keys(empParams).length > 0 ? empParams : undefined);
+
+    let deletedCount = 0;
+    affectedEmployees.forEach(emp => {
+      execute('DELETE FROM okr_data WHERE employee_no = $emp AND uploaded_by = $by', {
+        $emp: emp.employee_no,
+        $by: owner.owned_by_email
+      });
+
+      // Reset Step 2 completion for affected employees
+      execute(
+        'UPDATE workflow_status SET step2_complete = 0, step2_date = NULL, updated_at = datetime(\'now\') WHERE employee_no = $emp',
+        { $emp: emp.employee_no }
+      );
+      deletedCount++;
+    });
+
+    // Remove ownership claim
+    execute(
+      'DELETE FROM okr_ownership WHERE id = $id',
+      { $id: owner.id }
+    );
+
+    saveDB();
+
+    AuditLog.add('OKR_DELETE', currentUser, `OKR data deleted for ${businessGroup || corporate}${department ? ' > ' + department : ''}${team ? ' > ' + team : ''}`, `Affected employees: ${deletedCount}, Original owner: ${owner.owned_by_email}`);
+
+    res.json({
+      success: true,
+      message: `OKR upload deleted successfully. ${deletedCount} employee records cleared.`,
+      deletedCount
+    });
+  } catch (error) {
+    console.error('[Route] OKR delete error:', error);
+    res.status(500).json({ success: false, message: 'Error deleting OKR data: ' + error.message });
+  }
+});
+
+/**
+ * POST /api/okr-draft
+ * Save OKR draft data (CSV parsed hierarchy + form values) for the current SPOC
+ * Body: { corporate, businessGroup, department, team, csvData, formData }
+ * csvData = JSON stringified CSV hierarchy (corporates, groups, departments, teams, keyResults)
+ * formData = JSON stringified form input values (actual results entered by SPOC)
+ */
+router.post('/api/okr-draft', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    const { corporate, businessGroup, department, team, csvData, formData } = req.body;
+    const spocEmail = req.user.email;
+
+    if (!corporate) {
+      return res.status(400).json({ success: false, message: 'corporate is required to save a draft.' });
+    }
+
+    execute(`
+      INSERT INTO okr_drafts (spoc_email, corporate, business_group, department, team, csv_data, form_data, status, updated_at)
+      VALUES ($email, $corp, $grp, $dept, $team, $csv, $form, 'DRAFT', datetime('now'))
+      ON CONFLICT(spoc_email, corporate, business_group, department, team) DO UPDATE SET
+        csv_data = excluded.csv_data,
+        form_data = excluded.form_data,
+        status = 'DRAFT',
+        updated_at = excluded.updated_at
+    `, {
+      $email: spocEmail,
+      $corp: corporate,
+      $grp: businessGroup || null,
+      $dept: department || null,
+      $team: team || null,
+      $csv: csvData || null,
+      $form: formData || null
+    });
+
+    saveDB();
+
+    AuditLog.add('OKR_DRAFT_SAVE', spocEmail, 'OKR draft saved', `Corporate: ${corporate}, Group: ${businessGroup || 'N/A'}, Dept: ${department || 'N/A'}, Team: ${team || 'N/A'}`);
+
+    res.json({ success: true, message: 'Draft saved successfully.' });
+  } catch (error) {
+    console.error('[Route] OKR draft save error:', error);
+    res.status(500).json({ success: false, message: 'Error saving draft: ' + error.message });
+  }
+});
+
+/**
+ * GET /api/okr-drafts
+ * Get all drafts for the current SPOC
+ * Returns: { success, drafts: [{ corporate, businessGroup, department, team, csvData, formData, updatedAt }] }
+ */
+router.get('/api/okr-drafts', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    const spocEmail = req.user.email;
+
+    const drafts = queryAll(
+      'SELECT * FROM okr_drafts WHERE spoc_email = $email AND status = \'DRAFT\' ORDER BY updated_at DESC',
+      { $email: spocEmail }
+    );
+
+    const formattedDrafts = drafts.map(d => ({
+      id: d.id,
+      corporate: d.corporate,
+      businessGroup: d.business_group,
+      department: d.department,
+      team: d.team,
+      csvData: d.csv_data,
+      formData: d.form_data,
+      updatedAt: d.updated_at
+    }));
+
+    res.json({ success: true, drafts: formattedDrafts });
+  } catch (error) {
+    console.error('[Route] OKR drafts fetch error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching drafts: ' + error.message });
+  }
+});
+
+/**
+ * DELETE /api/okr-draft/:id
+ * Delete a specific draft
+ */
+router.delete('/api/okr-draft/:id', auth.authMiddleware, rbac.requireRole(['DATA_SPOC', 'ADMIN']), (req, res) => {
+  try {
+    const draftId = parseInt(req.params.id);
+    const spocEmail = req.user.email;
+
+    // Verify ownership
+    const draft = queryOne('SELECT * FROM okr_drafts WHERE id = $id AND spoc_email = $email', { $id: draftId, $email: spocEmail });
+
+    if (!draft) {
+      return res.status(404).json({ success: false, message: 'Draft not found.' });
+    }
+
+    execute('DELETE FROM okr_drafts WHERE id = $id', { $id: draftId });
+    saveDB();
+
+    res.json({ success: true, message: 'Draft deleted.' });
+  } catch (error) {
+    console.error('[Route] OKR draft delete error:', error);
+    res.status(500).json({ success: false, message: 'Error deleting draft: ' + error.message });
   }
 });
 
