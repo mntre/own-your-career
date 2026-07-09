@@ -96,6 +96,7 @@ p {
   background-color: var(--color-primary);
   color: var(--color-white);
   padding: var(--spacing-lg) var(--spacing-xl);
+  animation: portalFadeIn 0.2s ease-out;
 }
 
 .portal-header h1 {
@@ -192,6 +193,24 @@ p {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--spacing-xl);
+  animation: portalFadeIn 0.3s ease-out;
+}
+
+/* Smooth page transition for all portals */
+@keyframes portalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Apply to admin container too */
+.admin-container {
+  animation: portalFadeIn 0.3s ease-out;
 }
 
 /* --------------------------------------------------------------------------

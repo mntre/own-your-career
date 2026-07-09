@@ -106,7 +106,7 @@ const App = {
     const allowedRolesMap = {
       admin: ['ADMIN'],
       manager: ['MANAGER', 'ADMIN'],
-      dataspoc: ['DATA_SPOC'],
+      dataspoc: ['DATA_SPOC', 'ADMIN'],
       employee: ['EMPLOYEE', 'MANAGER', 'DATA_SPOC', 'ADMIN']
     };
 
@@ -229,6 +229,7 @@ const App = {
     if (role === 'ADMIN') {
       portals.push({ id: 'admin', label: 'Admin', url: 'admin-portal.html' });
       portals.push({ id: 'manager', label: 'Manager', url: 'manager-portal.html' });
+      portals.push({ id: 'dataspoc', label: 'Data SPOC', url: 'dataspoc-portal.html' });
     } else if (role === 'MANAGER') {
       portals.push({ id: 'manager', label: 'Manager', url: 'manager-portal.html' });
     } else if (role === 'DATA_SPOC') {
