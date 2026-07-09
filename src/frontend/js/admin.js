@@ -100,6 +100,8 @@ const Admin = {
         if (response.success) {
           this.stats = response.stats;
           console.log('[Admin] Stats loaded:', this.stats);
+          this.updateStatsUI();
+          this.updateProgressBarsUI();
         }
       })
       .catch(error => {
@@ -533,6 +535,20 @@ const Admin = {
     document.getElementById('steps-completed').textContent = this.stats.stepsCompleted || 0;
     document.getElementById('completion-rate').textContent = `${this.stats.completionRate || 0}%`;
     document.getElementById('pending-employees').textContent = this.stats.pendingEmployees || 0;
+  },
+
+  /**
+   * Update last action timestamp (called when admin takes an action like upload, derive roles, etc.)
+   * @param {string} actionName - Name of the action (e.g., "Employee Upload", "Role Derivation")
+   */
+  updateLastActionTime: function(actionName) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const lastUpdatedEl = document.getElementById('last-updated');
+    if (lastUpdatedEl) {
+      lastUpdatedEl.textContent = `Last updated: ${actionName} on ${dateStr} at ${timeStr}`;
+    }
   },
   
   /**
@@ -1024,6 +1040,7 @@ const Admin = {
           resultDiv.innerHTML = `<strong>✓ Upload Successful!</strong><br>${response.message || this.employeeData.length + ' employees uploaded to the system.'}`;
 
           this.showNotification(`${this.employeeData.length} employees uploaded successfully`, 'success');
+          this.updateLastActionTime('Employee Upload');
 
           // Show role derivation section
           document.getElementById('role-derivation-section').style.display = 'block';
@@ -1090,7 +1107,7 @@ const Admin = {
             ? `<br><span style="color: #e65100;">⚠️ ${response.unresolved} unresolved supervisor(s) — check Role Assignment for details</span>` 
             : '';
 
-          resultDiv.innerHTML = `
+        resultDiv.innerHTML = `
             <strong>✓ Role Derivation Complete!</strong><br>
             ${response.message || 'Role assignment complete.'}<br>
             <small style="margin-top: 8px; display: block;">
@@ -1109,6 +1126,7 @@ const Admin = {
           `;
 
           this.showNotification(`${response.managersDetected || 0} managers auto-detected`, 'success');
+          this.updateLastActionTime('Role Derivation');
           this.loadRoleCounts();
         } else {
           const resultDiv = document.getElementById('role-derivation-result');
