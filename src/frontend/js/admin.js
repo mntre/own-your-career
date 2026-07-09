@@ -1019,52 +1019,210 @@ const Admin = {
       return;
     }
 
-    if (!confirm(`Upload ${this.employeeData.length} employees (${this.employeeHeaders.length} columns) to the system? This will REPLACE the current employee database.`)) {
-      return;
-    }
+    // Show confirmation modal instead of browser confirm
+    this.showUploadConfirmation(
+      `Upload ${this.employeeData.length} employees (${this.employeeHeaders.length} columns) to the system? This will REPLACE the current employee database.`,
+      () => this.proceedWithUpload()
+    );
+  },
 
+  /**
+   * Show upload confirmation modal
+   * @param {string} message - Confirmation message
+   * @param {Function} onConfirm - Callback when confirmed
+   */
+  showUploadConfirmation: function(message, onConfirm) {
+    const overlay = document.getElementById('confirmation-modal-overlay');
+    const messageEl = document.getElementById('confirmation-message');
+    const confirmBtn = document.getElementById('confirmation-confirm-btn');
+    const cancelBtn = document.getElementById('confirmation-cancel-btn');
+
+    if (!overlay) return;
+
+    // Set message
+    messageEl.textContent = message;
+
+    // Setup event listeners
+    const handleConfirm = () => {
+      this.closeConfirmationModal();
+      onConfirm();
+    };
+
+    const handleCancel = () => {
+      this.closeConfirmationModal();
+    };
+
+    confirmBtn.onclick = handleConfirm;
+    cancelBtn.onclick = handleCancel;
+
+    // Show modal
+    overlay.classList.add('visible');
+  },
+
+  /**
+   * Close confirmation modal
+   */
+  closeConfirmationModal: function() {
+    const overlay = document.getElementById('confirmation-modal-overlay');
+    if (overlay) {
+      overlay.classList.remove('visible');
+    }
+  },
+
+  /**
+   * Proceed with employee data upload after confirmation
+   */
+  proceedWithUpload: function() {
     const uploadBtn = document.getElementById('employee-upload-btn');
     uploadBtn.disabled = true;
     uploadBtn.textContent = 'Uploading...';
 
     console.log('[Admin] Uploading employee data:', this.employeeData.length, 'records,', this.employeeHeaders.length, 'columns');
 
+    // Show upload progress modal
+    this.showUploadModal(this.employeeData.length);
+
+    // Simulate progress updates while waiting for API response
+    let simulatedProgress = 0;
+    const startTime = Date.now();
+    const simulationInterval = setInterval(() => {
+      if (simulatedProgress < 85) {
+        simulatedProgress += Math.random() * 25;
+        if (simulatedProgress > 85) simulatedProgress = 85;
+        this.updateUploadModal(Math.floor(simulatedProgress), this.employeeData.length, startTime);
+      }
+    }, 400);
+
     API.uploadEmployeeDatabase({ headers: this.employeeHeaders, rows: this.employeeData })
       .then(response => {
-        if (response.success) {
-          const resultDiv = document.getElementById('employee-upload-result');
-          resultDiv.style.display = 'block';
-          resultDiv.style.background = '#e6f9f0';
-          resultDiv.style.border = '1px solid #0a7c42';
-          resultDiv.style.color = '#0a7c42';
-          resultDiv.innerHTML = `<strong>✓ Upload Successful!</strong><br>${response.message || this.employeeData.length + ' employees uploaded to the system.'}`;
+        clearInterval(simulationInterval);
+        
+        // Show final progress
+        this.updateUploadModal(100, this.employeeData.length, startTime);
+        document.getElementById('modal-upload-label').textContent = 'Finalizing...';
+        
+        // Wait a moment then show result
+        setTimeout(() => {
+          if (response.success) {
+            document.getElementById('modal-upload-label').textContent = '✓ Upload Complete!';
+            document.getElementById('modal-upload-status').textContent = response.message || this.employeeData.length + ' employees uploaded successfully';
+            this.showUploadModalCloseBtn();
 
-          this.showNotification(`${this.employeeData.length} employees uploaded successfully`, 'success');
-          this.updateLastActionTime('Employee Upload');
+            this.showNotification(`${this.employeeData.length} employees uploaded successfully`, 'success');
+            this.updateLastActionTime('Employee Upload');
 
-          // Show role derivation section
-          document.getElementById('role-derivation-section').style.display = 'block';
+            // Show role derivation section
+            document.getElementById('role-derivation-section').style.display = 'block';
 
-          // Update stats
-          if (this.stats) {
-            this.stats.totalEmployees = this.employeeData.length;
-            this.updateStatsUI();
+            // Update stats
+            if (this.stats) {
+              this.stats.totalEmployees = this.employeeData.length;
+              this.updateStatsUI();
+            }
+
+            // Fetch and display current role counts
+            this.loadRoleCounts();
+          } else {
+            document.getElementById('modal-upload-label').textContent = '✗ Upload Failed';
+            document.getElementById('modal-upload-status').textContent = response.message || 'An error occurred during upload.';
+            this.showUploadModalCloseBtn();
+            
+            this.showNotification(response.message || 'Upload failed', 'error');
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload to System';
           }
-
-          // Fetch and display current role counts
-          this.loadRoleCounts();
-        } else {
-          this.showNotification(response.message || 'Upload failed', 'error');
-          uploadBtn.disabled = false;
-        }
-        uploadBtn.textContent = 'Upload to System';
+        }, 800);
       })
       .catch(error => {
+        clearInterval(simulationInterval);
+        
         console.error('[Admin] Upload error:', error);
+        document.getElementById('modal-upload-label').textContent = '✗ Upload Failed';
+        document.getElementById('modal-upload-status').textContent = 'Error uploading employee data: ' + (error.message || 'Unknown error');
+        this.showUploadModalCloseBtn();
+        
         this.showNotification('Error uploading employee data: ' + error.message, 'error');
         uploadBtn.disabled = false;
         uploadBtn.textContent = 'Upload to System';
       });
+  },
+
+  /**
+   * Show upload progress modal
+   * @param {number} totalRecords - Total records to upload
+   */
+  showUploadModal: function(totalRecords) {
+    const overlay = document.getElementById('upload-modal-overlay');
+    const closeBtn = document.getElementById('modal-close-btn');
+    
+    // Reset modal state
+    document.getElementById('modal-upload-percentage').textContent = '0';
+    document.getElementById('modal-upload-label').textContent = 'Initializing upload...';
+    document.getElementById('modal-upload-count').textContent = '0';
+    document.getElementById('modal-upload-total').textContent = totalRecords;
+    document.getElementById('modal-upload-rate').textContent = '0';
+    document.getElementById('modal-upload-status').textContent = 'Processing...';
+    closeBtn.classList.remove('visible');
+    
+    // Show overlay
+    if (overlay) {
+      overlay.classList.add('visible');
+    }
+  },
+
+  /**
+   * Update upload modal with progress
+   * @param {number} percentage - Upload percentage (0-100)
+   * @param {number} totalRecords - Total records
+   * @param {number} startTime - Upload start time
+   */
+  updateUploadModal: function(percentage, totalRecords, startTime) {
+    const percentageEl = document.getElementById('modal-upload-percentage');
+    const barFill = document.getElementById('modal-upload-bar');
+    const barText = document.getElementById('modal-upload-bar-text');
+    const countEl = document.getElementById('modal-upload-count');
+    const rateEl = document.getElementById('modal-upload-rate');
+    
+    const recordsProcessed = Math.floor((percentage / 100) * totalRecords);
+    const elapsedSeconds = (Date.now() - startTime) / 1000;
+    const rate = elapsedSeconds > 0 ? (recordsProcessed / elapsedSeconds).toFixed(1) : '0';
+    
+    if (percentageEl) {
+      percentageEl.textContent = percentage;
+    }
+    if (barFill) {
+      barFill.style.width = percentage + '%';
+    }
+    if (barText && percentage > 15) {
+      barText.textContent = percentage + '%';
+    }
+    if (countEl) {
+      countEl.textContent = recordsProcessed;
+    }
+    if (rateEl) {
+      rateEl.textContent = rate;
+    }
+  },
+
+  /**
+   * Show close button on upload modal
+   */
+  showUploadModalCloseBtn: function() {
+    const closeBtn = document.getElementById('modal-close-btn');
+    if (closeBtn) {
+      closeBtn.classList.add('visible');
+      closeBtn.addEventListener('click', () => this.closeUploadModal(), { once: true });
+    }
+  },
+
+  /**
+   * Close upload modal
+   */
+  closeUploadModal: function() {
+    const overlay = document.getElementById('upload-modal-overlay');
+    if (overlay) {
+      overlay.classList.remove('visible');
+    }
   },
 
   /**
@@ -1671,6 +1829,7 @@ const Admin = {
     document.getElementById('employee-file-info').style.display = 'none';
     document.getElementById('employee-preview-section').style.display = 'none';
     document.getElementById('employee-upload-result').style.display = 'none';
+    document.getElementById('employee-upload-progress').style.display = 'none';
     this.employeeData = [];
   },
 
