@@ -30,7 +30,9 @@ const APIConverge = {
     }
     
     // Production/EC2: use same host, port 3001
-    return protocol + '//' + host + ':3001/api';
+    var url = protocol + '//' + host + ':3001/api';
+    console.log('[APIConverge] BASE_URL resolved to:', url);
+    return url;
   })(),
   
   /**
