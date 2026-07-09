@@ -45,13 +45,8 @@ const API = (() => {
     return APIConverge;
   }
 
-  // Fallback: mock API only if APIConverge is not loaded
-  const isTestingMode = (
-    window.location.protocol === 'file:' ||
-    !window.location.port ||
-    window.location.port === '443' ||
-    window.location.port === '80'
-  );
+  // Fallback: mock API only if APIConverge is not loaded AND running locally via file://
+  const isTestingMode = (window.location.protocol === 'file:');
   
   if (isTestingMode) {
     console.log('[API Adapter] Testing/Phase 1 mode. Using mock API.');
