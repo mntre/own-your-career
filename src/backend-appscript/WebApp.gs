@@ -176,6 +176,11 @@ function redirectToPortal_(role, userEmail, employeeId, userName) {
     return HtmlService.createHtmlOutput(`<h1>Error</h1><p>Failed to load portal. Error: ${e.message}</p>`);
   }
 }
+
+/**
+ * Handles POST requests — processes API calls from frontend.
+ * Routes to backend functions based on action parameter.
+ * 
  * @param {Object} e - Event object with postData
  * @returns {Object} JSON response
  */

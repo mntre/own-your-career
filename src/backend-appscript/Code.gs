@@ -4614,6 +4614,9 @@ function logExportEvent(exportType, status, recordCount, details) {
     console.error(`[Code] Error logging export event: ${e.message}`);
   }
 }
+
+/**
+ * TASK 12: Generates CSV export of employee progress report.
  * Includes employee data + step completion status for all 7 steps.
  * Sorted by overall completion percentage (descending).
  * 
