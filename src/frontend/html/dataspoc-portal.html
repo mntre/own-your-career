@@ -2806,6 +2806,14 @@
       
       // Hide the delete button
       document.getElementById('delete-okr-btn').style.display = 'none';
+      
+      // Clear the upload feedback message (success/error/info)
+      const feedbackDiv = document.getElementById('csv-upload-feedback');
+      if (feedbackDiv) {
+        feedbackDiv.style.display = 'none';
+        feedbackDiv.innerHTML = '';
+        feedbackDiv.className = 'upload-feedback';
+      }
 
       // Re-load drafts (should now be empty for this hierarchy)
       loadExistingDrafts();
@@ -2830,6 +2838,14 @@
       
       // Hide the delete button when going back
       document.getElementById('delete-okr-btn').style.display = 'none';
+      
+      // Clear the upload feedback message
+      const feedbackDiv = document.getElementById('csv-upload-feedback');
+      if (feedbackDiv) {
+        feedbackDiv.style.display = 'none';
+        feedbackDiv.innerHTML = '';
+        feedbackDiv.className = 'upload-feedback';
+      }
       
       // Re-load drafts notification
       loadExistingDrafts();
